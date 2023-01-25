@@ -1,0 +1,88 @@
+#!/bin/bash
+
+if [ -z "$1" ];then
+	echo -e "\033[31mError: Missing argument (IP address for installation)\033[m"
+	exit 1
+fi
+
+if ! ssh -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher $1 echo; then
+	echo -e "\033[31mError: Cannot logon as user 'rancher', without password.\033[m"
+	exit 1
+fi
+
+ALMA_VER=`ssh -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher $1 cat /etc/almalinux-release`
+ATMP=${ALMA_VER%%.*}
+if [ "${ATMP##* }" = "9" ];then
+	echo -e "\033[31mError: already upgraded to Almalinux 9\033[m"
+	exit 1
+fi
+ssh -t -o "StrictHostKeyChecking no" -o "UserKnownHostsFile=/dev/null" -l rancher $1 sudo ros console switch centos -f
+sleep 3
+ssh -o "StrictHostKeyChecking no" -o "UserKnownHostsFile=/dev/null" -l rancher $1 "bash -c 'cat > ./upgrade_to_almalinux9'" <<'END'
+#/bin/bash
+yum -y install epel-release yum-utils
+yum -y install dnf patch
+yum clean all
+dnf -y remove yum yum-metadata-parser
+rm -Rf /etc/yum /var/cache/yum
+dnf -y upgrade
+dnf -y install https://vault.centos.org/8.5.2111/BaseOS/x86_64/os/Packages/centos-{linux-release-8.5-1.2111,linux-repos-8-3,gpg-keys-8-3}.el8.noarch.rpm
+sed -i -r 's/\bmirrorlist=/#mirrorlist=/' /etc/yum.repos.d/CentOS-Linux-*.repo
+sed -i -r "s/#baseurl=http:\/\/mirror/baseurl=http:\/\/vault/" /etc/yum.repos.d/CentOS-Linux-*.repo
+dnf -y --releasever=8 --allowerasing --setopt=deltarpm=false distro-sync
+if [ ! -e almalinux-deploy.sh ]; then
+	wget https://raw.githubusercontent.com/AlmaLinux/almalinux-deploy/master/almalinux-deploy.sh
+	patch -p0 <<'ED'
+--- almalinux-deploy.sh.old	2023-01-25 06:53:56.892131900 +0900
++++ almalinux-deploy.sh	2023-01-25 07:51:21.292131900 +0900
+@@ -1014,8 +1014,8 @@
+     local panel_version
+     assert_run_as_root
+     arch="$(get_system_arch)"
+-    os_type="$(get_os_release_var 'ID')"
+-    os_version="$(get_os_version "${os_type}")"
++    os_type="centos"
++    os_version="8"
+     #os_version="$(get_os_release_var 'VERSION_ID')"
+     #os_version="${os_version:0:1}"
+     assert_supported_system "${os_type}" "${os_version}" "${arch}"
+@@ -1070,12 +1070,12 @@
+     restore_alternatives
+     restore_issue
+     # don't do this steps if we inside the lxc container
+-    if [ $is_container -eq 0 ]; then
+-        install_kernel
+-        grub_update
+-        reinstall_secure_boot_packages
+-        add_efi_boot_record
+-    fi
++    #if [ $is_container -eq 0 ]; then
++    #    install_kernel
++    #    grub_update
++    #    reinstall_secure_boot_packages
++    #    add_efi_boot_record
++    #fi
+     check_custom_kernel
+     save_status_of_stage "completed"
+     printf '\n\033[0;32mMigration to AlmaLinux is completed\033[0m\n'
+ED
+fi
+chmod -v +x almalinux-deploy.sh
+./almalinux-deploy.sh
+dnf install -y https://repo.almalinux.org/almalinux/9.1/BaseOS/x86_64/os/Packages/almalinux-{gpg-keys,release,repos}-9.1-1.9.el9.x86_64.rpm
+dnf install -y epel-release-9
+dnf -y --releasever=9 --allowerasing --setopt=deltarpm=false distro-sync --skip-broken
+rpm --rebuilddb
+cp /var/lib/rpmrebuilddb.*/* /var/lib/rpm
+dnf -y module reset perl perl-IO-Socket-SSL perl-libwww-perl
+rpm -e compat-openssl10 dbus-daemon dbus-tools dnf-plugins-core ed elfutils-debuginfod-client file freetype fuse-libs gawk-all-langpacks gettext gettext-libs glibc-gconv-extra gnupg2-smime graphite2 grub2-common grub2-tools grub2-tools-efi grub2-tools-extra grub2-tools-minimal grubby harfbuzz hwdata kbd-legacy libcroco libmetalink libnsl libpng libusbx libxcrypt-compat libxkbcommon make memstrack openssl-pkcs11 os-prober patch pciutils pciutils-libs perl-AutoLoader perl-B perl-Data-Dumper perl-Digest perl-Digest-MD5 perl-FileHandle perl-IO-Socket-IP perl-IO-Socket-SSL perl-Mozilla-CA perl-NDBM_File perl-Net-SSLeay perl-URI perl-Unicode-Normalize perl-base perl-libnet protobuf-c python-unversioned-command python3-dateutil python3-dbus python3-dnf-plugins-core python3-six python3-unbound rdma-core rpm-plugin-systemd-inhibit trousers trousers-lib unbound-libs xkeyboard-config
+rpm -e `rpm -qa | grep el7`
+rpm -e `rpm -qa | grep el8`
+ln -sf /usr/bin/ros /sbin/shutdown
+shutdown -r now
+END
+sleep 3
+ssh -o "StrictHostKeyChecking no" -o "UserKnownHostsFile=/dev/null" -l rancher $1 chmod +x upgrade_to_almalinux9
+ssh -o "StrictHostKeyChecking no" -o "UserKnownHostsFile=/dev/null" -l rancher $1 sudo ./upgrade_to_almalinux9
+
+
