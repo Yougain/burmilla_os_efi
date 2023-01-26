@@ -94,5 +94,6 @@ AlmaLinux release 9.1 (Lime Lynx)
 ```
 ## References
 https://blog.hugopoi.net/2020/03/01/install-rancheros-on-freenas-11-3/<br>
+https://www.tecmint.com/upgrade-centos-7-to-centos-8/<br>
 https://www.cyberciti.biz/howto/how-to-migrate-from-centos-8-to-almalinux-conversion/<br>
 https://www.centlinux.com/2022/07/upgrade-your-servers-from-rocky-linux-8-to-9.html<br>
