@@ -17,7 +17,7 @@ if [ -n "$NO_CMD" ];then
 fi
 
 
-T=~/tmp_rancheros_efi
+T=~/rancheros_efi
 
 if [ ! -d $T ];then
 	mkdir $T
@@ -89,7 +89,7 @@ menuentry "Install Rancher" {
     initrd  /boot/initrd-$RANCHEROS_VER
 }
 grub_platform
-if [ "$grub_platform" = "efi" ]; then
+if [ "\$grub_platform" = "efi" ]; then
 menuentry 'Boot from next volume' {
     exit 1
 }
@@ -110,5 +110,6 @@ sudo umount $UD
 sudo umount $RD
 sudo umount $PD
 sudo losetup -D $LDEVH
-
+rmdir $UD $RD $PD
+rm $P_IMG
 
