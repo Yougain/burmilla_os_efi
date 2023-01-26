@@ -67,6 +67,11 @@ shm                   64M     0   64M   0% /dev/shm
 /dev/md125           2.0G  134M  1.7G   8% /boot
 /dev/sda2            253M  3.2M  249M   2% /boot/efi
 
+[rancher@rancher ~]$ sudo mdadm --detail --scan
+ARRAY /dev/md127 metadata=1.2 name=rancher:127 UUID=---------------
+ARRAY /dev/md126 metadata=1.2 name=rancher:126 UUID=---------------
+ARRAY /dev/md125 metadata=1.0 name=rancher:125 UUID=---------------
+
 ```
 
 # rancher_console_up_to_almalinux9
