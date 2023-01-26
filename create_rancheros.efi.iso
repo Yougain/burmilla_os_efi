@@ -1,0 +1,114 @@
+#!/bin/bash
+
+function check_cmd {
+	while (( "$#" )); do
+		if [ -z "`which $1 2>/dev/null`" ];then
+			echo "Command, '$1' is not found. Please install"
+			NO_CMD=1
+		fi
+		shift
+	done
+}
+
+check_cmd fallocate gdisk losetup mkfs.fat mkisofs
+if [ -n "$NO_CMD" ];then
+	echo "Terminated."
+	exit 1
+fi
+
+
+T=~/tmp_rancheros_efi
+
+if [ ! -d $T ];then
+	mkdir $T
+fi
+
+LATEST_L=`wget https://github.com/rancher/os/blob/master/README.md -O - 2>/dev/null| awk '/v[0-9]+(\.[0-9]+)* - Docker [0-9]+(\.[0-9]+)* - Linux [0-9]+(\.[0-9]+)*/ { match($0, /v[0-9]+(\.[0-9]+)*/);print substr($0, RSTART, RLENGTH);match($0, /- Linux [0-9]+(\.[0-9]+)*/);print substr($0, RSTART + 8, RLENGTH - 8);}'`
+RANCHEROS_VER=${LATEST_L%$'\n'*}
+KERNEL_VER=${LATEST_L#*$'\n'}
+echo RancherOS Version: $RANCHEROS_VER
+echo Kernel Version: $KERNEL_VER
+RANCHER_ISO="$T"/rancheros-$RANCHEROS_VER.iso
+
+LATEST_U=`wget --no-check-certificate -O - https://releases.ubuntu.com/ 2>/dev/null|awk '/Ubuntu [0-9]+(\.[0-9]+)+ LTS/{print $0}'|head -1|awk '{match($0, /Ubuntu [0-9]+(\.[0-9]+)+ LTS \([^)]+\)/); print substr($0, RSTART, RLENGTH)}'`
+LATEST_UV=`echo $LATEST_U | awk '{print $2}'`
+UDIR=`wget --no-check-certificate -O - https://releases.ubuntu.com/ 2>/dev/null|grep "$LATEST_U"|grep href| head -1|awk '{match($0,/href="[^"]+"/);print substr($0,RSTART+6,RLENGTH-7)}'`
+UBUNTU_ISO="$T"/ubuntu-$LATEST_UV-live-server-amd64.iso
+echo Ubuntu Version: $LATEST_UV
+
+if [ ! -e $RANCHER_ISO ];then
+	wget https://releases.rancher.com/os/$RANCHEROS_VER/rancheros.iso -O $RANCHER_ISO
+fi
+
+if [ ! -e $UBUNTU_ISO ];then
+	wget https://releases.ubuntu.com/$UDIR"ubuntu-$LATEST_UV-live-server-amd64.iso" -O $UBUNTU_ISO
+fi
+
+UD="$T"/tmpubuntu
+RD="$T"/tmprancheros
+PD="$T"/tmpproduct
+P_IMG="$T"/rancheros-$RANCHEROS_VER.efi.img
+P_ISO="$T"/rancheros-$RANCHEROS_VER.efi.iso
+
+echo $P_ISO
+sudo umount $PD $UD $RD
+sudo rm -rf $PD $UD $RD
+mkdir $UD $RD $PD 
+sudo mount $UBUNTU_ISO $UD
+sudo mount $RANCHER_ISO $RD
+fallocate -l 250M $P_IMG
+gdisk $P_IMG <<END
+o
+y
+n
+
+
+ef00
+w
+y
+END
+LDEVH=`sudo losetup --partscan --show --find $P_IMG`
+LDEV=$LDEVH"p1"
+sudo mkfs.fat $LDEV
+sudo mount $LDEV $PD
+sudo cp -ar $RD/* $PD
+sudo cp -ar $UD/boot/grub $PD/boot/
+sudo cp -ar $UD/EFI $PD/
+
+cat - > "$T"/grub.cfg <<END
+set timeout=30
+set default=1
+
+loadfont unicode
+
+set menu_color_normal=white/black
+set menu_color_highlight=black/light-gray
+
+menuentry "Install Rancher" {
+    linux   /boot/vmlinuz-$KERNEL_VER-rancher nomodeset vga=775 video=1280x1024 rancher.autologin=tty1 rancher.autologin=ttyS0 rancher.autologin=ttyS1 console=tty1 console=ttyS0 console=ttyS1 printk.devkmsg=on panic=10 ---
+    initrd  /boot/initrd-$RANCHEROS_VER
+}
+grub_platform
+if [ "$grub_platform" = "efi" ]; then
+menuentry 'Boot from next volume' {
+    exit 1
+}
+menuentry 'UEFI Firmware Settings' {
+    fwsetup
+}
+else
+menuentry 'Test memory' {
+    linux16 /boot/memtest86+.bin
+}
+fi
+END
+sudo mv -f "$T"/grub.cfg $PD/boot/grub
+echo All files are prepared.
+sudo mkisofs -r -V "rancheros" -cache-inodes -J -l -b boot/isolinux/isolinux.bin -c boot/isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -o $P_ISO $PD
+echo Iso created.
+sudo umount $UD
+sudo umount $RD
+sudo umount $PD
+sudo losetup -D $LDEVH
+
+

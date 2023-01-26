@@ -5,10 +5,10 @@ if [ -z "$1" ];then
 	exit 1
 fi
 
-KEY=`cat .ssh/id_ed25519.pub`
+KEY=`cat ~/.ssh/id_ed25519.pub`
 echo $KEY
 if [ -z "$KEY" ];then
-	echo -e "\033[31mError: Cannot find public key in .ssh/id_ed25519.pub. exit.\033[m"
+	echo -e "\033[31mError: Cannot find public key in ~/.ssh/id_ed25519.pub. exit.\033[m"
 	exit 1
 fi
 if ! ssh -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher $1 echo; then
@@ -18,11 +18,11 @@ spawn ssh -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" -l
 expect \"assword:\"
 send \"rancher\n\"
 expect \"rancher ~]$ \"
-send \"mkdir .ssh\n\"
+send \"mkdir ~/.ssh\n\"
 expect \"rancher ~]$ \"
-send \"chmod 700 .ssh\n\"
+send \"chmod 700 ~/.ssh\n\"
 expect \"rancher ~]$ \"
-send \"echo $KEY > .ssh/authorized_keys\n\"
+send \"echo $KEY > ~/.ssh/authorized_keys\n\"
 expect \"rancher ~]$ \"
 send \"exit\"
 "
