@@ -42,49 +42,21 @@ MEM_SIZE=`ssh -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "U
 DISK_SIZE=${DISK_SIZE%$'\r'}
 MEM_SIZE=${MEM_SIZE%$'\r'}
 
-
-if [ "$DISK_SIZE" -ge 4398046511104 ];then
-	ROOT_SIZE="+1280G"
-	SWAP_PART_SIZE="+64G"
-	SWAP_MEM_SIZE="$((MEM_SIZE*2))"
-	GDISK_FINISH="n
-6
-
-
-fd00
-w
-y
-"
-	FOR_DATA_PART="mdadm --create /dev/md127 --level=1 --metadata=1.2 --raid-devices=2 /dev/sda6 missing <<END
-y
-END
-mkfs.ext4 -L DATA /dev/md127 <<END
-y
-END
-"
-else
-	ROOT_SIZE=""
-	SWAP_PART_SIZE="+$((MEM_SIZE*2+10))""K"
-	SWAP_MEM_SIZE="$((MEM_SIZE*2))"
-	GDISK_FINISH="w
-y"
-	FOR_DATA_PART=""
-fi
+SWAP_PART_SIZE="+64G"
+SWAP_MEM_SIZE="$((MEM_SIZE*2))"
 
 ssh -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher $1 sudo ros console switch ubuntu -f
 sleep 5
 ssh -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher $1 bash -c "cat - > __install_rancher" <<FINAL
 #!/bin/bash
-apt-get update; apt-get install -y gdisk lvm2 dosfstools mdadm
-if [ -e /dev/mapper/vg0-lv0 ]; then
-	dd if=/dev/zero of=/dev/mapper/vg0-lv0 bs=10K count=1
-	lvchange -an /dev/mapper/vg0-lv0
-	lvremove /dev/mapper/vg0-lv0
-	vgchange -an vg0
-	vgremove vg0
-fi
+apt-get update; apt-get install -y gdisk lvm2 dosfstools btrfs-tools parted
+LAST_SECTOR=\`gdisk -l /dev/sda | grep "last usable sector is" |awk '{print \$10}'\`
+LAST_PART_START=\$((LAST_SECTOR-2097158))
 dd if=/dev/zero of=/dev/sda bs=1G count=1
-gdisk /dev/sda <<'EOF'
+partprobe
+echo LAST_SECTOR=\$LAST_SECTOR
+echo LAST_PART_START=\$LAST_PART_START
+gdisk /dev/sda <<EOF
 2
 x
 l
@@ -112,70 +84,75 @@ $SWAP_PART_SIZE
 n
 4
 
-+2G
-fd00
+\$((LAST_PART_START-1))
+8300
 n
 5
+\$LAST_PART_START
 
-$ROOT_SIZE
-fd00
-$GDISK_FINISH
+8300
+p
+w
+y
 EOF
-
-mdadm --create /dev/md125 --level=1 --metadata=1.0 --raid-devices=2 /dev/sda4 missing <<END
-y
-END
-mdadm --create /dev/md126 --level=1 --metadata=1.2 --raid-devices=2 /dev/sda5 missing <<END
-y
-END
-
-mkfs.ext4 -L RANCHER_BOOT /dev/md125 <<END
-y
-END
+partprobe
+gdisk -l /dev/sda
 mkswap -L RANCHER_SWAP /dev/sda3 $SWAP_MEM_SIZE <<END
 y
 END
 mkfs.vfat -F32 -n EFI /dev/sda2 << END
 y
 END
-$FOR_DATA_PART
-system-docker exec -it udev sudo bash -c "vgcreate vg0 /dev/md126;lvcreate -n lv0 --size=1T vg0;vgchange -ay vg0"
-echo -n "mounts:
-- - /dev/md125
-  - /boot
-  - ext4
-  - \"\"
-- - /dev/sda2
-  - /boot/efi
-  - vfat
-  - \"\"
-" > cloud-config.yml
 echo "runcmd:
 - swapon -L RANCHER_SWAP
 " >> cloud-config.yml
 echo -n -e "#cloud-config\nssh_authorized_keys:\n - " >> cloud-config.yml
 echo "$KEY" >> cloud-config.yml
-ros install -t gptsyslinux -c cloud-config.yml -a rancher.state.mdadm_scan -a rancher.state.lvm_scan -d /dev/sda -p /dev/dm-0 <<END
+ros install -t gptsyslinux -c cloud-config.yml -a rancher.state.mdadm_scan -a rancher.state.lvm_scan -d /dev/sda -p /dev/sda5 <<END
 y
 n
 END
-mount /dev/dm-0 /opt
-mount /dev/md125 /mnt
-cp -ra /opt/boot/* /mnt
-mkdir /mnt/efi
-umount /opt
-umount /mnt
 mkdir /mnt/efipart && mount /dev/sda2 /mnt/efipart
 mkdir /mnt/installer && mount /dev/sdb1 /mnt/installer
 cp -r /mnt/installer/EFI /mnt/efipart
 cat - > /mnt/efipart/EFI/BOOT/grub.cfg <<END
 set timeout=1
+set gfxmode=1280x1024x16
+set gfxpayload=keep
 menuentry "Rancher from GPT" {
-    search --no-floppy --set=root --label RANCHER_BOOT
-    linux    /vmlinuz-4.14.138-rancher nomodeset vga=775 video=1280x1024 printk.devkmsg=on rancher.state.mdadm_scan rancher.state.lvm_scan rancher.state.dev=LABEL=RANCHER_STATE rancher.state.wait panic=10 console=tty1 console=ttyS0
-    initrd    /initrd-v1.5.8
+	set gfxmode=1280x1024
+	set gfxpayload=keep
+    search --no-floppy --set=root --label RANCHER_STATE
+    linux    /boot/vmlinuz-4.14.138-rancher nomodeset vga=775 video=1280x1024 printk.devkmsg=on rancher.state.mdadm_scan rancher.state.lvm_scan rancher.state.dev=LABEL=RANCHER_STATE rancher.state.wait panic=10 console=tty1 console=ttyS0
+    initrd    /boot/initrd-v1.5.8
 }
 END
+#mount /dev/sda4 /mnt
+#mkfs.vfat -F32 /dev/sda5 << END
+#y
+#END
+mount /dev/sda5 /opt
+#cp -av /mnt/* /opt
+#umount /mnt
+#gdisk /dev/sda <<END
+#d
+#4
+#n
+#4
+#
+#
+#8300
+#w
+#y
+#END
+mkfs.btrfs -L RANCHER_STATE -f /dev/sda4
+mount /dev/sda4 /mnt
+cp -av /opt/* /mnt
+umount /opt
+mkfs.btrfs -L NOUSE -f /dev/sda5
+umount /mnt /opt
+#apt-get -y install parted
+#partprobe
 reboot
 FINAL
 ssh -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher $1 chmod +x __install_rancher
