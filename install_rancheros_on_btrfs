@@ -103,6 +103,22 @@ mkfs.vfat -F32 -n EFI /dev/sda2 << END
 y
 END
 echo -n "mounts:
+- - /dev/sda5
+  - /
+  - btrfs
+  - \"subvol=/state_root,defaults,noatime\"
+- - /dev/sda5
+  - /snapshots
+  - btrfs
+  - \"subvol=/snapshots,defaults,noatime\"
+- - /dev/sda5
+  - /data
+  - btrfs
+  - \"subvol=/data,defaults,noatime\"
+- - /dev/sda5
+  - /btrfs_top_lvl
+  - btrfs
+  - \"subvol=/,defaults,noauto,noatime\"
 - - /dev/sda4
   - /boot
   - btrfs
@@ -132,21 +148,28 @@ menuentry "Rancher from GPT" {
 	set gfxmode=1280x1024
 	set gfxpayload=keep
     search --no-floppy --set=root --label RANCHER_BOOT
-    linux    /vmlinuz-4.14.138-rancher nomodeset vga=775 video=1280x1024 printk.devkmsg=on rancher.state.mdadm_scan rancher.state.lvm_scan rancher.state.dev=LABEL=RANCHER_STATE rancher.state.wait panic=10 console=tty1 console=ttyS0
+    linux    /vmlinuz-4.14.138-rancher nomodeset vga=775 video=1280x1024 printk.devkmsg=on rancher.state.mdadm_scan rancher.state.lvm_scan rancher.state.dev=LABEL=RANCHER_STATE rancher.state.wait panic=10 console=tty1 console=ttyS0 rancher.autologin=tty1 root=/dev/sda5 rw rootflags=subvol=/state_root
     initrd   /initrd-v1.5.8
 }
 END
 mount /dev/sda4 /opt
 mkfs.btrfs -L RANCHER_STATE -f /dev/sda5
 mount /dev/sda5 /mnt
-cp -av /opt/* /mnt
+btrfs subvolume create /mnt/state_root
+btrfs subvolume set-default \`btrfs subvolume list /mnt|grep state_root|awk '{print \$2}'\` /mnt
+btrfs subvolume create /mnt/snapshots
+btrfs subvolume create /mnt/data
+mkdir /mnt/state_root/snapshots
+mkdir /mnt/state_root/data
+mkdir /mnt/state_root/btrfs_top_lvl
+cp -av /opt/* /mnt/state_root
 umount /opt
 mkfs.btrfs -L RANCHER_BOOT -f /dev/sda4
 mount /dev/sda4 /opt
-cp -av /mnt/boot/* /opt/
-rm -rf /mnt/boot
+cp -av /mnt/state_root/boot/* /opt/
+rm -rf /mnt/state_root/boot/*
 umount /mnt /opt
-reboot
+#reboot
 FINAL
 ssh -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher $1 chmod +x __install_rancher
 ssh -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -t -l rancher $1 sudo ./__install_rancher

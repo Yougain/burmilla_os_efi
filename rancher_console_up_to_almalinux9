@@ -33,9 +33,9 @@ dnf -y --releasever=8 --allowerasing --setopt=deltarpm=false distro-sync
 if [ ! -e almalinux-deploy.sh ]; then
 	wget https://raw.githubusercontent.com/AlmaLinux/almalinux-deploy/master/almalinux-deploy.sh
 	patch -p0 <<'ED'
---- almalinux-deploy.sh.old	2023-01-25 06:53:56.892131900 +0900
-+++ almalinux-deploy.sh	2023-01-25 07:51:21.292131900 +0900
-@@ -1014,8 +1014,8 @@
+--- almalinux-deploy.sh.old	2023-01-31 06:57:20.507021300 +0900
++++ almalinux-deploy.sh	2023-01-31 06:58:35.307021300 +0900
+@@ -1014,12 +1014,11 @@
      local panel_version
      assert_run_as_root
      arch="$(get_system_arch)"
@@ -46,22 +46,21 @@ if [ ! -e almalinux-deploy.sh ]; then
      #os_version="$(get_os_release_var 'VERSION_ID')"
      #os_version="${os_version:0:1}"
      assert_supported_system "${os_type}" "${os_version}" "${arch}"
-@@ -1070,12 +1070,12 @@
+-    assert_supported_filesystem
+ 
+     read -r panel_type panel_version < <(get_panel_info)
+     assert_supported_panel "${panel_type}" "${panel_version}"
+@@ -1069,13 +1068,6 @@
+     restore_module_streams
      restore_alternatives
      restore_issue
-     # don't do this steps if we inside the lxc container
+-    # don't do this steps if we inside the lxc container
 -    if [ $is_container -eq 0 ]; then
 -        install_kernel
 -        grub_update
 -        reinstall_secure_boot_packages
 -        add_efi_boot_record
 -    fi
-+    #if [ $is_container -eq 0 ]; then
-+    #    install_kernel
-+    #    grub_update
-+    #    reinstall_secure_boot_packages
-+    #    add_efi_boot_record
-+    #fi
      check_custom_kernel
      save_status_of_stage "completed"
      printf '\n\033[0;32mMigration to AlmaLinux is completed\033[0m\n'
