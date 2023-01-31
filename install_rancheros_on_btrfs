@@ -148,7 +148,7 @@ menuentry "Rancher from GPT" {
 	set gfxmode=1280x1024
 	set gfxpayload=keep
     search --no-floppy --set=root --label RANCHER_BOOT
-    linux    /vmlinuz-4.14.138-rancher nomodeset vga=775 video=1280x1024 printk.devkmsg=on rancher.state.mdadm_scan rancher.state.lvm_scan rancher.state.dev=LABEL=RANCHER_STATE rancher.state.wait panic=10 console=tty1 console=ttyS0 rancher.autologin=tty1 root=/dev/sda5 rw rootflags=subvol=/state_root
+    linux    /vmlinuz-4.14.138-rancher nomodeset vga=775 video=1280x1024 printk.devkmsg=on rancher.state.mdadm_scan rancher.state.lvm_scan rancher.state.dev=LABEL=RANCHER_STATE rancher.state.wait panic=10 console=tty1 console=ttyS0 root=/dev/sda5 rw rootflags=subvol=/state_root
     initrd   /initrd-v1.5.8
 }
 END
