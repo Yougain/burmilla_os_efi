@@ -169,7 +169,7 @@ mount /dev/sda4 /opt
 cp -av /mnt/state_root/boot/* /opt/
 rm -rf /mnt/state_root/boot/*
 umount /mnt /opt
-#reboot
+reboot
 FINAL
 ssh -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher $1 chmod +x __install_rancher
 ssh -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -t -l rancher $1 sudo ./__install_rancher
