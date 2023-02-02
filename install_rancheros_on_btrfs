@@ -7,7 +7,14 @@ while (( "$#" )); do
 	if [ -n "`echo $1| egrep '[A-Za-z]'`" ];then
 		HNAME=$1
 		if [ "${HNAME#*.}" = "`hostname -d`" ];then
+			HNAME_FULL=$HNAME
 			HNAME=${HNAME%%.*}
+		else
+			if [ -z "`echo $HNAME| grep '\.'`"];then
+				HNAME_FULL=$HNAME.`hostname -d`
+			else
+				HNAME_FULL=$HNAME
+			fi
 		fi
 	fi
 	if [ -n "`echo $1| grep '\:' |egrep '^[0-9A-Fa-f:]+$'`" ];then
@@ -27,16 +34,13 @@ while (( "$#" )); do
 	shift
 done
 
-if [ -z "$IP" ]; then
-	IP=$INST_IP
-fi
 
 if [ -z "$HNAME" ]; then
 	HNAME="rancher"
 fi
 
 function get_ssh_config_entry(){
-	sed -e '/^[ \t]*#/d' ~/.ssh/config | grep -oiPz "(?s)^\s*Host\s$HNAME(.*?^\s*Host\s|.*)"
+	sed -e 's/[ \t]*#.*//' ~/.ssh/config | grep -oiPz "(?s)^\s*Host\s$HNAME(.*?^\s*Host\s|.*)"
 }
 
 function get_field2(){
@@ -93,6 +97,9 @@ if [ -n "`get_ssh_config_entry`" ];then
 		PORT=`get_field2 $CONFIG_PORT_LINE`
 	fi
 else
+	if [ -z "$IP" ]; then
+		IP=$INST_IP
+	fi
 	if [ -z "$IP" ];then
 		echo -e "\033[31m$error: Missing IP address for installation in the command line and cannot find section, $cyan'Host $HNAME'$red in $cyan~./ssh/config$red, where a line like $cyan'HostName [ip address or resolvable host name]'$red should be found.$plain"
 		exit 1
@@ -123,10 +130,12 @@ if [ -z "$INST_IP" ];then
 	INST_IP=$IP
 fi
 
-SSH="ssh -p 22 -o 'PasswordAuthentication no' -o 'StrictHostKeyChecking no' -o 'UserKnownHostsFile /dev/null' -l rancher $INST_IP"
+function ssh_inst(){
+	ssh -p 22 -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher $INST_IP $@
+}
 
 
-if ! eval $SSH echo; then
+if ! ssh_inst echo; then
 	expect -c "
 set timeout 1
 spawn ssh -p 22 -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" -l rancher $INST_IP
@@ -141,10 +150,12 @@ send \"echo $KEY > ~/.ssh/authorized_keys\n\"
 expect \"rancher ~]$ \"
 send \"exit\"
 "
+else
+	echo -e "$error: RancherOS is already installed?"
 fi
 
 
-if ! eval $SSH echo; then
+if ! ssh_inst echo; then
 	echo -e "$error: Cannot logon as user, 'rancher' by password, 'rancher'"
 	echo "Please enter following commands on console"
 	echo -e $cyan"sudo passwd rancher
@@ -153,11 +164,15 @@ rancher$plain"
 	exit 1
 fi
 
+DNS_SETTINGS=`ssh_inst cat /etc/resolv.conf| sed -e 's/[ \t]*#.*//' | grep "nameserver" | sed -e 's/^[ \t]*//' | awk '{print $2}' | sed -e 's/^/      - /'`
+GATEWAY=`ssh_inst route -n |egrep '^0\.0\.0\.0'|awk '{print $2}'|head -1`
+NETMASK=`ssh_inst ip address show dev eth0 | grep 'inet ' | grep global | awk '{print $2}'| sed -e 's/.*\///'|head -1`
 
-DISK_SIZE=`ssh -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher -t $INST_IP sudo bash -c "'"sudo fdisk -l /dev/sda \|grep \"Disk /dev/sda\"\|awk \"{print $\"\"5}\""'"|grep -v boundary`
-MEM_SIZE=`ssh -p 22 -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher -t $INST_IP bash -c "'"cat /proc/meminfo\|grep MemTotal\|awk \"{print $\"\"2}\""'"`
+DISK_SIZE=`ssh_inst -t sudo bash -c "'"sudo fdisk -l /dev/sda \|grep \"Disk /dev/sda\"\|awk \"{print $\"\"5}\""'"|grep -v boundary`
+MEM_SIZE=`ssh_inst -t bash -c "'"cat /proc/meminfo\|grep MemTotal\|awk \"{print $\"\"2}\""'"`
 DISK_SIZE=${DISK_SIZE%$'\r'}
 MEM_SIZE=${MEM_SIZE%$'\r'}
+
 
 if [ "$DISK_SIZE" -ge 1099511627776 ];then # over 1Tbytes
     SWAP_PART_SIZE="+64G"
@@ -186,10 +201,21 @@ else
 fi
 TZL="$TZ_N$TZ_DS$TZ_DH$TZ_DM"
 
+echo -e $cyan
+echo DNS_SETTINGS="$DNS_SETTINGS"
+echo GATEWAY=$GATEWAY
+echo NETMASK=$NETMASK
+echo DISK_SIZE=$DISK_SIZE
+echo MEM_SIZE=$MEM_SIZE
+echo TZ=$TZL
+echo IP=$IP
+echo PORT=$PORT
+echo -e $plain
 
-ssh -p 22 -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher $IP sudo ros console switch ubuntu -f
+
+ssh_inst sudo ros console switch ubuntu -f
 sleep 5
-ssh -p 22 -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher $1 bash -c "cat - > __install_rancher" <<FINAL
+ssh_inst bash -c "cat - > __install_rancher" <<FINAL
 #!/bin/bash
 apt-get update; apt-get install -y gdisk lvm2 dosfstools btrfs-tools parted
 dd if=/dev/zero of=/dev/sda bs=1G count=1
@@ -242,7 +268,18 @@ mkfs.vfat -F32 -n EFI /dev/sda2 << END
 y
 END
 echo -n "
+hostname: $HNAME_FULL
 rancher:
+  network:
+    dns:
+      nameservers:
+$DNS_SETTINGS
+    interfaces:
+      eth*:
+        dhcp: false
+      eth0:
+        address: $IP/$NETMASK
+        gateway: $GATEWAY
   services:
     console:
       environment:
@@ -256,8 +293,11 @@ write_files:
     owner: root
     content: |
       #!/bin/bash
-      sudo sed -i "s/#Port 22/Port $PORT/" /etc/ssh/sshd_config
-      sudo kill -HUP \\\$(ps ax |grep "sshd -D" | grep -v grep | awk \"{ print \$1 }\")
+      sudo sed -i 's/#Port 22/Port $PORT/' /etc/ssh/sshd_config
+      sudo kill -HUP \\\$(ps ax |grep 'sshd -D' | grep -v grep | awk '{ print \\\$1 }')
+      sudo echo LANG=en_US.UTF-8 >> /etc/profile.d/lang.sh
+      sudo echo LC_CTYPE=en_US.UTF-8 >> /etc/profile.d/lang.sh
+      sudo echo LC_ALL=en_US.UTF-8 >> /etc/profile.d/lang.sh
 mounts:
 - - /dev/sda5
   - /
@@ -283,10 +323,7 @@ runcmd:
 ssh_authorized_keys:
  - $KEY
 " >> cloud-config.yml
-ros install -t gptsyslinux -c cloud-config.yml -a rancher.state.mdadm_scan -a rancher.state.lvm_scan -d /dev/sda -p /dev/sda4 <<END
-y
-n
-END
+(sleep 1;echo y;sleep 5;echo n)|ros install -t gptsyslinux -c cloud-config.yml -a rancher.state.mdadm_scan -a rancher.state.lvm_scan -d /dev/sda -p /dev/sda4
 mkdir /mnt/efipart && mount /dev/sda2 /mnt/efipart
 mkdir /mnt/installer && mount /dev/sdb1 /mnt/installer
 cp -r /mnt/installer/EFI /mnt/efipart
@@ -317,6 +354,6 @@ rm -rf /mnt/state_root/boot/*
 umount /mnt /opt
 reboot
 FINAL
-ssh -p 22 -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher $IP chmod +x __install_rancher
-ssh -p 22 -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -t -l rancher $IP sudo ./__install_rancher &
+ssh_inst chmod +x __install_rancher
+ssh_inst -t sudo ./__install_rancher
 
