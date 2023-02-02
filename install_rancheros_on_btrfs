@@ -1,6 +1,5 @@
 #!/bin/bash
 
-#
 
 while (( "$#" )); do
 	if [ -n "`echo $1| egrep '^[0-9]+$'`" ];then
