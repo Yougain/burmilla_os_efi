@@ -1,20 +1,135 @@
 #!/bin/bash
 
-if [ -z "$1" ];then
-	echo -e "\033[31mError: Missing argument (IP address for installation)\033[m"
-	exit 1
+while (( "$#" )); do
+	if [ -n "`echo $1| egrep '^[0-9]+$'`" ];then
+		PORT=$1
+	fi
+	if [ -n "`echo $1| egrep '[A-Za-z]'`" ];then
+		HNAME=$1
+		if [ "${HNAME#*.}" = "`hostname -d`" ];then
+			HNAME=${HNAME%%.*}
+		fi
+	fi
+	if [ -n "`echo $1| grep '\:' |egrep '^[0-9A-Fa-f:]+$'`" ];then
+		if [ -z "$INST_IP" ];then
+			INST_IP=$1
+		else
+			IP=$1
+		fi
+	fi
+	if [ -n "`echo $1| grep '\.' |egrep '^[0-9\.]+$'`" ];then
+		if [ -z "$INST_IP" ];then
+			INST_IP=$1
+		else
+			IP=$1
+		fi
+	fi
+	shift
+done
+
+if [ -z "$IP" ]; then
+	IP=$INST_IP
 fi
 
-KEY=`cat ~/.ssh/id_ed25519.pub`
-echo $KEY
+if [ -z "$HNAME" ]; then
+	HNAME="rancher"
+fi
+
+function get_ssh_config_entry(){
+	sed -e '/^[ \t]*#/d' ~/.ssh/config | grep -oiPz "(?s)^\s*Host\s$HNAME(.*?^\s*Host\s|.*)"
+}
+
+function get_field2(){
+	echo $@|awk '{print $2}'
+}
+
+error="\033[31mError"
+red="\033[31m"
+green="\033[32m"
+cyan="\033[36m"
+plain="\033[m"
+warning="\033[33mWarining"
+yellow="\033[33m"
+
+if [ -n "`get_ssh_config_entry`" ];then
+	CONFIG_ENTRY=1
+	CONFIG_IP_LINE=`get_ssh_config_entry |  grep -oiPz '^\s*HostName[\t ]+[\w\-\.]+'`
+	if [ -z "$CONFIG_IP_LINE" ];then
+		echo -e "$error: cannot find a line, $cyan'HostName [ip address or resolvable host name]'$red in the entry of $cyan'Host $HNAME'$red in $cyan~/.ssh/config$red.$plain"
+		exit 1
+	else
+		IP_IN_CONFIG=`get_field2 $CONFIG_IP_LINE`
+		if [ -n "$IP" ];then
+			if [ "$IP" != "$IP_IN_CONFIG" ];then
+				echo -e "$error: Already different ip address or resolvable host name specified in $cyan'~/.ssh/config'$red with an entry of $cyan'Host $HNAME'$red, by the line $cyan'`echo $CONFIG_IP_LINE`'$plain."
+				exit 1
+			fi
+		else
+			IP=$IP_IN_CONFIG
+		fi
+	fi
+	CONFIG_PORT_LINE=`get_ssh_config_entry |  grep -oiPz '^\s*Port\s+[0-9]+'`
+	if [ -z "$CONFIG_PORT_LINE" ];then
+		PORT_IN_CONFIG=22
+	else
+		PORT_IN_CONFIG=`get_field2 $CONFIG_PORT_LINE`
+	fi
+		if [ -n "$PORT" ];then
+			if [ "$PORT" != "$PORT_IN_CONFIG" ];then
+				echo -ne "$error: cannot specify ssh port, $cyan'$PORT'$red in the command line, because $cyan~/.ssh/config$red has an entry of $cyan'Host $HNAME'$red "
+				if [ -n "$CONFIG_PORT_LINE" ]; then
+					echo -e "with a line, $cyan'`echo $CONFIG_PORT_LINE`'$red.$plain"
+				else
+					echo -e "without line, $cyan'Port xxxxx'$red, implying usage of default port,$cyan 22$red.$plain"
+				fi
+			fi
+			exit 1
+		else
+			PORT=$PORT_IN_CONFIG
+		fi
+	if [ -z "$CONFIG_PORT_LINE" ];then
+		PORT=22
+	else
+		PORT=`get_field2 $CONFIG_PORT_LINE`
+	fi
+else
+	if [ -z "$IP" ];then
+		echo -e "\033[31m$error: Missing IP address for installation in the command line and cannot find section, $cyan'Host $HNAME'$red in $cyan~./ssh/config$red, where a line like $cyan'HostName [ip address or resolvable host name]'$red should be found.$plain"
+		exit 1
+	fi
+	if [ -z "$PORT" ];then
+		RD=0
+		while [ "$RD" -le 1024 -o  -n "`grep $RD/tcp /etc/services`" ]; do
+			RD=$((RANDOM + RANDOM))
+		done
+		echo -e "$warning: SSH port number not specified. Use a randomly chosen port number, $cyan$RD$yellow.$plain"
+		PORT=$RD
+	fi
+	mkdir -m 700 -p ~/.ssh
+	echo "Host $HNAME
+	HostName $IP
+	User rancher
+	Port $PORT
+" >> ~/.ssh/config
+fi
+
+KEY=`cat ~/.ssh/id_ed25519.pub 2>/dev/null`
 if [ -z "$KEY" ];then
 	echo -e "\033[31mError: Cannot find public key in ~/.ssh/id_ed25519.pub. exit.\033[m"
 	exit 1
 fi
-if ! ssh -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher $1 echo; then
+
+if [ -z "$INST_IP" ];then
+	INST_IP=$IP
+fi
+
+SSH="ssh -p 22 -o 'PasswordAuthentication no' -o 'StrictHostKeyChecking no' -o 'UserKnownHostsFile /dev/null' -l rancher $INST_IP"
+
+
+if ! eval $SSH echo; then
 	expect -c "
 set timeout 1
-spawn ssh -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" -l rancher $1
+spawn ssh -p 22 -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" -l rancher $INST_IP
 expect \"assword:\"
 send \"rancher\n\"
 expect \"rancher ~]$ \"
@@ -28,17 +143,19 @@ send \"exit\"
 "
 fi
 
-if ! ssh -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher $1 echo; then
-	echo -e "\033[31mError: Cannot logon as user, 'rancher' by password, 'rancher'\033[m"
+
+if ! eval $SSH echo; then
+	echo -e "$error: Cannot logon as user, 'rancher' by password, 'rancher'"
 	echo "Please enter following commands on console"
-	echo -e "\033[36msudo passwd rancher
+	echo -e $cyan"sudo passwd rancher
 rancher
-rancher\033[m"
+rancher$plain"
 	exit 1
 fi
 
-DISK_SIZE=`ssh -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher -t 198.19.24.196 sudo bash -c "'"sudo fdisk -l /dev/sda \|grep \"Disk /dev/sda\"\|awk \"{print $\"\"5}\""'"|grep -v boundary`
-MEM_SIZE=`ssh -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher -t 198.19.24.196 bash -c "'"cat /proc/meminfo\|grep MemTotal\|awk \"{print $\"\"2}\""'"`
+
+DISK_SIZE=`ssh -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher -t $INST_IP sudo bash -c "'"sudo fdisk -l /dev/sda \|grep \"Disk /dev/sda\"\|awk \"{print $\"\"5}\""'"|grep -v boundary`
+MEM_SIZE=`ssh -p 22 -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher -t $INST_IP bash -c "'"cat /proc/meminfo\|grep MemTotal\|awk \"{print $\"\"2}\""'"`
 DISK_SIZE=${DISK_SIZE%$'\r'}
 MEM_SIZE=${MEM_SIZE%$'\r'}
 
@@ -48,9 +165,31 @@ else
 	SWAP_PART_SIZE="+$MEM_SIZE"K
 fi
 
-ssh -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher $1 sudo ros console switch ubuntu -f
+# TZ environmental variable
+TZ_N=`date +"%Z"`
+TZ_D=`date +"%z"`
+if [ "${TZ_D:0:1}" = "+" ];then
+	TZ_DS="-"
+else
+	TZ_DS=""
+fi
+TZ_DH1="${TZ_D:1:1}"
+if [ "$TZ_DH1" = "0" ];then
+	TZ_DH1=""
+fi
+TZ_DH="$TZ_DH1${TZ_D:2:1}"
+TZ_DM="${TZ_D:3:2}"
+if [ "$TZ_DM" = "00" ];then
+	TZ_DM=""
+else
+	TZ_DM=":${TZ_DM}"
+fi
+TZL="$TZ_N$TZ_DS$TZ_DH$TZ_DM"
+
+
+ssh -p 22 -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher $IP sudo ros console switch ubuntu -f
 sleep 5
-ssh -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher $1 bash -c "cat - > __install_rancher" <<FINAL
+ssh -p 22 -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher $1 bash -c "cat - > __install_rancher" <<FINAL
 #!/bin/bash
 apt-get update; apt-get install -y gdisk lvm2 dosfstools btrfs-tools parted
 dd if=/dev/zero of=/dev/sda bs=1G count=1
@@ -102,19 +241,28 @@ END
 mkfs.vfat -F32 -n EFI /dev/sda2 << END
 y
 END
-echo -n "mounts:
+echo -n "
+rancher:
+  services:
+    console:
+      environment:
+        TZ: \"$TZL\"
+    syslog:
+      environment:
+        TZ: \"$TZL\"
+write_files:
+  - path: /opt/rancher/bin/start.sh
+    permissions: \"0755\"
+    owner: root
+    content: |
+      #!/bin/bash
+      sudo sed -i "s/#Port 22/Port $PORT/" /etc/ssh/sshd_config
+      sudo kill -HUP \\\$(ps ax |grep "sshd -D" | grep -v grep | awk \"{ print \$1 }\")
+mounts:
 - - /dev/sda5
   - /
   - btrfs
   - \"subvol=/state_root,defaults,noatime\"
-- - /dev/sda5
-  - /snapshots
-  - btrfs
-  - \"subvol=/snapshots,defaults,noatime\"
-- - /dev/sda5
-  - /data
-  - btrfs
-  - \"subvol=/data,defaults,noatime\"
 - - /dev/sda5
   - /btrfs_top_lvl
   - btrfs
@@ -127,12 +275,14 @@ echo -n "mounts:
   - /boot/efi
   - vfat
   - \"\"
-" > cloud-config.yml
-echo "runcmd:
+runcmd:
 - swapon -L RANCHER_SWAP
+- btrfs quota enable /btrfs_top_lvl
+- btrfs quota enable /btrfs_top_lvl/state_root
+#cloud-config
+ssh_authorized_keys:
+ - $KEY
 " >> cloud-config.yml
-echo -n -e "#cloud-config\nssh_authorized_keys:\n - " >> cloud-config.yml
-echo "$KEY" >> cloud-config.yml
 ros install -t gptsyslinux -c cloud-config.yml -a rancher.state.mdadm_scan -a rancher.state.lvm_scan -d /dev/sda -p /dev/sda4 <<END
 y
 n
@@ -157,10 +307,6 @@ mkfs.btrfs -L RANCHER_STATE -f /dev/sda5
 mount /dev/sda5 /mnt
 btrfs subvolume create /mnt/state_root
 btrfs subvolume set-default \`btrfs subvolume list /mnt|grep state_root|awk '{print \$2}'\` /mnt
-btrfs subvolume create /mnt/snapshots
-btrfs subvolume create /mnt/data
-mkdir /mnt/state_root/snapshots
-mkdir /mnt/state_root/data
 mkdir /mnt/state_root/btrfs_top_lvl
 cp -av /opt/* /mnt/state_root
 umount /opt
@@ -171,5 +317,6 @@ rm -rf /mnt/state_root/boot/*
 umount /mnt /opt
 reboot
 FINAL
-ssh -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher $1 chmod +x __install_rancher
-ssh -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -t -l rancher $1 sudo ./__install_rancher
+ssh -p 22 -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher $IP chmod +x __install_rancher
+ssh -p 22 -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -t -l rancher $IP sudo ./__install_rancher &
+

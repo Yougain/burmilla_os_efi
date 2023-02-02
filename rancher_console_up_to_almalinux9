@@ -17,7 +17,7 @@ if [ "${ATMP##* }" = "9" ];then
 	exit 1
 fi
 ssh -t -o "StrictHostKeyChecking no" -o "UserKnownHostsFile=/dev/null" -l rancher $1 sudo ros console switch centos -f
-sleep 3
+sleep 10
 ssh -o "StrictHostKeyChecking no" -o "UserKnownHostsFile=/dev/null" -l rancher $1 "bash -c 'cat > ./upgrade_to_almalinux9'" <<'END'
 #/bin/bash
 yum -y install epel-release yum-utils

@@ -37,8 +37,8 @@ rancher\033[m"
 	exit 1
 fi
 
-DISK_SIZE=`ssh -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher -t 198.19.24.196 sudo bash -c "'"sudo fdisk -l /dev/sda \|grep \"Disk /dev/sda\"\|awk \"{print $\"\"5}\""'"|grep -v boundary`
-MEM_SIZE=`ssh -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher -t 198.19.24.196 bash -c "'"cat /proc/meminfo\|grep MemTotal\|awk \"{print $\"\"2}\""'"`
+DISK_SIZE=`ssh -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher -t $1 sudo bash -c "'"sudo fdisk -l /dev/sda \|grep \"Disk /dev/sda\"\|awk \"{print $\"\"5}\""'"|grep -v boundary`
+MEM_SIZE=`ssh -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher -t $1 bash -c "'"cat /proc/meminfo\|grep MemTotal\|awk \"{print $\"\"2}\""'"`
 DISK_SIZE=${DISK_SIZE%$'\r'}
 MEM_SIZE=${MEM_SIZE%$'\r'}
 
