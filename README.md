@@ -21,7 +21,7 @@
 		[server's fixed ip address after installation]
  ```
 　ex. './install_rancheros_on_btrfs main_sv 2022 192.168.0.11 192.168.0.201'<br>
-　If you omitt ssh port number in command line, it will be randomly decided by the script.<br>
+　If you omit ssh port number, it will be randomly decided by the script.<br>
 　Public key, ~/.ssh/id_ed25519 in your terminal will be registered as an authorized key for user, 'rancher'.<br>
 
 # install_rancheros_on_raid_lvm (discontinued)
