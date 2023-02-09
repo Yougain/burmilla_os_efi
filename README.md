@@ -1,6 +1,7 @@
 ## rancher_os_efi
 # create_rancheros_efi_iso
   A script for creating an iso image of RancherOS installer with EFI.<br>
+  CAUTION: Do not alter label of iso image. The label must be 'rancheros', or installer fails.
   ```
   $ ./create_rancheros_efi_iso
   　...... # Downloading RancherOS and Ubuntu iso images.
@@ -9,7 +10,21 @@
   $ ls ~/rancheros_efi
   rancheros-v1.5.8.efi.iso  rancheros-v1.5.8.iso  ubuntu-22.04.1-live-server-amd64.iso
   ```
-# install_rancheros_on_raid_lvm
+# install_rancheros_on_btrfs
+　A scpipt for installing RancherOS on a btrfs partition in a hard disk of a baremetal server.<br>
+　After booting up by rancheros-v1.x.x.efi.iso, execute from your terminal following command.
+ ```
+	install_rancheros_on_btrfs \
+		[server name] \
+		[server's ssh port number after installation] \
+		[dhcp-provided ip address during installation] \
+		[server's fixed ip address after installation]
+ ```
+　ex. install_rancheros_on_btrfs main_sv 2022 192.168.0.11 192.168.0.201
+　if you omitt ssh port number in command line, it will be randomly decided by the script.
+　Public key, ~/.ssh/id_ed25519 in your terminal will be registered as an authorized key for user, 'rancher'.
+
+# install_rancheros_on_raid_lvm (discontinued)
 　A scpipt for installing RancherOS on a lvm/raid partition in a hard disk of a baremetal server.<br>
 　After booting up by rancheros-v1.x.x.efi.iso, set password for user, 'rancher' with 'rancher' (same as user name) as follows.
  ```
