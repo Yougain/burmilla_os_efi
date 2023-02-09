@@ -20,9 +20,9 @@
 		[dhcp-provided ip address during installation] \
 		[server's fixed ip address after installation]
  ```
-　ex. install_rancheros_on_btrfs main_sv 2022 192.168.0.11 192.168.0.201
-　if you omitt ssh port number in command line, it will be randomly decided by the script.
-　Public key, ~/.ssh/id_ed25519 in your terminal will be registered as an authorized key for user, 'rancher'.
+　ex. install_rancheros_on_btrfs main_sv 2022 192.168.0.11 192.168.0.201<br>
+　if you omitt ssh port number in command line, it will be randomly decided by the script.<br>
+　Public key, ~/.ssh/id_ed25519 in your terminal will be registered as an authorized key for user, 'rancher'.<br>
 
 # install_rancheros_on_raid_lvm (discontinued)
 　A scpipt for installing RancherOS on a lvm/raid partition in a hard disk of a baremetal server.<br>
