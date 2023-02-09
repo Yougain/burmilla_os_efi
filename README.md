@@ -12,7 +12,7 @@
   ```
 # install_rancheros_on_btrfs
 　A scpipt for installing RancherOS on a btrfs partition in a hard disk of a baremetal server.<br>
-　After booting up by rancheros-v1.x.x.efi.iso, execute from your terminal following command.
+　After booting up by rancheros-v1.x.x.efi.iso, execute following command from your terminal.
  ```
 	install_rancheros_on_btrfs \
 		[server name] \
@@ -20,8 +20,8 @@
 		[dhcp-provided ip address during installation] \
 		[server's fixed ip address after installation]
  ```
-　ex. install_rancheros_on_btrfs main_sv 2022 192.168.0.11 192.168.0.201<br>
-　if you omitt ssh port number in command line, it will be randomly decided by the script.<br>
+　ex. 'install_rancheros_on_btrfs main_sv 2022 192.168.0.11 192.168.0.201'<br>
+　If you omitt ssh port number in command line, it will be randomly decided by the script.<br>
 　Public key, ~/.ssh/id_ed25519 in your terminal will be registered as an authorized key for user, 'rancher'.<br>
 
 # install_rancheros_on_raid_lvm (discontinued)
