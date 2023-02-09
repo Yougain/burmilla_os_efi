@@ -324,7 +324,7 @@ runcmd:
 ssh_authorized_keys:
  - $KEY
 " >> cloud-config.yml
-(sleep 1;echo y;sleep 5;echo n)|ros install -t gptsyslinux -c cloud-config.yml -a rancher.state.mdadm_scan -a rancher.state.lvm_scan -d /dev/sda -p /dev/sda4
+ros install --no-reboot -f -t gptsyslinux -c cloud-config.yml -a rancher.state.mdadm_scan -a rancher.state.lvm_scan -d /dev/sda -p /dev/sda4
 mkdir /mnt/efipart && mount /dev/sda2 /mnt/efipart
 mkdir /mnt/installer && mount /dev/sdb1 /mnt/installer
 cp -r /mnt/installer/EFI /mnt/efipart

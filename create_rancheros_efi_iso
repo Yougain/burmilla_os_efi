@@ -56,11 +56,16 @@ sudo rm -rf $PD $UD $RD
 mkdir $UD $RD $PD 
 sudo mount $UBUNTU_ISO $UD
 sudo mount $RANCHER_ISO $RD
-fallocate -l 250M $P_IMG
+losetup -D `losetup -a | grep $P_IMG | awk '{x=$1; sub(":","", x); print x}'`
+if [ -e "$P_IMG" ];then
+	rm $P_IMG
+fi
+fallocate -l 155M $P_IMG
 gdisk $P_IMG <<END
 o
 y
 n
+
 
 
 ef00
@@ -69,12 +74,12 @@ y
 END
 LDEVH=`sudo losetup --partscan --show --find $P_IMG`
 LDEV=$LDEVH"p1"
+ls $LDEV
 sudo mkfs.fat $LDEV
 sudo mount $LDEV $PD
 sudo cp -ar $RD/* $PD
 sudo cp -ar $UD/boot/grub $PD/boot/
 sudo cp -ar $UD/EFI $PD/
-
 cat - > "$T"/grub.cfg <<END
 set timeout=30
 set default=1
@@ -85,7 +90,7 @@ set menu_color_normal=white/black
 set menu_color_highlight=black/light-gray
 
 menuentry "Install Rancher" {
-    linux   /boot/vmlinuz-$KERNEL_VER-rancher nomodeset vga=775 video=1280x1024 rancher.autologin=tty1 rancher.autologin=ttyS0 rancher.autologin=ttyS1 console=tty1 console=ttyS0 console=ttyS1 printk.devkmsg=on panic=10 ---
+    linux   /boot/vmlinuz-$KERNEL_VER-rancher nomodeset vga=775 video=1024x768 rancher.autologin=tty1 rancher.password=rancher rancher.autologin=ttyS0 rancher.autologin=ttyS1 console=tty1 console=ttyS0 console=ttyS1 printk.devkmsg=on panic=10 ---
     initrd  /boot/initrd-$RANCHEROS_VER
 }
 grub_platform
