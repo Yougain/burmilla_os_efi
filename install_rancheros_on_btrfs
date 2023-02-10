@@ -152,7 +152,8 @@ expect \"rancher ~]$ \"
 send \"exit\"
 "
 else
-	echo -e "$error: RancherOS is already installed?"
+	echo -e "$error: RancherOS is already installed?$plain"
+	exit 1
 fi
 
 
@@ -179,6 +180,18 @@ if [ "$DISK_SIZE" -ge 1099511627776 ];then # over 1Tbytes
     SWAP_PART_SIZE="+64G"
 else
 	SWAP_PART_SIZE="+$MEM_SIZE"K
+fi
+
+INST_DRIVE=`ssh_inst readlink /dev/disk/by-label/RANCHEROS|sed -e 's/.*\///'`
+
+if [ "$INST_DRIVE" = "sda1" ];then
+	echo -e "$error: Installer Disk is /dev/sda1. Stop installation.$plain"
+	exit 1
+fi
+
+if [ "$DISK_SIZE" -le 1073741824 ];then
+	echo -e "$error: size of /dev/sda, less than 1G.$plain"
+	exit 1
 fi
 
 # TZ environmental variable
@@ -326,7 +339,7 @@ ssh_authorized_keys:
 " >> cloud-config.yml
 ros install --no-reboot -f -t gptsyslinux -c cloud-config.yml -a rancher.state.mdadm_scan -a rancher.state.lvm_scan -d /dev/sda -p /dev/sda4
 mkdir /mnt/efipart && mount /dev/sda2 /mnt/efipart
-mkdir /mnt/installer && mount /dev/sdb1 /mnt/installer
+mkdir /mnt/installer && mount /dev/$INST_DRIVE /mnt/installer
 cp -r /mnt/installer/EFI /mnt/efipart
 cat - > /mnt/efipart/EFI/BOOT/grub.cfg <<END
 set timeout=1

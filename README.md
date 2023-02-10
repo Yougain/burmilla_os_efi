@@ -1,6 +1,7 @@
 ## rancher_os_efi
 # create_rancheros_efi_iso
   A script for creating an iso image of RancherOS installer with EFI.<br>
+  You can directly login through SSH by username, 'rancher' and password, 'rancher', because "rancher.password=rancher" has been already set in kernel parameters of grub-setting of this iso image.<br>
   CAUTION: Do not alter label of iso image. The label must be 'rancheros', or installer fails.<br>
   ```
   $ ./create_rancheros_efi_iso
@@ -11,8 +12,8 @@
   rancheros-v1.5.8.efi.iso  rancheros-v1.5.8.iso  ubuntu-22.04.1-live-server-amd64.iso
   ```
 # install_rancheros_on_btrfs
-　A scpipt for installing RancherOS on a btrfs partition in a hard disk of a baremetal server.<br>
-　After booting up by rancheros-v1.x.x.efi.iso, execute following command from your terminal.
+A scpipt for installing RancherOS on btrfs partition created in /dev/sda of a baremetal server.<br>
+After booting up by rancheros-v1.x.x.efi.iso, execute following command from your terminal.
  ```
 $ ./install_rancheros_on_btrfs \
 	[server name] \
@@ -23,11 +24,11 @@ $ ./install_rancheros_on_btrfs \
 For example,
 $ ./install_rancheros_on_btrfs main_sv 2022 192.168.0.11 192.168.0.201
  ```
-If you omit ssh port number, it will be randomly decided by the script. Public key, ~/.ssh/id_ed25519 in your terminal will be registered as an authorized key for user, 'rancher'. The server name (or new ip if it is omitted), ssh port number and user 'rancher' will be registered in ~/.ssh/config, and you can logon simply by executing 'ssh [server name]' from your terminal.
+If you omit ssh port number, it will be randomly decided by the script. Public key, ~/.ssh/id_ed25519 in your terminal will be registered as an authorized key for user, 'rancher'. The server name (or new ip if it is omitted), ssh port number and user 'rancher' will be registered in ~/.ssh/config, and you can logon simply by executing 'ssh [server name]' from your terminal. Net
 
 # install_rancheros_on_raid_lvm (discontinued)
-　A scpipt for installing RancherOS on a lvm/raid partition in a hard disk of a baremetal server.<br>
-　After booting up by rancheros-v1.x.x.efi.iso, set password for user, 'rancher' with 'rancher' (same as user name) as follows.
+A scpipt for installing RancherOS on a lvm/raid partition in a hard disk of a baremetal server.<br>
+After booting up by rancheros-v1.x.x.efi.iso, set password for user, 'rancher' with 'rancher' (same as user name) as follows.
  ```
  Autologin default
  [rancher@rancher ~]$ sudo passwd rancher
