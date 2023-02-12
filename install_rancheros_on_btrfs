@@ -307,7 +307,6 @@ write_files:
     owner: root
     content: |
       #!/bin/bash
-      sudo chmod 555 /
       sudo sed -i 's/#Port 22/Port $PORT/' /etc/ssh/sshd_config
       sudo sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
       sudo kill -HUP \\\$(ps ax |grep 'sshd -D' | grep -v grep | awk '{ print \\\$1 }')
@@ -315,8 +314,8 @@ write_files:
       sudo echo export LC_CTYPE=en_US.UTF-8 >> /etc/profile.d/lang_Yk.sh
       sudo echo export LC_ALL=en_US.UTF-8 >> /etc/profile.d/lang_Yk.sh
       sudo echo export TZ=$TZL > /etc/profile.d/time_zone_Yk.sh
-      if [ -z "`which git`" ];then
-        if [ -n "`which dnf`" ];then
+      if [ -z "\`which git\`" ];then
+        if [ -n "\`which dnf\`" ];then
           sudo dnf -y install git
         else
           sudo yum -y install git
