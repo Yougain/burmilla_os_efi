@@ -1,52 +1,52 @@
-## rancher_os_efi
-# create_rancheros_efi_iso
+## burmilla_os_efi
+# create_bumillaos_efi_iso
   A script for creating an iso image of RancherOS installer with EFI.<br>
-  You can directly login through SSH by username, 'rancher' and password, 'rancher', because "rancher.password=rancher" has been already set in kernel parameters of grub-setting of this iso image.<br>
-  CAUTION: Do not alter label of iso image. The label must be 'rancheros', or installer fails.<br>
+  You can directly login through SSH by username, 'burmilla' and password, 'burmilla', because "burmilla.password=burmilla" has been already set in kernel parameters of grub-setting of this iso image.<br>
+  CAUTION: Do not alter label of iso image. The label must be 'bumillaos', or installer fails.<br>
   ```
-  $ ./create_rancheros_efi_iso
+  $ ./create_bumillaos_efi_iso
   　...... # Downloading RancherOS and Ubuntu iso images.
   　...... # Copy files with EFI function from Ubuntu iso image to a new RancherOS iso image.
-  　# You get ~/rancheros_efi/rancheros-v1.x.x.efi.iso finally.
-  $ ls ~/rancheros_efi
-  rancheros-v1.5.8.efi.iso  rancheros-v1.5.8.iso  ubuntu-22.04.1-live-server-amd64.iso
+  　# You get ~/bumillaos_efi/bumillaos-v1.x.x.efi.iso finally.
+  $ ls ~/bumillaos_efi
+  bumillaos-v1.5.8.efi.iso  bumillaos-v1.5.8.iso  ubuntu-22.04.1-live-server-amd64.iso
   ```
-# install_rancheros_on_btrfs
+# install_bumillaos_on_btrfs
 A scpipt for installing RancherOS on btrfs partition created in /dev/sda of a baremetal server.<br>
-After booting up by rancheros-v1.x.x.efi.iso, execute following command from your terminal.
+After booting up by bumillaos-v1.x.x.efi.iso, execute following command from your terminal.
  ```
-$ ./install_rancheros_on_btrfs \
+$ ./install_bumillaos_on_btrfs \
 	[server name] \
 	[server's ssh port number after installation] \
 	[dhcp-provided ip address during installation] \
 	[server's fixed ip address after installation]
 
 For example,
-$ ./install_rancheros_on_btrfs main_sv 2022 192.168.0.11 192.168.0.201
+$ ./install_bumillaos_on_btrfs main_sv 2022 192.168.0.11 192.168.0.201
  ```
-If you omit ssh port number, it will be randomly decided by the script. Public key, ~/.ssh/id_ed25519 in your terminal will be registered as an authorized key for user, 'rancher'. The server name (or new ip if it is omitted), ssh port number and user 'rancher' will be registered in ~/.ssh/config, and you can logon simply by executing 'ssh [server name]' from your terminal. Net
+If you omit ssh port number, it will be randomly decided by the script. Public key, ~/.ssh/id_ed25519 in your terminal will be registered as an authorized key for user, 'burmilla'. The server name (or new ip if it is omitted), ssh port number and user 'burmilla' will be registered in ~/.ssh/config, and you can logon simply by executing 'ssh [server name]' from your terminal. Net
 
-# install_rancheros_on_raid_lvm (discontinued)
+# install_bumillaos_on_raid_lvm (discontinued)
 A scpipt for installing RancherOS on a lvm/raid partition in a hard disk of a baremetal server.<br>
-After booting up by rancheros-v1.x.x.efi.iso, set password for user, 'rancher' with 'rancher' (same as user name) as follows.
+After booting up by bumillaos-v1.x.x.efi.iso, set password for user, 'burmilla' with 'burmilla' (same as user name) as follows.
  ```
  Autologin default
- [rancher@rancher ~]$ sudo passwd rancher
- Changing passwd for rancher
- New password: (typing 'rancher')
+ [burmilla@burmilla ~]$ sudo passwd burmilla
+ Changing passwd for burmilla
+ New password: (typing 'burmilla')
  Bad passwrod: similar to username
- Retype password: (typing 'rancher')
- passwd: password for rancher changed by root
+ Retype password: (typing 'burmilla')
+ passwd: password for burmilla changed by root
  ```
  Chek the IP address (xxx.xxx.xxx.xxx) of the new server.
  ```
- [rancher@rancher ~]$ ip addr show dev eth0 | grep inet
+ [burmilla@burmilla ~]$ ip addr show dev eth0 | grep inet
  2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
     inet xxx.xxx.xxx.xxx/24 brd xxx.xxx.xxx.255 scope global eth0
  ```
- Execute the script from your terminal. The script uses default server name, 'rancher'.
+ Execute the script from your terminal. The script uses default server name, 'burmilla'.
  ```
- $ ./install_rancheros_on_raid_lvm xxx.xxx.xxx.xxx
+ $ ./install_bumillaos_on_raid_lvm xxx.xxx.xxx.xxx
    ...... # your ssh public key will be registered.
    ...... # LVM Patition, /dev/vg0/lv0 will be created on raid device /dev/md127 on /dev/sda5
    ...... # reboot
@@ -54,9 +54,9 @@ After booting up by rancheros-v1.x.x.efi.iso, set password for user, 'rancher' w
  Reboot from the hard disk of the server.<br>
  Login from yout terminal and check the disk status.<br>
  ```
- $ ssh -l rancher xxx.xxx.xxx.xxx
+ $ ssh -l burmilla xxx.xxx.xxx.xxx
  
-[rancher@rancher ~]$ fdisk -l /dev/sda
+[burmilla@burmilla ~]$ fdisk -l /dev/sda
 Disk /dev/sda: ----.--- TiB, -------- bytes, ------- sectors
 Disk model: --------
 Units: sectors of 1 * 512 = 512 bytes
@@ -73,7 +73,7 @@ Device          Start         End     Sectors  Size Type
 /dev/sda5   138938368  2823292927  2684354560  1.3T Linux RAID
 /dev/sda6  ---------- ----------- ----------- ----T Linux RAID
 
-[rancher@rancher ~]$ df -h
+[burmilla@burmilla ~]$ df -h
 Filesystem           Size  Used Avail Use% Mounted on
 overlay              959G  2.3G  906G   1% /
 devtmpfs             1.9G     0  1.9G   0% /dev
@@ -84,18 +84,18 @@ shm                   64M     0   64M   0% /dev/shm
 /dev/md125           2.0G  134M  1.7G   8% /boot
 /dev/sda2            253M  3.2M  249M   2% /boot/efi
 
-[rancher@rancher ~]$ sudo mdadm --detail --scan
-ARRAY /dev/md127 metadata=1.2 name=rancher:127 UUID=---------------
-ARRAY /dev/md126 metadata=1.2 name=rancher:126 UUID=---------------
-ARRAY /dev/md125 metadata=1.0 name=rancher:125 UUID=---------------
+[burmilla@burmilla ~]$ sudo mdadm --detail --scan
+ARRAY /dev/md127 metadata=1.2 name=burmilla:127 UUID=---------------
+ARRAY /dev/md126 metadata=1.2 name=burmilla:126 UUID=---------------
+ARRAY /dev/md125 metadata=1.0 name=burmilla:125 UUID=---------------
 
 ```
 
-# rancher_console_up_to_almalinux9
+# burmilla_console_up_to_almalinux9
 A script for upgrading Centos console to AlmaLinux 9<br>
 Simply execute from terminal used at installation before.
 ```
-$ ./rancher_console_up_to_almalinux9 xxx.xxx.xxx.xxx
+$ ./burmilla_console_up_to_almalinux9 xxx.xxx.xxx.xxx
 .........# swithing console to centos
 .........# upgrading CentOS7 to CentOS8
 .........# upgrading CentOS8 to AlmaLinux8
@@ -104,13 +104,13 @@ $ ./rancher_console_up_to_almalinux9 xxx.xxx.xxx.xxx
 ```
 Login from yout terminal and check the release.<br>
 ```
-$ ssh -l rancher xxx.xxx.xxx.xxx
+$ ssh -l burmilla xxx.xxx.xxx.xxx
 
-[rancher@rancher ~]$ cat /etc/almalinux-release
+[burmilla@burmilla ~]$ cat /etc/almalinux-release
 AlmaLinux release 9.1 (Lime Lynx)
 ```
 ## References
-https://blog.hugopoi.net/2020/03/01/install-rancheros-on-freenas-11-3/<br>
+https://blog.hugopoi.net/2020/03/01/install-bumillaos-on-freenas-11-3/<br>
 https://www.tecmint.com/upgrade-centos-7-to-centos-8/<br>
 https://www.cyberciti.biz/howto/how-to-migrate-from-centos-8-to-almalinux-conversion/<br>
 https://www.centlinux.com/2022/07/upgrade-your-servers-from-rocky-linux-8-to-9.html<br>
