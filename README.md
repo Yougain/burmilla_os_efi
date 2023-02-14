@@ -1,19 +1,19 @@
 ## burmilla_os_efi
 # create_bumillaos_efi_iso
-  A script for creating an iso image of RancherOS installer with EFI.<br>
-  You can directly login through SSH by username, 'burmilla' and password, 'burmilla', because "burmilla.password=burmilla" has been already set in kernel parameters of grub-setting of this iso image.<br>
-  CAUTION: Do not alter label of iso image. The label must be 'bumillaos', or installer fails.<br>
+  A script for creating an iso image of BurmillaOS installer with EFI. When you execute the command without arguments, you can create latest stable version. When you provide "rc" or "beta" for first argument, you can create latest "rc" or "beta" version.<br>
+  You can directly login through SSH by username, 'rancher' and password, 'rancher', because "rancher.password=rancher" has been already set in kernel parameters of grub-setting of this iso image.<br>
+  CAUTION: Do not alter label of iso image. The label must be 'rancher', or installer fails when you use USB-based iso installer.<br>
   ```
-  $ ./create_bumillaos_efi_iso
-  　...... # Downloading RancherOS and Ubuntu iso images.
+  $ ./create_bumillaos_efi_iso [|rc|beta]
+  　...... # Downloading BurmillaOS and Ubuntu iso images.
   　...... # Copy files with EFI function from Ubuntu iso image to a new RancherOS iso image.
-  　# You get ~/bumillaos_efi/bumillaos-v1.x.x.efi.iso finally.
+  　# You get ~/bumillaos_efi/bumillaos-vx.x.x.efi.iso finally.
   $ ls ~/bumillaos_efi
-  bumillaos-v1.5.8.efi.iso  bumillaos-v1.5.8.iso  ubuntu-22.04.1-live-server-amd64.iso
+  bumillaos-vx.x.x.efi.iso  bumillaos-vx.x.x.iso  ubuntu-22.04.1-live-server-amd64.iso
   ```
 # install_bumillaos_on_btrfs
 A scpipt for installing RancherOS on btrfs partition created in /dev/sda of a baremetal server.<br>
-After booting up by bumillaos-v1.x.x.efi.iso, execute following command from your terminal.
+After booting up a bare-metal server by bumillaos-vx.x.x.efi.iso, execute following command from your remote terminal outside of the server.
  ```
 $ ./install_bumillaos_on_btrfs \
 	[server name] \
@@ -22,93 +22,10 @@ $ ./install_bumillaos_on_btrfs \
 	[server's fixed ip address after installation]
 
 For example,
-$ ./install_bumillaos_on_btrfs main_sv 2022 192.168.0.11 192.168.0.201
+$ ./install_bumillaos_on_btrfs mainsv 20122 192.168.0.11 192.168.0.201
  ```
-If you omit ssh port number, it will be randomly decided by the script. Public key, ~/.ssh/id_ed25519 in your terminal will be registered as an authorized key for user, 'burmilla'. The server name (or new ip if it is omitted), ssh port number and user 'burmilla' will be registered in ~/.ssh/config, and you can logon simply by executing 'ssh [server name]' from your terminal. Net
+If you omit ssh port number, it will be randomly decided by the script. Public key, ~/.ssh/id_ed25519 in your terminal will be registered as an authorized key for user, 'burmilla'. The server name (or new ip if it is omitted), ssh port number and user 'burmilla' will be registered in ~/.ssh/config, and you can logon simply by executing 'ssh [server name]' from your terminal. 
 
-# install_bumillaos_on_raid_lvm (discontinued)
-A scpipt for installing RancherOS on a lvm/raid partition in a hard disk of a baremetal server.<br>
-After booting up by bumillaos-v1.x.x.efi.iso, set password for user, 'burmilla' with 'burmilla' (same as user name) as follows.
- ```
- Autologin default
- [burmilla@burmilla ~]$ sudo passwd burmilla
- Changing passwd for burmilla
- New password: (typing 'burmilla')
- Bad passwrod: similar to username
- Retype password: (typing 'burmilla')
- passwd: password for burmilla changed by root
- ```
- Chek the IP address (xxx.xxx.xxx.xxx) of the new server.
- ```
- [burmilla@burmilla ~]$ ip addr show dev eth0 | grep inet
- 2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
-    inet xxx.xxx.xxx.xxx/24 brd xxx.xxx.xxx.255 scope global eth0
- ```
- Execute the script from your terminal. The script uses default server name, 'burmilla'.
- ```
- $ ./install_bumillaos_on_raid_lvm xxx.xxx.xxx.xxx
-   ...... # your ssh public key will be registered.
-   ...... # LVM Patition, /dev/vg0/lv0 will be created on raid device /dev/md127 on /dev/sda5
-   ...... # reboot
- ```
- Reboot from the hard disk of the server.<br>
- Login from yout terminal and check the disk status.<br>
- ```
- $ ssh -l burmilla xxx.xxx.xxx.xxx
- 
-[burmilla@burmilla ~]$ fdisk -l /dev/sda
-Disk /dev/sda: ----.--- TiB, -------- bytes, ------- sectors
-Disk model: --------
-Units: sectors of 1 * 512 = 512 bytes
-Sector size (logical/physical): 512 bytes / 4096 bytes
-I/O size (minimum/optimal): 4096 bytes / 4096 bytes
-Disklabel type: gpt
-Disk identifier: ---------------------
-
-Device          Start         End     Sectors  Size Type
-/dev/sda1          34        2047        2014 1007K BIOS boot
-/dev/sda2        2048      526335      524288  256M EFI System
-/dev/sda3      526336   134744063   134217728   64G Linux swap
-/dev/sda4   134744064   138938367     4194304    2G Linux RAID
-/dev/sda5   138938368  2823292927  2684354560  1.3T Linux RAID
-/dev/sda6  ---------- ----------- ----------- ----T Linux RAID
-
-[burmilla@burmilla ~]$ df -h
-Filesystem           Size  Used Avail Use% Mounted on
-overlay              959G  2.3G  906G   1% /
-devtmpfs             1.9G     0  1.9G   0% /dev
-tmpfs                1.9G     0  1.9G   0% /sys/fs/cgroup
-/dev/mapper/vg0-lv0  959G  2.3G  906G   1% /mnt
-none                 1.9G  864K  1.9G   1% /run
-shm                   64M     0   64M   0% /dev/shm
-/dev/md125           2.0G  134M  1.7G   8% /boot
-/dev/sda2            253M  3.2M  249M   2% /boot/efi
-
-[burmilla@burmilla ~]$ sudo mdadm --detail --scan
-ARRAY /dev/md127 metadata=1.2 name=burmilla:127 UUID=---------------
-ARRAY /dev/md126 metadata=1.2 name=burmilla:126 UUID=---------------
-ARRAY /dev/md125 metadata=1.0 name=burmilla:125 UUID=---------------
-
-```
-
-# burmilla_console_up_to_almalinux9
-A script for upgrading Centos console to AlmaLinux 9<br>
-Simply execute from terminal used at installation before.
-```
-$ ./burmilla_console_up_to_almalinux9 xxx.xxx.xxx.xxx
-.........# swithing console to centos
-.........# upgrading CentOS7 to CentOS8
-.........# upgrading CentOS8 to AlmaLinux8
-.........# upgrading AlmaLinux8 to AlmaLinux9
-.........# reboot
-```
-Login from yout terminal and check the release.<br>
-```
-$ ssh -l burmilla xxx.xxx.xxx.xxx
-
-[burmilla@burmilla ~]$ cat /etc/almalinux-release
-AlmaLinux release 9.1 (Lime Lynx)
-```
 ## References
 https://blog.hugopoi.net/2020/03/01/install-bumillaos-on-freenas-11-3/<br>
 https://www.tecmint.com/upgrade-centos-7-to-centos-8/<br>
