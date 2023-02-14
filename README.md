@@ -1,7 +1,7 @@
 ## burmilla_os_efi
 # create_burmillaos_efi_iso
   A script for creating an iso image of BurmillaOS installer with EFI. When you execute the command without arguments, you can create latest stable version. When you provide "rc" or "beta" for first argument, you can create latest "rc" or "beta" version.<br>
-  You can directly login through SSH by username, 'rancher' and password, 'rancher', because "rancher.password=rancher" has been already set in kernel parameters of grub-setting of this iso image.<br>
+  You can directly login through SSH by username, 'rancher' and password, 'rancher', because "rancher.password=rancher" has been already set in kernel parameters of grub-setting of created iso images.<br>
   CAUTION: Do not alter label of iso image. The label must be 'rancheros' (not 'burmillaos'), or installer fails when you use USB-based iso installer created by Windows programs (ex. rufus).<br>
   ```
   $ ./create_burmillaos_efi_iso [|rc|beta]
