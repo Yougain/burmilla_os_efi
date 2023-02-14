@@ -6,7 +6,7 @@
   ```
   $ ./create_burmillaos_efi_iso [|rc|beta]
   　...... # Downloading BurmillaOS and Ubuntu iso images.
-  　...... # Copy files with EFI function from Ubuntu iso image to a new RancherOS iso image.
+  　...... # Copy files with EFI function from Ubuntu iso image to a new BurmillaOS iso image.
   　# You get ~/burmillaos_efi/burmillaos-vx.x.x.efi.iso finally.
   $ ls ~/burmillaos_efi
   burmillaos-vx.x.x.efi.iso  burmillaos-vx.x.x.iso  ubuntu-22.04.1-live-server-amd64.iso
