@@ -12,7 +12,7 @@
   burmillaos-vx.x.x.efi.iso  burmillaos-vx.x.x.iso  ubuntu-22.04.1-live-server-amd64.iso
   ```
 # install_burmillaos_on_btrfs
-A scpipt for installing RancherOS on btrfs partition created in /dev/sda of a baremetal server.<br>
+A scpipt for installing RancherOS on btrfs partition in /dev/sda of a baremetal server.<br>
 After booting up a bare-metal server by burmillaos-vx.x.x.efi.iso, execute following command from your remote terminal outside of the server.
  ```
 $ ./install_burmillaos_on_btrfs \
