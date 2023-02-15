@@ -1,0 +1,180 @@
+#!/bin/bash
+
+function check_cmd {
+	while (( "$#" )); do
+		if [ -z "`which $1 2>/dev/null`" ];then
+			echo "Command, '$1' is not found. Please install"
+			NO_CMD=1
+		fi
+		shift
+	done
+}
+
+check_cmd fallocate gdisk losetup mkfs.fat mkisofs
+if [ -n "$NO_CMD" ];then
+	echo "Terminated."
+	exit 1
+fi
+
+
+T=~/burmillaos_efi
+
+if [ ! -d $T ];then
+	mkdir $T
+fi
+
+function vc { printf "%03d%03d%03d" $(echo "$1" | tr '.' ' '); }
+function ver { 
+	local tmp=${1:1}
+	echo -n ${tmp%%-*}
+}
+
+VERSIONS=`wget https://github.com/burmilla/os/releases --quiet -O - |egrep -o 'expanded_assets/v[0-9].*"'|awk '{sub(/.$/, "", $0);print substr($0,17)}'`
+LATEST_STABLE=`echo "$VERSIONS" | egrep -v '\-rc' | egrep -v '\-beta' | head -1`
+LATEST_BETA=`echo "$VERSIONS" | egrep '\-beta' | head -1`
+LATEST_RC=`echo "$VERSIONS" | egrep '\-rc' | head -1`
+LATEST_STABLE_V=$(ver $LATEST_STABLE)
+LATEST_BETA_V=$(ver $LATEST_BETA)
+LATEST_RC_V=$(ver $LATEST_RC)
+
+BURMILLAOS_VER=$LATEST_STABLE
+
+
+if [ "$1" = "rc" ];then
+	if [ $(vc $LATEST_STABLE_V) -ge $(vc $LATEST_RC_V) ];then
+		echo "latest rc not found"
+		exit 1
+	fi
+	BURMILLAOS_VER=$LATEST_RC
+fi
+
+if [ "$1" = "beta" ];then
+	if [ $(vc $LATEST_STABLE_V) -ge $(vc $LATEST_BETA_V) ];then
+		echo "latest bata not found"
+		exit 1
+	fi
+	if [ $(vc $LATEST_RC_V) -ge $(vc $LATEST_BETA_V) ];then
+		echo "latest bata not found"
+		exit 1
+	fi
+	BURMILLAOS_VER=$LATEST_BETA
+fi
+
+echo $BURMILLAOS_VER
+
+BURMILLAOS_VER=${BURMILLAOS_VER%$'\n'*}
+echo BurmillaOS Version: $BURMILLAOS_VER
+BURMILLA_ISO="$T"/burmillaos-$BURMILLAOS_VER.iso
+
+LATEST_U=`wget --no-check-certificate -O - https://releases.ubuntu.com/ 2>/dev/null|awk '/Ubuntu [0-9]+(\.[0-9]+)+ LTS/{print $0}'|head -1|awk '{match($0, /Ubuntu [0-9]+(\.[0-9]+)+ LTS \([^)]+\)/); print substr($0, RSTART, RLENGTH)}'`
+LATEST_UV=`echo $LATEST_U | awk '{print $2}'`
+UDIR=`wget --no-check-certificate -O - https://releases.ubuntu.com/ 2>/dev/null|grep "$LATEST_U"|grep href| head -1|awk '{match($0,/href="[^"]+"/);print substr($0,RSTART+6,RLENGTH-7)}'`
+UBUNTU_ISO="$T"/ubuntu-$LATEST_UV-live-server-amd64.iso
+echo Ubuntu Version: $LATEST_UV
+
+if [ ! -e $BURMILLA_ISO ];then
+	wget https://github.com/burmilla/os/releases/download/$BURMILLAOS_VER/burmillaos-$BURMILLAOS_VER.iso -O $BURMILLA_ISO
+fi
+
+if [ ! -e $UBUNTU_ISO ];then
+	wget https://releases.ubuntu.com/$UDIR"ubuntu-$LATEST_UV-live-server-amd64.iso" -O $UBUNTU_ISO
+fi
+
+UD="$T"/tmpubuntu
+RD="$T"/tmpburmillaos
+PD="$T"/tmpproduct
+P_IMG="$T"/burmillaos-$BURMILLAOS_VER.efi.img
+P_ISO="$T"/burmillaos-$BURMILLAOS_VER.efi.iso
+
+echo $P_ISO
+
+P_ISO_SIZE=$(stat -c%s $BURMILLA_ISO)
+P_ISO_SIZE=$((P_ISO_SIZE + P_ISO_SIZE / 10))
+P_ISO_SIZE_K=$((P_ISO_SIZE / 1024))
+
+sudo umount $PD $UD $RD
+sudo rm -rf $PD $UD $RD
+mkdir $UD $RD $PD 
+sudo mount $UBUNTU_ISO $UD
+sudo mount $BURMILLA_ISO $RD
+VMLINUZ_FILE=`ls -d $RD/boot/vmlinuz-*`
+VMLINUZ_FILE_COUNT=`echo "$VMLINUZ_FILE" | wc | awk '{print $1}'`
+if [ "$VMLINUZ_FILE_COUNT" != "1" ];then
+	echo "cannot detect linux kernel in iso image, or multiple kernel detected."
+	exit 1
+fi
+if [ "`ls -ld $RD/boot/initrd-$BURMILLAOS_VER | wc | awk '{print $1}'`" != "1" ];then
+	echo "/boot/initrd-$BURMILLAOS_VER is missing in iso image."
+	exit 1
+fi
+KERNEL_FILE=${VMLINUZ_FILE##*/}
+sudo losetup -D `sudo losetup -a | grep $P_IMG | awk '{x=$1; sub(":","", x); print x}'`
+if [ -e "$P_IMG" ];then
+	rm $P_IMG
+fi
+fallocate -l "$P_ISO_SIZE_K"K $P_IMG
+gdisk $P_IMG <<END
+o
+y
+n
+
+
+
+ef00
+w
+y
+END
+LDEVH=`sudo losetup --partscan --show --find $P_IMG`
+LDEV=$LDEVH"p1"
+ls $LDEV
+GLOBAL_APPEND=`cat $RD/boot/global.cfg` 
+GLOBAL_APPEND_ARGS=${GLOBAL_APPEND#APPEND *}
+KERNEL_ARGS="rancher.password=rancher $GLOBAL_APPEND_ARGS panic=10"
+VGA_ARGS="nomodeset vga=775 video=1024x768"
+sudo mkfs.fat $LDEV
+sudo mount $LDEV $PD
+sudo cp -ar $RD/* $PD
+sudo cp -ar $UD/boot/grub $PD/boot/
+sudo cp -ar $UD/EFI $PD/
+cat - > "$T"/grub.cfg <<END
+set timeout=30
+set default=1
+
+loadfont unicode
+
+set menu_color_normal=white/black
+set menu_color_highlight=black/light-gray
+
+menuentry "Install Burmilla $BURMILLAOS_VER" {
+    linux   /boot/$KERNEL_FILE $VGA_ARGS $KERNEL_ARGS ---
+    initrd  /boot/initrd-$BURMILLAOS_VER
+}
+grub_platform
+if [ "\$grub_platform" = "efi" ]; then
+menuentry 'Boot from next volume' {
+    exit 1
+}
+menuentry 'UEFI Firmware Settings' {
+    fwsetup
+}
+else
+menuentry 'Test memory' {
+    linux16 /boot/memtest86+.bin
+}
+fi
+menuentry "Debug Burmilla $BURMILLAOS_VER" {
+    linux   /boot/$KERNEL_FILE vga=ask rancher.debug=true $KERNEL_ARGS ---
+    initrd  /boot/initrd-$BURMILLAOS_VER
+}
+END
+sudo mv -f "$T"/grub.cfg $PD/boot/grub
+echo All files are prepared.
+sudo mkisofs -r -V "BurmillaOS" -cache-inodes -J -l -b boot/isolinux/isolinux.bin -c boot/isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -o $P_ISO $PD
+echo Iso created.
+sudo umount $UD
+sudo umount $RD
+sudo umount $PD
+sudo losetup -D $LDEVH
+rmdir $UD $RD $PD
+rm $P_IMG
+
