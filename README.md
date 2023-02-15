@@ -24,7 +24,7 @@ $ ./install_burmillaos_on_btrfs \
 For example,
 $ ./install_burmillaos_on_btrfs mainsv 20122 192.168.0.11 192.168.0.201
  ```
-If you omit ssh port number, it will be randomly decided by the script. Public key, ~/.ssh/id_ed25519 in your terminal will be registered as an authorized key for user, 'burmilla'. The server name (or new ip if it is omitted), ssh port number and user 'burmilla' will be registered in ~/.ssh/config, and you can logon simply by executing 'ssh [server name]' from your terminal. 
+If you omit ssh port number, it will be randomly decided by the script. Public key, ~/.ssh/id_ed25519 in your terminal will be registered as an authorized key for user, 'rancher'. The server name (or new ip if it is omitted), ssh port number and user 'rancher' will be registered in ~/.ssh/config, and you can log on simply by executing 'ssh [server name]' from your terminal. 
 
 ## References
 https://blog.hugopoi.net/2020/03/01/install-rancheros-on-freenas-11-3/<br>
