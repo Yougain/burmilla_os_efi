@@ -132,7 +132,7 @@ if [ -z "$INST_IP" ];then
 fi
 
 function ssh_inst(){
-	ssh -p 22 -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher $INST_IP $@
+	ssh -q -p 22 -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher $INST_IP $@
 }
 
 
@@ -171,7 +171,8 @@ DNS_SETTINGS=`ssh_inst cat /etc/resolv.conf| sed -e 's/[ \t]*#.*//' | grep "name
 GATEWAY=`ssh_inst ip route |egrep '^default via'|awk '{print $3}'|head -1`
 NETMASK=`ssh_inst ip address show dev eth0 | grep 'inet ' | grep global | awk '{print $2}'| sed -e 's/.*\///'|head -1`
 
-ssh_inst apt-get -y install fdisk
+ssh_inst sudo apt-get update
+ssh_inst sudo apt-get -y install fdisk
 
 DISK_SIZE=`ssh_inst -t sudo bash -c "'"sudo fdisk -l /dev/sda \|grep \"Disk /dev/sda\"\|awk \"{print $\"\"5}\""'"|grep -v boundary`
 MEM_SIZE=`ssh_inst -t bash -c "'"cat /proc/meminfo\|grep MemTotal\|awk \"{print $\"\"2}\""'"`

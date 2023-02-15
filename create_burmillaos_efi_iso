@@ -37,30 +37,47 @@ LATEST_STABLE_V=$(ver $LATEST_STABLE)
 LATEST_BETA_V=$(ver $LATEST_BETA)
 LATEST_RC_V=$(ver $LATEST_RC)
 
-BURMILLAOS_VER=$LATEST_STABLE
 
 
-if [ "$1" = "rc" ];then
-	if [ $(vc $LATEST_STABLE_V) -ge $(vc $LATEST_RC_V) ];then
-		echo "latest rc not found"
-		exit 1
-	fi
-	BURMILLAOS_VER=$LATEST_RC
-fi
+case "$1" in
+	"rc" )
+		if [ $(vc $LATEST_STABLE_V) -ge $(vc $LATEST_RC_V) ];then
+			echo "latest rc not found"
+			exit 1
+		fi
+		BURMILLAOS_VER=$LATEST_RC
+		;;
+	"beta" )
+		if [ $(vc $LATEST_STABLE_V) -ge $(vc $LATEST_BETA_V) ];then
+			echo "latest bata not found"
+			exit 1
+		fi
+		if [ $(vc $LATEST_RC_V) -ge $(vc $LATEST_BETA_V) ];then
+			echo "latest bata not found"
+			exit 1
+		fi
+		BURMILLAOS_VER=$LATEST_BETA
+		;;
+	"" )
+		BURMILLAOS_VER=$LATEST_STABLE
+		;;
+	* )
+		for i in $VERSIONS; do
+			if [ "$i" = "$1" ];then
+				BURMILLAOS_VER=$1
+			fi
+		done
+esac
 
-if [ "$1" = "beta" ];then
-	if [ $(vc $LATEST_STABLE_V) -ge $(vc $LATEST_BETA_V) ];then
-		echo "latest bata not found"
-		exit 1
-	fi
-	if [ $(vc $LATEST_RC_V) -ge $(vc $LATEST_BETA_V) ];then
-		echo "latest bata not found"
-		exit 1
-	fi
-	BURMILLAOS_VER=$LATEST_BETA
+if [ -z "$BURMILLAOS_VER" ];then
+	echo "Version, $1 is not found"
+	echo "Available versions:"
+	echo "$VERSIONS"
+	exit 1
 fi
 
 echo $BURMILLAOS_VER
+
 
 BURMILLAOS_VER=${BURMILLAOS_VER%$'\n'*}
 echo BurmillaOS Version: $BURMILLAOS_VER
