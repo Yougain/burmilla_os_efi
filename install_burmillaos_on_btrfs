@@ -319,11 +319,17 @@ write_files:
       sudo echo export LC_CTYPE=en_US.UTF-8 >> /etc/profile.d/lang_Yk.sh
       sudo echo export LC_ALL=en_US.UTF-8 >> /etc/profile.d/lang_Yk.sh
       sudo echo export TZ=$TZL > /etc/profile.d/time_zone_Yk.sh
-      if [ -z "\`which git\`" ];then
-        if [ -n "\`which dnf\`" ];then
-          sudo dnf -y install git
+      if [ ! -f /bin/git ];then
+        if [ -f /bin/dnf ];then
+          sudo dnf -y install git glibc-langpack-en langpacks-en glibc-locale-source
         else
-          sudo yum -y install git
+          if [ -f /bin/yum ];then
+             sudo yum -y install git glibc-langpack-en langpacks-en glibc-locale-source
+          else
+             if [ -f /bin/apt-get ];then
+                sudo apt-get -y install git
+             fi
+          fi
         fi
       fi
 mounts:
@@ -389,6 +395,7 @@ KERNEL_ARGS="rancher.password=rancher rancher.state.mdadm_scan rancher.state.lvm
 VGA_SIZE=1024x768
 VGA_MODE=775
 VGA_ARGS="nomodeset vga=\$VGA_MODE video=\$VGA_SIZE"
+echo APPEND \$VGA_ARGS \$KERNEL_ARGS > /opt/global.cfg
 
 umount /mnt
 cat - > /mnt/efipart/EFI/BOOT/grub.cfg <<END
