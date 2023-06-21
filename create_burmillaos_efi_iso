@@ -30,13 +30,20 @@ function ver {
 }
 
 VERSIONS=`wget https://github.com/burmilla/os/releases --quiet -O - |egrep -o 'expanded_assets/v[0-9].*"'|awk '{sub(/.$/, "", $0);print substr($0,17)}'`
-LATEST_STABLE=`echo "$VERSIONS" | egrep -v '\-rc' | egrep -v '\-beta' | head -1`
+VERSIONS=`ls ~/burmillaos_efi/ | grep -v efi | grep iso | grep burmillaos | sed -s 's/burmillaos-//;s/.iso//'`"
+"$VERSIONS
+echo "$VERSIONS" > /tmp/$0.ver
+echo "$VERSIONS" | awk '{gsub(/^v/,"");gsub(/$/, ".2"); gsub(/-rc/,".1.");gsub(/-beta/,".0.");print}' | tr '.' ' ' | awk '{printf "%03d%03d%03d%03d%03d %01d\n", $1, $2, $3, $4, $5, $4}' > /tmp/$0.vernum
+paste -d " " /tmp/$0.vernum /tmp/$0.ver | sort -r | uniq |awk '{print $3}' > /tmp/$0.list
+VERSIONS=`cat /tmp/$0.list`
+
+LATEST_STABLE=`echo "$VERSIONS"  | egrep -v '\-rc' | egrep -v '\-beta' | head -1`
 LATEST_BETA=`echo "$VERSIONS" | egrep '\-beta' | head -1`
 LATEST_RC=`echo "$VERSIONS" | egrep '\-rc' | head -1`
+
 LATEST_STABLE_V=$(ver $LATEST_STABLE)
 LATEST_BETA_V=$(ver $LATEST_BETA)
 LATEST_RC_V=$(ver $LATEST_RC)
-
 
 
 case "$1" in
@@ -49,11 +56,11 @@ case "$1" in
 		;;
 	"beta" )
 		if [ $(vc $LATEST_STABLE_V) -ge $(vc $LATEST_BETA_V) ];then
-			echo "latest bata not found"
+			echo "latest beta not found"
 			exit 1
 		fi
 		if [ $(vc $LATEST_RC_V) -ge $(vc $LATEST_BETA_V) ];then
-			echo "latest bata not found"
+			echo "latest beta not found"
 			exit 1
 		fi
 		BURMILLAOS_VER=$LATEST_BETA
@@ -71,12 +78,10 @@ esac
 
 if [ -z "$BURMILLAOS_VER" ];then
 	echo "Version, $1 is not found"
-	echo "Available versions:"
+	echo "Available Versions:"
 	echo "$VERSIONS"
 	exit 1
 fi
-
-echo $BURMILLAOS_VER
 
 
 BURMILLAOS_VER=${BURMILLAOS_VER%$'\n'*}
@@ -96,6 +101,7 @@ fi
 if [ ! -e $UBUNTU_ISO ];then
 	wget https://releases.ubuntu.com/$UDIR"ubuntu-$LATEST_UV-live-server-amd64.iso" -O $UBUNTU_ISO
 fi
+
 
 UD="$T"/tmpubuntu
 RD="$T"/tmpburmillaos
@@ -150,9 +156,12 @@ KERNEL_ARGS="rancher.password=rancher $GLOBAL_APPEND_ARGS panic=10"
 VGA_ARGS="nomodeset vga=775 video=1024x768"
 sudo mkfs.fat $LDEV
 sudo mount $LDEV $PD
-sudo cp -ar $RD/* $PD
-sudo cp -ar $UD/boot/grub $PD/boot/
-sudo cp -ar $UD/EFI $PD/
+echo sudo cp -arv $RD/* $PD
+sudo cp -arv $RD/* $PD
+echo sudo cp -arv $UD/boot/grub $PD/boot/
+sudo cp -arv $UD/boot/grub $PD/boot/
+echo sudo cp -arv $UD/EFI $PD/
+sudo cp -arv $UD/EFI $PD/
 cat - > "$T"/grub.cfg <<END
 set timeout=30
 set default=1

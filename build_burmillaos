@@ -10,7 +10,7 @@ fi
 sudo apt-get install -y make
 git-force-clone https://github.com/burmilla/os.git ~/os
 cd ~/os
-sudo make release
+sudo make
 cd ~/
 mkdir -p ~/burmillaos_efi
 OS_V=`grep -o -e 'VERSION=.*' os/build/initrd/usr/share/ros/os-release`
