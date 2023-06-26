@@ -188,8 +188,18 @@ fi
 
 INST_DRIVE=`ssh_inst readlink /dev/disk/by-label/RANCHEROS|sed -e 's/.*\///'`
 
+if [ "$INST_DRIVE" = "" ];then
+	INST_DRIVE=`ssh_inst readlink /dev/disk/by-label/rancheros|sed -e 's/.*\///'`
+	exit 1
+fi
+
 if [ "$INST_DRIVE" = "sda1" ];then
 	echo -e "$error: Installer Disk is /dev/sda1. Stop installation.$plain"
+	exit 1
+fi
+
+if [ "$INST_DRIVE" = "" ];then
+	echo -e "$error: Installer Disk is not detected. Stop installation.$plain"
 	exit 1
 fi
 
@@ -357,7 +367,14 @@ runcmd:
 ssh_authorized_keys:
  - $KEY
 " >> cloud-config.yml
-ros install --no-reboot -f -t gptsyslinux -c cloud-config.yml -a rancher.state.mdadm_scan -a rancher.state.lvm_scan -d /dev/sda -p /dev/sda4
+ln /dev/sdb /dev/sr0
+ls -la /dev/sr0
+if ros install --no-reboot --debug -f -t gptsyslinux -c cloud-config.yml -a rancher.state.mdadm_scan -a 		rancher.state.lvm_scan -d /dev/sda -p /dev/sda4; then
+	echo ros insall finished
+else
+	echo Error: ros install failed
+	exit 1
+fi
 mkdir /mnt/efipart
 mount /dev/sda2 /mnt/efipart
 mkdir /mnt/installer

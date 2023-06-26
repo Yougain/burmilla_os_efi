@@ -106,6 +106,8 @@ fi
 UD="$T"/tmpubuntu
 RD="$T"/tmpburmillaos
 PD="$T"/tmpproduct
+ED="$T"/tmpefiimg
+ED2="$T"/tmpefiimg2
 P_IMG="$T"/burmillaos-$BURMILLAOS_VER.efi.img
 P_ISO="$T"/burmillaos-$BURMILLAOS_VER.efi.iso
 
@@ -115,11 +117,12 @@ P_ISO_SIZE=$(stat -c%s $BURMILLA_ISO)
 P_ISO_SIZE=$((P_ISO_SIZE + P_ISO_SIZE / 10))
 P_ISO_SIZE_K=$((P_ISO_SIZE / 1024))
 
-sudo umount $PD $UD $RD
-sudo rm -rf $PD $UD $RD
-mkdir $UD $RD $PD 
+sudo umount $PD $UD $RD $ED $ED2
+sudo rm -rf $PD $UD $RD $ED $ED2
+mkdir -p $UD $RD $PD $ED $ED2
 sudo mount $UBUNTU_ISO $UD
 sudo mount $BURMILLA_ISO $RD
+
 VMLINUZ_FILE=`ls -d $RD/boot/vmlinuz-*`
 VMLINUZ_FILE_COUNT=`echo "$VMLINUZ_FILE" | wc | awk '{print $1}'`
 if [ "$VMLINUZ_FILE_COUNT" != "1" ];then
@@ -152,16 +155,20 @@ LDEV=$LDEVH"p1"
 ls $LDEV
 GLOBAL_APPEND=`cat $RD/boot/global.cfg` 
 GLOBAL_APPEND_ARGS=${GLOBAL_APPEND#APPEND *}
-KERNEL_ARGS="rancher.password=rancher $GLOBAL_APPEND_ARGS panic=10"
+KERNEL_ARGS="rancher.password=rancher $GLOBAL_APPEND_ARGS root=/dev/sdb1 panic=10"
 VGA_ARGS="nomodeset vga=775 video=1024x768"
+
 sudo mkfs.fat $LDEV
 sudo mount $LDEV $PD
-echo sudo cp -arv $RD/* $PD
-sudo cp -arv $RD/* $PD
-echo sudo cp -arv $UD/boot/grub $PD/boot/
-sudo cp -arv $UD/boot/grub $PD/boot/
-echo sudo cp -arv $UD/EFI $PD/
-sudo cp -arv $UD/EFI $PD/
+
+echo sudo cp -ar $RD/* $PD
+sudo cp -ar $RD/* $PD
+echo sudo cp -ar $UD/boot/grub $PD/boot/
+sudo cp -ar $UD/boot/grub $PD/boot/
+echo sudo cp -ar $UD/EFI $PD/
+sudo cp -ar $UD/EFI $PD/
+#sudo cp "$T"/efiboot.img $PD/boot/isolinux/
+
 cat - > "$T"/grub.cfg <<END
 set timeout=30
 set default=1
@@ -193,14 +200,59 @@ menuentry "Debug Burmilla $BURMILLAOS_VER" {
     initrd  /boot/initrd-$BURMILLAOS_VER
 }
 END
-sudo mv -f "$T"/grub.cfg $PD/boot/grub
+
+sudo cp -f "$T"/grub.cfg $PD/boot/grub/grub.cfg
+
+BOOT_IMG_DATA=$ED
+BOOT_IMG=$ED2/efi.img
+
+sudo mkdir -p $(dirname $BOOT_IMG)
+
+truncate -s 8M $BOOT_IMG
+mkfs.vfat $BOOT_IMG
+sudo mount $BOOT_IMG $BOOT_IMG_DATA
+sudo mkdir -p $BOOT_IMG_DATA/efi/boot
+
+cat - > "$T"/early-config.cfg <<'END'
+search --no-floppy --set=root --label RANCHEROS
+configfile /boot/grub/grub.cfg
+END
+
+sudo grub2-mkimage \
+	-c "$T"/early-config.cfg \
+    -C xz \
+    -p '' \
+    -O x86_64-efi \
+    -o $BOOT_IMG_DATA/efi/boot/bootx64.efi \
+    boot linux search normal configfile \
+    part_gpt btrfs ext2 fat iso9660 loopback \
+    test keystatus gfxmenu regexp probe \
+    efi_gop efi_uga all_video gfxterm font \
+    echo read ls cat png jpeg halt reboot
+
+sudo umount $BOOT_IMG_DATA
+sudo rm -rf $BOOT_IMG_DATA
+
+echo iso boot from \"$BOOT_IMG\"
+
 echo All files are prepared.
-sudo mkisofs -r -V "BurmillaOS" -cache-inodes -J -l -b boot/isolinux/isolinux.bin -c boot/isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -o $P_ISO $PD
+
+#sudo xorriso -as mkisofs -r -V "RANCHEROS" -cache-inodes -J -l -b boot/isolinux/isolinux.bin -isohybrid-mbr /usr/share/syslinux/isohdpfx.bin -c boot/isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -eltorito-alt-boot -eltorito-platform efi -eltorito-boot boot/isolinux/efiboot.img -o $P_ISO $PD
+
+sudo xorriso -as mkisofs \
+    -iso-level 3 \
+    -r -V RANCHEROS \
+    -J -joliet-long \
+    -append_partition 2 0xef $BOOT_IMG \
+    -partition_cyl_align all \
+    -o $P_ISO \
+    $PD
+
 echo Iso created.
-sudo umount $UD
-sudo umount $RD
-sudo umount $PD
+
+sudo umount $UD $RD $PD
 sudo losetup -D $LDEVH
 rmdir $UD $RD $PD
+rm -rf $ED2
 rm $P_IMG
 
