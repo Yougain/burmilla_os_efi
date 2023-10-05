@@ -1,0 +1,62 @@
+#!/bin/bash
+
+if [ "${1:0:5}" != "/dev/" ];then
+	if [ "${2:0:5}" != "/dev/" ];then
+		echo "Error: device is not specified."
+		exit 1
+	else
+		DEV="$2"
+		UUID="$1"
+	fi
+else
+	DEV="$1"
+	UUID="$2"
+fi
+
+if [ ! -e "$DEV" ];then
+	echo "Error: $DEV does not exist."
+	exit 1	
+fi
+
+TYPE_=`blkid $DEV|egrep TYPE="\"[^\"]+" -o`
+TYPE=${TYPE_:6}
+
+if [ "$TYPE" = "vfat" -o "$TYPE" = "fat32" ];then
+	echo -n	
+else
+	echo "Error: unsupported file system, $TYPE."
+	exit 1
+fi
+
+CUUID=`dd bs=1 skip=67 count=4 if=$DEV 2>/dev/null \
+| xxd -plain -u \
+| sed -r 's/(..)(..)(..)(..)/\4\3-\2\1/'`
+
+
+echo "Current UUID of $DEV is $CUUID."
+
+if [ "$UUID" = "" ];then
+	exit 0
+fi
+
+if [ "$UUID" = "-r" -o "$UUID" = "--random" ];then
+	UUID=`xxd -u -l 2 -p /dev/urandom`-`xxd -u -l 2 -p /dev/urandom`
+fi
+
+if [ -z "`echo $UUID|egrep -o '^[1-9a-fA-F]{4}-[1-9a-fA-F]{4}$'`" ];then
+	echo "Error: invalid uuid, $UUID"
+	exit 1
+fi
+
+echo "Changing UUID ...."
+printf "\x${UUID:7:2}\x${UUID:5:2}\x${UUID:2:2}\x${UUID:0:2}" \
+| dd bs=1 seek=67 count=4 conv=notrunc of=$DEV
+
+NUUID=`dd bs=1 skip=67 count=4 if=$DEV 2>/dev/null \
+| xxd -plain -u \
+| sed -r 's/(..)(..)(..)(..)/\4\3-\2\1/'`
+
+echo "Now, UUID of $DEV is changed to $NUUID."
+
+
+

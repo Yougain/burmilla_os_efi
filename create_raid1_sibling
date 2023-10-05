@@ -1,0 +1,127 @@
+#!/bin/bash
+
+
+if [ "${1:0:7}" != "/dev/sd" -o "${1:8}" != "" ];then
+	echo "cannot use device, $1."
+	exit 1
+fi
+if [ ! -e "$1" ];then
+	echo "$1 is not existing."
+	exit 1
+fi
+
+TARGET_DISK=$1
+HOME_DEV=`mount | grep /home | awk '{print \$1}'`
+BOOT_DISK=${HOME_DEV:0:8}
+if [ "${BOOT_DISK:0:7}" != "/dev/sd" ]; then
+	echo "device of '/home' is not a /dev/sd? device."
+	exit 1
+fi
+
+if [ "$BOOT_DISK" = "$1" ]; then
+	echo "'$1' is same as boot disk."
+	exit 1
+fi
+
+function sectors(){
+	local GRES="`gdisk $1 <<EOF
+p
+q
+EOF`"
+	echo "$GRES"|grep "Command (? for help): Disk "|awk '{print $7 " " $8 " " $9 " " $10}'
+}
+
+BOOT_DISK_S_LINE=`sectors $BOOT_DISK`
+TARGET_DISK_S_LINE=`sectors $1`
+BOOT_DISK_SSIZE=`echo $BOOT_DISK_S_LINE|awk '{print $1}'`
+TARGET_DISK_SSIZE=`echo $TARGET_DISK_S_LINE|awk '{print $1}'`
+BOOT_DISK_SZ=`echo $BOOT_DISK_S_LINE|awk '{print $3 " " $4}'`
+TARGET_DISK_SZ=`echo $TARGET_DISK_S_LINE|awk '{print $3 " " $4}'`
+
+if [ $TARGET_DISK_SSIZE -lt $BOOT_DISK_SSIZE ];then
+	echo "Target disk ($TARGET_DISK) sector size, $TARGET_DISK_SSIZE is less than boot disk ($BOOT_DISK) sector size, $BOOT_DISK_SSIZE."
+	exit 1
+fi
+
+echo "BOOT DISK  : $BOOT_DISK, $BOOT_DISK_SSIZE sectors ($BOOT_DISK_SZ)"
+echo "TARGET DISK: $TARGET_DISK, $TARGET_DISK_SSIZE sectors ($TARGET_DISK_SZ)"
+
+dd if=/dev/zero of=$TARGET_DISK bs=1G count=1
+partprobe
+
+GRES="`gdisk $BOOT_DISK <<EOH
+x
+u
+$TARGET_DISK
+y
+q
+EOH`"
+
+#randomize guiid of target disk
+gdisk $TARGET_DISK <<EOF
+x
+f
+w
+EOF
+
+echo "$GRES"|egrep -o '^The operation.*|writing.*'
+
+# copy bios boot partition
+echo copying "$BOOT_DISK"1 to "$TARGET_DISK"1 ...
+dd if="$BOOT_DISK"1 of="$TARGET_DISK"1
+echo done
+# copy efi partition
+echo copying "$BOOT_DISK"2 to "$TARGET_DISK"2 ...
+dd if="$BOOT_DISK"2 of="$TARGET_DISK"2
+echo done
+
+#randomize uuid of efi partition
+EUUID=`xxd -u -l 2 -p /dev/urandom`-`xxd -u -l 2 -p /dev/urandom`
+printf "\x${EUUID:7:2}\x${EUUID:5:2}\x${EUUID:2:2}\x${EUUID:0:2}" \
+| dd bs=1 seek=67 count=4 conv=notrunc of="$TARGET_DISK"2
+
+mkswap -L RANCHER_SWAP_SIBLING "$TARGET_DISK"3
+
+#format btrfs partition for new boot device
+mkfs.btrfs -L RANCHER_BOOT_SIBLING -f "$TARGET_DISK"4
+partprobe
+BOOT_UUID=`ls -l /dev/disk/by-uuid | grep "$TARGET_DISK"4 | awk '{print $9}'`
+#format btrfs partition for new state device
+mkfs.btrfs -L RANCHER_STATE_SIBLING -f "$TARGET_DISK"5
+partprobe
+STATE_UUID=`ls -l /dev/disk/by-uuid | grep "$TARGET_DISK"5 | awk '{print $9}'`
+
+# modify grub.cfg in EFI partition with UUIDs of new disks
+mount "$TARGET_DISK"2 /mnt
+sed -i "s/^\s*search.*/\tsearch --no-floppy --fs-uuid --set=root $BOOT_UUID/g" /mnt/EFI/boot/grub.cfg
+sed -i "s/rancher\.state\.dev=UUID=[^ ]*/rancher.state.dev=UUID=$STATE_UUID/g" /mnt/EFI/boot/grub.cfg
+sed -i "s/ root=[^ ]*/ root=UUID=$STATE_UUID/g" /mnt/EFI/boot/grub.cfg
+unmount /mnt
+
+# copy boot partition to new disk (optional)
+# mkdir -p /tmp/{src,dst}
+# mount "$BOOT_DISK"4 /tmp/src
+# mount "$TARGET_DISK"4 /tmp/dst
+#cp -av /tmp/src/* /tmp/dst
+# umount /tmp/src /tmp/dst
+
+# remove missing device
+btrfs device delete missing /boot
+btrfs device delete missing /btrfs_top_lvl
+
+# add new device
+btrfs device add "$TARGET_DISK"4 /boot
+btrfs device add "$TARGET_DISK"5 /btrfs_top_lvl
+
+# select raid mode and start balancing
+function bstart(){
+	local dnum=`btrfs filesystem filesystem show $1 | egrep -o "Total devices [0-9]*" | awk '{print $3}'`
+	case "$dnum" in
+		"2" ) btrfs balance start -mconvert=raid1 -dconvert=raid1 $2 ;;
+		"3" ) btrfs balance start -mconvert=raid1c3 -dconvert=raid1c3 $2 ;;
+		"4" ) btrfs balance start -mconvert=raid1c4 -dconvert=raid1c4 $2 ;;
+	esac
+}
+bstart $BOOT_UUID /boot
+bstart $STATE_UUID /btrfs_top_lvl
+

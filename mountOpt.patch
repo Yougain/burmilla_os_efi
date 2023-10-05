@@ -1,0 +1,68 @@
+diff -Naurb os-org/pkg/init/fsmount/fsmount.go os/pkg/init/fsmount/fsmount.go
+--- os-org/pkg/init/fsmount/fsmount.go	2023-10-04 06:41:57.904371670 +0900
++++ os/pkg/init/fsmount/fsmount.go	2023-10-03 18:34:09.252432843 +0900
+@@ -22,7 +22,7 @@
+ )
+ 
+ func MountOem(cfg *config.CloudConfig) (*config.CloudConfig, error) {
+-	if err := mountConfigured("oem", cfg.Rancher.State.OemDev, cfg.Rancher.State.OemFsType, config.OemDir); err != nil {
++	if err := mountConfigured("oem", cfg.Rancher.State.OemDev, cfg.Rancher.State.OemFsType, config.OemDir, cfg.Rancher.State.OemMountOpt); err != nil {
+ 		log.Debugf("Not mounting OEM: %v", err)
+ 	} else {
+ 		log.Infof("Mounted OEM: %s", cfg.Rancher.State.OemDev)
+@@ -45,7 +45,7 @@
+ 		}
+ 	}
+ 
+-	if err := mountConfigured("boot", cfg.Rancher.State.BootDev, cfg.Rancher.State.BootFsType, config.BootDir); err != nil {
++	if err := mountConfigured("boot", cfg.Rancher.State.BootDev, cfg.Rancher.State.BootFsType, config.BootDir, cfg.Rancher.State.BootMountOpt); err != nil {
+ 		log.Debugf("Not mounting BOOT: %v", err)
+ 	} else {
+ 		log.Infof("Mounted BOOT: %s", cfg.Rancher.State.BootDev)
+@@ -54,7 +54,7 @@
+ 	return cfg, nil
+ }
+ 
+-func mountConfigured(display, dev, fsType, target string) error {
++func mountConfigured(display, dev, fsType, target, option string) error {
+ 	var err error
+ 
+ 	if dev == "" {
+@@ -74,12 +74,12 @@
+ 	}
+ 
+ 	log.Debugf("FsType has been set to %s", fsType)
+-	log.Infof("Mounting %s device %s to %s", display, dev, target)
+-	return util.Mount(dev, target, fsType, "")
++	log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, option)
++	return util.Mount(dev, target, fsType, option)
+ }
+ 
+ func mountState(cfg *config.CloudConfig) error {
+-	return mountConfigured("state", cfg.Rancher.State.Dev, cfg.Rancher.State.FsType, config.StateDir)
++	return mountConfigured("state", cfg.Rancher.State.Dev, cfg.Rancher.State.FsType, config.StateDir, cfg.Rancher.State.MountOpt)
+ }
+ 
+ func tryMountState(cfg *config.CloudConfig) error {
+diff -Naurb os-org/config/types.go os/config/types.go
+--- os-org/config/types.go	2023-10-04 06:41:57.898371761 +0900
++++ os/config/types.go	2023-10-03 18:21:48.474202123 +0900
+@@ -210,6 +210,7 @@
+ type StateConfig struct {
+ 	Directory  string   `yaml:"directory,omitempty"`
+ 	FsType     string   `yaml:"fstype,omitempty"`
++	MountOpt     string   `yaml:"mountopt,omitempty"`
+ 	Dev        string   `yaml:"dev,omitempty"`
+ 	Wait       bool     `yaml:"wait,omitempty"`
+ 	Required   bool     `yaml:"required,omitempty"`
+@@ -220,8 +221,10 @@
+ 	Rngd       bool     `yaml:"rngd,omitempty"`
+ 	Script     string   `yaml:"script,omitempty"`
+ 	OemFsType  string   `yaml:"oem_fstype,omitempty"`
++	OemMountOpt  string   `yaml:"oem_mountopt,omitempty"`
+ 	OemDev     string   `yaml:"oem_dev,omitempty"`
+ 	BootFsType string   `yaml:"boot_fstype,omitempty"`
++	BootMountOpt string   `yaml:"boot_mountopt,omitempty"`
+ 	BootDev    string   `yaml:"boot_dev,omitempty"`
+ }
+ 
