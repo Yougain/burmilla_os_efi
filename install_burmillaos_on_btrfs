@@ -5,7 +5,7 @@ while (( "$#" )); do
 	if [ -n "`echo $1| egrep '^[0-9]+$'`" ];then
 		PORT=$1
 	fi
-	if [ -n "`echo $1| egrep '[A-Za-z]'`" ];then
+	if [ -n "`echo $1| egrep '^[A-Za-z]'`" ];then
 		HNAME=$1
 		if [ "${HNAME#*.}" = "`hostname -d`" ];then
 			HNAME_FULL=$HNAME
@@ -32,8 +32,21 @@ while (( "$#" )); do
 			IP=$1
 		fi
 	fi
+	if [ -n "`echo $1| egrep '^/dev/[a-z]+$'`" ];then
+		TARGET_DEV=$1
+	fi
 	shift
 done
+
+if [ -z "$TARGET_DEV" ];then
+	TARGET_DEV=/dev/sda
+fi
+
+TARGET_DEV1="$TARGET_DEV"1
+TARGET_DEV2="$TARGET_DEV"2
+TARGET_DEV3="$TARGET_DEV"3
+TARGET_DEV4="$TARGET_DEV"4
+TARGET_DEV5="$TARGET_DEV"5
 
 
 if [ -z "$HNAME" ]; then
@@ -174,7 +187,7 @@ NETMASK=`ssh_inst ip address show dev eth0 | grep 'inet ' | grep global | awk '{
 ssh_inst sudo apt-get update
 ssh_inst sudo apt-get -y install fdisk
 
-DISK_SIZE=`ssh_inst -t sudo bash -c "'"sudo fdisk -l /dev/sda \|grep \"Disk /dev/sda\"\|awk \"{print $\"\"5}\""'"|grep -v boundary`
+DISK_SIZE=`ssh_inst -t sudo bash -c "'"sudo fdisk -l $TARGET_DEV \|grep \"Disk $TARGET_DEV\"\|awk \"{print $\"\"5}\""'"|grep -v boundary`
 MEM_SIZE=`ssh_inst -t bash -c "'"cat /proc/meminfo\|grep MemTotal\|awk \"{print $\"\"2}\""'"`
 DISK_SIZE=${DISK_SIZE%$'\r'}
 MEM_SIZE=${MEM_SIZE%$'\r'}
@@ -186,25 +199,24 @@ else
 	SWAP_PART_SIZE="+$MEM_SIZE"K
 fi
 
-INST_DRIVE=`ssh_inst readlink /dev/disk/by-label/RANCHEROS|sed -e 's/.*\///'`
+INST_DRIVE=/dev/`ssh_inst readlink /dev/disk/by-label/RANCHEROS | sed -e 's/.*\///'`
 
-if [ "$INST_DRIVE" = "" ];then
-	INST_DRIVE=`ssh_inst readlink /dev/disk/by-label/rancheros|sed -e 's/.*\///'`
+if [ "$INST_DRIVE" = "/dev/" ];then
 	exit 1
 fi
 
-if [ "$INST_DRIVE" = "sda1" ];then
-	echo -e "$error: Installer Disk is /dev/sda1. Stop installation.$plain"
+if [ "${INST_DRIVE:0:-1}" = "$TARGET_DEV" ];then
+	echo -e "$error: Installer device is same as target device, $TARGET_DEV. Stop installation.$plain"
 	exit 1
 fi
 
 if [ "$INST_DRIVE" = "" ];then
-	echo -e "$error: Installer Disk is not detected. Stop installation.$plain"
+	echo -e "$error: Installer device is not detected. Stop installation.$plain"
 	exit 1
 fi
 
 if [ "$DISK_SIZE" -le 1073741824 ];then
-	echo -e "$error: size of /dev/sda, less than 1G.$plain"
+	echo -e "$error: size of $TARGET_DEV, less than 1G.$plain"
 	exit 1
 fi
 
@@ -247,9 +259,9 @@ sleep 5
 ssh_inst bash -c "cat - > __install_rancher" <<FINAL
 #!/bin/bash
 apt-get update; apt-get install -y gdisk lvm2 dosfstools btrfs-progs parted
-dd if=/dev/zero of=/dev/sda bs=1G count=1
+dd if=/dev/zero of=$TARGET_DEV bs=1G count=1
 partprobe
-gdisk /dev/sda <<EOF
+gdisk $TARGET_DEV <<EOF
 2
 x
 l
@@ -289,11 +301,11 @@ w
 y
 EOF
 partprobe
-gdisk -l /dev/sda
-mkswap -L RANCHER_SWAP /dev/sda3 <<END
+gdisk -l $TARGET_DEV
+mkswap -L RANCHER_SWAP $TARGET_DEV3 <<END
 y
 END
-mkfs.vfat -F32 -n EFI /dev/sda2 << END
+mkfs.vfat -F32 -n EFI $TARGET_DEV2 << END
 y
 END
 echo -n "
@@ -342,54 +354,53 @@ write_files:
           fi
         fi
       fi
-mounts:
-- - /dev/sda5
-  - /
-  - btrfs
-  - \"subvol=/state_root,defaults,noatime\"
-- - /dev/sda5
-  - /btrfs_top_lvl
-  - btrfs
-  - \"subvol=/,defaults,noauto,noatime\"
-- - /dev/sda4
-  - /boot
-  - btrfs
-  - \"\"
-- - /dev/sda2
-  - /boot/efi
-  - vfat
-  - \"\"
 runcmd:
-- swapon -L RANCHER_SWAP
+- mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`readlink /dev/root|egrep -o "[0-9a-f-]+"\\\` | egrep -o "sd.")5 -odegraded,subvol=/ /btrfs_top_lvl
+- mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`readlink /dev/root|egrep -o "[0-9a-f-]+"\\\` | egrep -o "sd.")4 -odegraded /boot
+- mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`readlink /dev/root|egrep -o "[0-9a-f-]+"\\\` | egrep -o "sd.")2 /boot/efi
+- swapon /dev/\\\$(readlink /dev/disk/by-uuid/\\\`readlink /dev/root|egrep -o "[0-9a-f-]+"\\\` | egrep -o "sd.")3
 - btrfs quota enable /btrfs_top_lvl
 - btrfs quota enable /btrfs_top_lvl/state_root
 #cloud-config
 ssh_authorized_keys:
  - $KEY
 " >> cloud-config.yml
-ln /dev/sdb /dev/sr0
+ln $INST_DRIVE /dev/sr0
 ls -la /dev/sr0
-if ros install --no-reboot --debug -f -t gptsyslinux -c cloud-config.yml -a rancher.state.mdadm_scan -a 		rancher.state.lvm_scan -d /dev/sda -p /dev/sda4; then
+if ros install --no-reboot --debug -f -t gptsyslinux -c cloud-config.yml -d $TARGET_DEV -p $TARGET_DEV4; then
 	echo ros insall finished
 else
 	echo Error: ros install failed
 	exit 1
 fi
 mkdir /mnt/efipart
-mount /dev/sda2 /mnt/efipart
+mount $TARGET_DEV2 /mnt/efipart
 mkdir /mnt/installer
-mount /dev/$INST_DRIVE /mnt/installer
+mount $INST_DRIVE /mnt/installer
 cp -r /mnt/installer/EFI /mnt/efipart
-mount /dev/sda4 /opt
-mkfs.btrfs -L RANCHER_STATE -f /dev/sda5
-mount /dev/sda5 /mnt
+mount $TARGET_DEV4 /opt
+mkfs.btrfs -L RANCHER_STATE_SIBLING -f $TARGET_DEV5
+partprobe
+STATE_UUID=\`sudo ls -l /dev/disk/by-uuid | grep "${TARGET_DEV5##*/}" | awk '{print \$9}'\`
+if [ -z "\$STATE_UUID" ];then
+	echo "Error: cannot detect uuid of state device, $TARGET_DEV5."
+	exit 1
+fi
+mount $TARGET_DEV5 /mnt
 btrfs subvolume create /mnt/state_root
 btrfs subvolume set-default \`btrfs subvolume list /mnt|grep state_root|awk '{print \$2}'\` /mnt
 mkdir /mnt/state_root/btrfs_top_lvl
 cp -av /opt/* /mnt/state_root
 umount /opt
-mkfs.btrfs -L RANCHER_BOOT -f /dev/sda4
-mount /dev/sda4 /opt
+mkfs.btrfs -L RANCHER_BOOT_SIBLING -f $TARGET_DEV4
+partprobe
+BOOT_UUID=\`sudo ls -l /dev/disk/by-uuid | grep ${TARGET_DEV4##*/} | awk '{print \$9}'\`
+if [ -z "\$BOOT_UUID" ];then
+	echo "Error: cannot detect uuid of boot device, $TARGET_DEV4."
+	exit 1
+fi
+
+mount $TARGET_DEV4 /opt
 cp -av /mnt/state_root/boot/* /opt/
 rm -rf /mnt/state_root/boot/*
 
@@ -406,13 +417,15 @@ if [ "\$INITRD_FILE_COUNT" != "1" ];then
     exit 1
 fi
 
-GLOBAL_APPEND=\`cat /opt/global.cfg\`
+GLOBAL_APPEND=\`cat /opt/global.cfg | sed "s/ rancher\.state\.dev=UUID=[^ ]*//g"\`
 GLOBAL_APPEND_ARGS=\${GLOBAL_APPEND#APPEND *}
-KERNEL_ARGS="rancher.password=rancher rancher.state.mdadm_scan rancher.state.lvm_scan \$GLOBAL_APPEND_ARGS root=/dev/sda5 rw rootflags=subvol=/state_root"
+
+KERNEL_ARGS="rancher.state.mountopt=degraded,subvol=/state_root rancher.password=rancher \$GLOBAL_APPEND_ARGS rw rootflags=degraded,subvol=/state_root"
 VGA_SIZE=1024x768
 VGA_MODE=775
 VGA_ARGS="nomodeset vga=\$VGA_MODE video=\$VGA_SIZE"
 echo APPEND \$VGA_ARGS \$KERNEL_ARGS > /opt/global.cfg
+ROOT_ARGS="rancher.state.dev=UUID=\$STATE_UUID root=UUID=\$STATE_UUID"
 
 umount /mnt
 cat - > /mnt/efipart/EFI/BOOT/grub.cfg <<END
@@ -420,13 +433,13 @@ set timeout=1
 set gfxmode=\$VGA_SIZE
 set gfxpayload=keep
 menuentry "Burmilla" {
-    search --no-floppy --set=root --label RANCHER_BOOT
-    linux    /\$VMLINUZ_FILE \$VGA_ARGS \$KERNEL_ARGS
+    search --no-floppy  --fs-uuid --set=root \$BOOT_UUID
+    linux    /\$VMLINUZ_FILE \$VGA_ARGS \$KERNEL_ARGS \$ROOT_ARGS
     initrd   /\$INITRD_FILE
 }
 menuentry "Debug Burmilla" {
-    search --no-floppy --set=root --label RANCHER_BOOT
-    linux    /\$VMLINUZ_FILE vga=ask rancher.debug=true \$KERNEL_ARGS ---
+    search --no-floppy  --fs-uuid --set=root \$BOOT_UUID
+    linux    /\$VMLINUZ_FILE vga=ask rancher.debug=true \$KERNEL_ARGS \$ROOT_ARGS ---
     initrd   /\$INITRD_FILE
 }
 END
