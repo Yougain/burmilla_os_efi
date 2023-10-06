@@ -179,10 +179,27 @@ rancher$plain"
 	exit 1
 fi
 
-
+NET_DEV=`ssh_inst ip route show|grep default|awk '{print $5}'|head -1`
+if [ -z "$NET_DEV" ]; then
+	echo -e "$error: Cannot find net device for default route."
+	exit 1
+fi
 DNS_SETTINGS=`ssh_inst cat /etc/resolv.conf| sed -e 's/[ \t]*#.*//' | grep "nameserver" | sed -e 's/^[ \t]*//' | awk '{print $2}' | sed -e 's/^/      - /'`
+if [ -z "$DNS_SETTINGS" ]; then
+	echo -e "$error: Cannot find DNS setting."
+	exit 1
+fi
+NETMASK=`ssh_inst ip address show dev $NET_DEV | grep 'inet ' | grep global | awk '{print $2}'| sed -e 's/.*\///'|head -1`
+if [ -z "$NETMASK" ]; then
+	echo -e "$error: Cannot find net mask."
+	exit 1
+fi
 GATEWAY=`ssh_inst ip route |egrep '^default via'|awk '{print $3}'|head -1`
-NETMASK=`ssh_inst ip address show dev eth0 | grep 'inet ' | grep global | awk '{print $2}'| sed -e 's/.*\///'|head -1`
+if [ -z "$GATEWAY" ]; then
+	echo -e "$error: Cannot find defalt gateway."
+	exit 1
+fi
+
 
 ssh_inst sudo apt-get update
 ssh_inst sudo apt-get -y install fdisk
@@ -242,14 +259,15 @@ fi
 TZL="$TZ_N$TZ_DS$TZ_DH$TZ_DM"
 
 echo -e $cyan
-echo INST_DRIVE="$INST_DRIVE"
+echo INSTALL FROM "$INST_DRIVE"
+echo NET_INTERFACE="$NET_DEV"
+echo IP=$IP
 echo DNS_SETTINGS="$DNS_SETTINGS"
 echo GATEWAY=$GATEWAY
 echo NETMASK=$NETMASK
 echo DISK_SIZE=$DISK_SIZE
 echo MEM_SIZE=$MEM_SIZE
 echo TZ=$TZL
-echo IP=$IP
 echo PORT=$PORT
 echo -e $plain
 
@@ -318,7 +336,7 @@ $DNS_SETTINGS
     interfaces:
       eth*:
         dhcp: false
-      eth0:
+      $NET_DEV:
         address: $IP/$NETMASK
         gateway: $GATEWAY
   services:
@@ -355,8 +373,10 @@ write_files:
         fi
       fi
 runcmd:
+- mkdir -p /btrfs_top_lvl
 - mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`readlink /dev/root|egrep -o "[0-9a-f-]+"\\\` | egrep -o "sd.")5 -odegraded,subvol=/ /btrfs_top_lvl
 - mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`readlink /dev/root|egrep -o "[0-9a-f-]+"\\\` | egrep -o "sd.")4 -odegraded /boot
+- mkdir -p /boot/efi
 - mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`readlink /dev/root|egrep -o "[0-9a-f-]+"\\\` | egrep -o "sd.")2 /boot/efi
 - swapon /dev/\\\$(readlink /dev/disk/by-uuid/\\\`readlink /dev/root|egrep -o "[0-9a-f-]+"\\\` | egrep -o "sd.")3
 - btrfs quota enable /btrfs_top_lvl
@@ -367,7 +387,7 @@ ssh_authorized_keys:
 " >> cloud-config.yml
 ln $INST_DRIVE /dev/sr0
 ls -la /dev/sr0
-if ros install --no-reboot --debug -f -t gptsyslinux -c cloud-config.yml -d $TARGET_DEV -p $TARGET_DEV4; then
+if ros install --no-reboot -f -t gptsyslinux -c cloud-config.yml -d $TARGET_DEV -p $TARGET_DEV4; then
 	echo ros insall finished
 else
 	echo Error: ros install failed
@@ -417,6 +437,9 @@ if [ "\$INITRD_FILE_COUNT" != "1" ];then
     exit 1
 fi
 
+INITRD_VER=\${INITRD_FILE#*-}
+KERNEL_VER=\${VMLINUZ_FILE#*-}
+
 GLOBAL_APPEND=\`cat /opt/global.cfg | sed "s/ rancher\.state\.dev=UUID=[^ ]*//g"\`
 GLOBAL_APPEND_ARGS=\${GLOBAL_APPEND#APPEND *}
 
@@ -429,15 +452,15 @@ ROOT_ARGS="rancher.state.dev=UUID=\$STATE_UUID root=UUID=\$STATE_UUID"
 
 umount /mnt
 cat - > /mnt/efipart/EFI/BOOT/grub.cfg <<END
-set timeout=1
+set timeout=5
 set gfxmode=\$VGA_SIZE
 set gfxpayload=keep
-menuentry "Burmilla" {
+menuentry "Burmilla OS \$INITRD_VER \$KERNEL_VER" {
     search --no-floppy  --fs-uuid --set=root \$BOOT_UUID
     linux    /\$VMLINUZ_FILE \$VGA_ARGS \$KERNEL_ARGS \$ROOT_ARGS
     initrd   /\$INITRD_FILE
 }
-menuentry "Debug Burmilla" {
+menuentry "Debug Burmilla OS \$INITRD_VER \$KERNEL_VER" {
     search --no-floppy  --fs-uuid --set=root \$BOOT_UUID
     linux    /\$VMLINUZ_FILE vga=ask rancher.debug=true \$KERNEL_ARGS \$ROOT_ARGS ---
     initrd   /\$INITRD_FILE
