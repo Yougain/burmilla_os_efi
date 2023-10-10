@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [ "$1" = "" ];then
+	echo "Error: Argument missing."
+	exit 1
+fi
+
 
 if [ "${1:0:7}" != "/dev/sd" -o "${1:8}" != "" ];then
 	echo "cannot use device, $1."
@@ -49,6 +54,7 @@ echo "TARGET DISK: $TARGET_DISK, $TARGET_DISK_SSIZE sectors ($TARGET_DISK_SZ)"
 dd if=/dev/zero of=$TARGET_DISK bs=1G count=1
 partprobe
 
+#copy partition table
 GRES="`gdisk $BOOT_DISK <<EOH
 x
 u
@@ -56,7 +62,7 @@ $TARGET_DISK
 y
 q
 EOH`"
-
+partprobe
 #randomize guiid of target disk
 gdisk $TARGET_DISK <<EOF
 x
@@ -65,6 +71,7 @@ w
 EOF
 
 echo "$GRES"|egrep -o '^The operation.*|writing.*'
+partprobe
 
 # copy bios boot partition
 echo copying "$BOOT_DISK"1 to "$TARGET_DISK"1 ...
@@ -79,17 +86,23 @@ echo done
 EUUID=`xxd -u -l 2 -p /dev/urandom`-`xxd -u -l 2 -p /dev/urandom`
 printf "\x${EUUID:7:2}\x${EUUID:5:2}\x${EUUID:2:2}\x${EUUID:0:2}" \
 | dd bs=1 seek=67 count=4 conv=notrunc of="$TARGET_DISK"2
-
-mkswap -L RANCHER_SWAP_SIBLING "$TARGET_DISK"3
-
-#format btrfs partition for new boot device
-mkfs.btrfs -L RANCHER_BOOT_SIBLING -f "$TARGET_DISK"4
 partprobe
-BOOT_UUID=`ls -l /dev/disk/by-uuid | grep "$TARGET_DISK"4 | awk '{print $9}'`
-#format btrfs partition for new state device
-mkfs.btrfs -L RANCHER_STATE_SIBLING -f "$TARGET_DISK"5
+if ! mkswap -L RANCHER_SWAP_SIBLING "$TARGET_DISK"3
+	echo "cannot create swap partition"
+	exit 1
+fi
+
+##format btrfs partition for new boot device
+#mkfs.btrfs -L RANCHER_BOOT_SIBLING -f "$TARGET_DISK"4
+#partprobe
+#BOOT_UUID=`ls -l /dev/disk/by-uuid | grep "$TARGET_DISK"4 | awk '{print $9}'`
+##format btrfs partition for new state device
+#mkfs.btrfs -L RANCHER_STATE_SIBLING -f "$TARGET_DISK"5
+#partprobe
+#STATE_UUID=`ls -l /dev/disk/by-uuid | grep "$TARGET_DISK"5 | awk '{print $9}'`
+dd if=/dev/zero of="$TARGET_DISK"4 bs=100M count=1
+dd if=/dev/zero of="$TARGET_DISK"5 bs=100M count=1
 partprobe
-STATE_UUID=`ls -l /dev/disk/by-uuid | grep "$TARGET_DISK"5 | awk '{print $9}'`
 
 # modify grub.cfg in EFI partition with UUIDs of new disks
 mount "$TARGET_DISK"2 /mnt
@@ -112,6 +125,8 @@ btrfs device delete missing /btrfs_top_lvl
 # add new device
 btrfs device add "$TARGET_DISK"4 /boot
 btrfs device add "$TARGET_DISK"5 /btrfs_top_lvl
+BOOT_UUID=`ls -l /dev/disk/by-uuid | grep "$TARGET_DISK"4 | awk '{print $9}'`
+STATE_UUID=`ls -l /dev/disk/by-uuid | grep "$TARGET_DISK"5 | awk '{print $9}'`
 
 # select raid mode and start balancing
 function bstart(){
