@@ -102,7 +102,7 @@ UBUNTU_ISO="$T"/ubuntu-$LATEST_UV-live-server-amd64.iso
 echo Ubuntu Version: $LATEST_UV
 
 if [ ! -s $BURMILLA_ISO ];then
-	if ! wget -nc --no-check-certificate https://github.com/burmilla/os/releases/download/$BURMILLAOS_VER/burmillaos-$BURMILLAOS_VER.iso -O $BURMILLA_ISO
+	if ! wget -nc --no-check-certificate https://github.com/burmilla/os/releases/download/$BURMILLAOS_VER/burmillaos-$BURMILLAOS_VER.iso -O $BURMILLA_ISO; then
 		echo "Error: cannot download burmilla iso. exitting"
 		exit 1
 	else
@@ -114,7 +114,7 @@ if [ ! -s $BURMILLA_ISO ];then
 fi
 
 if [ ! -s $UBUNTU_ISO ];then
-	if ! wget -nc --no-check-certificate https://releases.ubuntu.com/$UDIR"ubuntu-$LATEST_UV-live-server-amd64.iso" -O $UBUNTU_ISO
+	if ! wget -nc --no-check-certificate https://releases.ubuntu.com/$UDIR"ubuntu-$LATEST_UV-live-server-amd64.iso" -O $UBUNTU_ISO; then
 		echo "Error: cannot download ubuntu iso. exitting"
 		exit 1
 	else
