@@ -14,10 +14,10 @@ function check_cmd {
 PATH=/sbin:$PATH
 
 if [ -x "/usr/bin/apt-get" ];then
-	sudo apt-get install -y gdisk genisoimage dosfstools mount
+	sudo apt-get install -y gdisk genisoimage dosfstools mount grub parted xorriso
 fi
 
-check_cmd fallocate gdisk losetup mkfs.fat mkisofs
+check_cmd fallocate gdisk losetup mkfs.fat mkisofs partprobe xorriso
 if [ -n "$NO_CMD" ];then
 	echo "Terminated."
 	exit 1
@@ -101,12 +101,28 @@ UDIR=`wget --no-check-certificate -O - https://releases.ubuntu.com/ 2>/dev/null|
 UBUNTU_ISO="$T"/ubuntu-$LATEST_UV-live-server-amd64.iso
 echo Ubuntu Version: $LATEST_UV
 
-if [ ! -e $BURMILLA_ISO ];then
-	wget https://github.com/burmilla/os/releases/download/$BURMILLAOS_VER/burmillaos-$BURMILLAOS_VER.iso -O $BURMILLA_ISO
+if [ ! -s $BURMILLA_ISO ];then
+	if ! wget -nc --no-check-certificate https://github.com/burmilla/os/releases/download/$BURMILLAOS_VER/burmillaos-$BURMILLAOS_VER.iso -O $BURMILLA_ISO
+		echo "Error: cannot download burmilla iso. exitting"
+		exit 1
+	else
+		if [ ! -s $BURMILLA_ISO ];then
+			echo "Error: cannot download burmilla iso. exitting"
+			exit 1
+		fi
+	fi
 fi
 
-if [ ! -e $UBUNTU_ISO ];then
-	wget https://releases.ubuntu.com/$UDIR"ubuntu-$LATEST_UV-live-server-amd64.iso" -O $UBUNTU_ISO
+if [ ! -s $UBUNTU_ISO ];then
+	if ! wget -nc --no-check-certificate https://releases.ubuntu.com/$UDIR"ubuntu-$LATEST_UV-live-server-amd64.iso" -O $UBUNTU_ISO
+		echo "Error: cannot download ubuntu iso. exitting"
+		exit 1
+	else
+		if [ ! -s $UBUNTU_ISO ];then
+			echo "Error: cannot download burmilla iso. exitting"
+			exit 1
+		fi
+	fi
 fi
 
 
@@ -157,6 +173,7 @@ ef00
 w
 y
 END
+partprobe
 LDEVH=`sudo losetup --partscan --show --find $P_IMG`
 LDEV=$LDEVH"p1"
 ls $LDEV
@@ -248,7 +265,13 @@ search --no-floppy --set=root --label RANCHEROS
 configfile /boot/grub/grub.cfg
 END
 
-sudo grub2-mkimage \
+if [ -x /sbin/grub2-mkimage ];then
+	GMK=grub2-mkimage
+else
+	GMK=grub-mkimage
+fi
+
+sudo $GMK \
 	-c "$T"/early-config.cfg \
     -C xz \
     -p '' \
