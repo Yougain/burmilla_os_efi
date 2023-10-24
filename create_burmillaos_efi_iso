@@ -11,6 +11,8 @@ function check_cmd {
 }
 
 
+PATH=/sbin:$PATH
+
 if [ -x "/usr/bin/apt-get" ];then
 	sudo apt-get install -y gdisk genisoimage dosfstools mount
 fi
