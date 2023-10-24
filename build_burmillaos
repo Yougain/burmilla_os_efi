@@ -2,8 +2,8 @@
 
 if [ -n "$1" ];then
     ssh -t $1 'if [ -f /bin/dnf -o -f /usr/bin/dnf ];then IST="dnf"; else if [ -f /bin/yum -o -f /usr/bin/yum ];then IST="yum"; else if [ -f /usr/apt-get -o -f /usr/bin/apt-get ];then IST="apt-get"; else echo "Error: package installer not found."; exit 1; fi; fi; fi; if [ ! -f /bin/git ];then sudo $IST -y update; sudo $IST -y install git git-extras; fi; if [ ! -f /bin/which -a ! -f /usr/bin/which ];then sudo \$IST -y install which; fi; if [ -d "./burmilla_os_efi" ]; then git-force-clone  https://github.com/Yougain/burmilla_os_efi.git ~/burmilla_os_efi; else git clone https://github.com/Yougain/burmilla_os_efi.git; fi; ./burmilla_os_efi/'${0##*/}'; exit $?'
-    mkdir -p ~/burmillaos_efi/
-    scp $1:burmillaos_efi/'*.iso' ~/burmillaos_efi/
+    mkdir -p ~/burmilla_os_iso/
+    scp $1:burmilla_os_iso/'*.iso' ~/burmilla_os_iso/
     exit $?
 fi
 
@@ -14,9 +14,9 @@ cd ~/os
 patch -p1 < $ODIR/mountOpt.patch
 sudo make
 cd ~/
-mkdir -p ~/burmillaos_efi
+mkdir -p ~/burmilla_os_iso
 OS_V=`grep -o -e 'VERSION=.*' os/build/initrd/usr/share/ros/os-release`
 OS_VER=${OS_V#VERSION=*}
-cp ~/os/dist/artifacts/burmillaos.iso ~/burmillaos_efi/burmillaos-$OS_VER.iso
+cp ~/os/dist/artifacts/burmillaos.iso ~/burmilla_os_iso/burmillaos-$OS_VER.iso
 
 
