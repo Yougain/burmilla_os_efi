@@ -24,7 +24,7 @@ if [ -n "$NO_CMD" ];then
 fi
 
 
-T=~/burmillaos_efi
+T=~/burmilla_os_iso
 
 if [ ! -d $T ];then
 	mkdir $T
@@ -37,7 +37,7 @@ function ver {
 }
 
 VERSIONS=`wget https://github.com/burmilla/os/releases --quiet -O - |egrep -o 'expanded_assets/v[0-9].*"'|awk '{sub(/.$/, "", $0);print substr($0,17)}'`
-VERSIONS=`ls ~/burmillaos_efi/ | grep -v efi | grep iso | grep burmillaos | sed -s 's/burmillaos-//;s/.iso//'`"
+VERSIONS=`ls $T/ | grep -v efi | grep iso | grep burmillaos | sed -s 's/burmillaos-//;s/.iso//'`"
 "$VERSIONS
 echo "$VERSIONS" > /tmp/$0.ver
 echo "$VERSIONS" | awk '{gsub(/^v/,"");gsub(/$/, ".2"); gsub(/-rc/,".1.");gsub(/-beta/,".0.");print}' | tr '.' ' ' | awk '{printf "%03d%03d%03d%03d%03d %01d\n", $1, $2, $3, $4, $5, $4}' > /tmp/$0.vernum
