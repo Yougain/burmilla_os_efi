@@ -7,7 +7,7 @@ if [ -n "$1" ];then
     exit $?
 fi
 
-sudo apt-get install -y make patch
+sudo apt-get install -y make patch apt-utils
 git-force-clone https://github.com/burmilla/os.git ~/os
 ODIR=`pwd`
 cd ~/os

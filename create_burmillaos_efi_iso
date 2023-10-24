@@ -2,7 +2,7 @@
 
 function check_cmd {
 	while (( "$#" )); do
-		if [ -z "`which $1 2>/dev/null`" ];then
+		if [ -z "`sudo which $1 2>/dev/null`" ];then
 			echo "Command, '$1' is not found. Please install"
 			NO_CMD=1
 		fi
