@@ -170,7 +170,30 @@ sudo cp -ar $UD/EFI $PD/
 #sudo cp "$T"/efiboot.img $PD/boot/isolinux/
 
 cat - > "$T"/grub.cfg <<END
+
 set timeout=30
+
+
+if search --set=state --label RANCHER_STATE_SIBLING; then
+	if [ -e ($state)/state_root/home ]; then
+		set timeout=5
+	else
+		if search --no-floppy --set=efi --label EFI; then
+			prefix=($efi)/efi/boot
+			configfile $prefix/grub.cfg
+		fi
+	fi
+fi
+
+
+if search --set=oem --label RANCHER_STATE_OEM; then
+	ev_f=($oem)/oem_root/var/lib/yougain/burmilla/grub_env_for_installer
+	if [ -e $ev_f ]; then
+		source $ev_f
+	fi
+fi
+
+
 set default=1
 
 loadfont unicode
@@ -179,7 +202,7 @@ set menu_color_normal=white/black
 set menu_color_highlight=black/light-gray
 
 menuentry "Install Burmilla $BURMILLAOS_VER" {
-    linux   /boot/$KERNEL_FILE $VGA_ARGS $KERNEL_ARGS ---
+    linux   /boot/$KERNEL_FILE $VGA_ARGS $USER_SETTINGS $KERNEL_ARGS ---
     initrd  /boot/initrd-$BURMILLAOS_VER
 }
 grub_platform
@@ -187,7 +210,7 @@ if [ "\$grub_platform" = "efi" ]; then
 menuentry 'Boot from next volume' {
     exit 1
 }
-menuentry 'UEFI Firmware Settings' {
+menuentry 'BIOS/UEFI Firmware Settings' {
     fwsetup
 }
 else
@@ -196,7 +219,7 @@ menuentry 'Test memory' {
 }
 fi
 menuentry "Debug Burmilla $BURMILLAOS_VER" {
-    linux   /boot/$KERNEL_FILE vga=ask rancher.debug=true $KERNEL_ARGS ---
+    linux   /boot/$KERNEL_FILE vga=ask rancher.debug=true $USER_SETTINGS $KERNEL_ARGS ---
     initrd  /boot/initrd-$BURMILLAOS_VER
 }
 END

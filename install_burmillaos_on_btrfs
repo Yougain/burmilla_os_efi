@@ -1,20 +1,117 @@
 #!/bin/bash
 
 
-function wait_sshd_start(){
-	local SSH_CON
-	local SSH_CON_
-	while [ -z "$SSH_CON" ]; do
-		SSH_CON_=`echo | nc 198.19.24.185 22 2>&1`
-		if [ "${SSH_CON_:0:3}" = "SSH" ];then
-			SSH_CON=1
-		fi
-	done
+error="\033[41m\033[33mERROR    :\033[m \033[31m"
+warning="\033[43m\033[31mWARNING:\033[m \033[33m"
+info="\033[46m\033[34mINFO     :\033[m \033[36m "
+plain="\033[m"
+normal="\033[m"
+
+black="0"
+red="1"
+green="2"
+yellow="3"
+blue="4"
+purple="5"
+magenta="5"
+cyan="6"
+white="7"
+
+
+allColors="black red green yellow blue purple magenta cyan white"
+
+function capitalize(){
+	local B
+	local F
+	B=`echo -n "${1:0:1}" | tr "[:lower:]" "[:upper:]"`
+	F="${B}${1:1}"
+	shift
+	echo -n $F $@
 }
 
-wait_sshd_start
+function errmsg(){
+	if [ -z "$ERRMSG" ]; then
+		ERRMSG="$error`capitalize $@`$plain"
+	else
+		ERRMSG="$ERRMSG
+$error""`capitalize $@`"$plain
+	fi
+}
 
 
+alias err=errmsg
+alias error=errmsg
+
+
+function info_n(){
+	echo -ne $info`capitalize $@`$plain
+}
+function info(){
+	info_n $@"\n"
+}
+
+
+function warning_n(){
+	echo -ne "$warning""$@"
+}
+function warning(){
+	warning_n "$@""\n"
+}
+
+alias warn=warning
+alias warn_n=warning_n
+
+
+for col in $allColors; do
+	eval '
+		'`capitalize $col`'="\033[3$'$col'""m"
+		function '$col'_n(){
+			echo -ne "\033[3$'$col'""m''$@''$plain"
+		}
+		function '$col'(){
+			'$col'_n $@"\n"
+		}
+		function bg'`capitalize $col`'_n(){
+			echo -ne "\033[4$'$col'""m''$@''$plain"
+		}
+		function bg'`capitalize $col`'(){
+			bg'`capitalize $col`'_n $@"\n"
+		}
+	'
+	for bgCol in $allColors; do
+		eval '
+			function '$col'Bg'`capitalize $bgCol`'_n(){
+				echo -ne "\033[3$'$col'""m\033[4$'$bgCol'""m''$@''$plain"
+			}
+			function '$col'Bg'`capitalize $bgCol`'(){
+				'$col'Bg'`capitalize $bgCol`'_n $@
+			}
+		'
+	done
+done
+
+
+function exit_if_err(){
+	if [ -n "$1" ]; then
+		errmsg $@
+	fi
+	if [ -n "$ERRMSG" ];then
+		echo -en $ERRMSG
+		exit 1
+	fi
+}
+
+function die(){
+	if [ -n "$1" ]; then
+		errmsg $@
+	fi
+	if [ -n "$ERRMSG" ];then
+		echo -en $ERRMSG
+	fi
+	exit 1
+}
+
+# argument analysis
 while (( "$#" )); do
 	if [ "$1" = "-f" ];then
 		FORCE=1
@@ -26,6 +123,7 @@ while (( "$#" )); do
 		PORT=$1
 	fi
 	if [ -n "`echo $1| egrep '^[A-Za-z]'`" ];then
+		CMD_HNAME=$1
 		HNAME=$1
 		if [ "${HNAME#*.}" = "`hostname -d`" ];then
 			HNAME_FULL=$HNAME
@@ -59,104 +157,80 @@ while (( "$#" )); do
 done
 
 
-
-if [ -z "$HNAME" ]; then
-	HNAME="burmilla"
-fi
-
 function get_ssh_config_entry(){
-	sed -e 's/[ \t]*#.*//' ~/.ssh/config | grep -oiPz "(?s)^\s*Host\s$HNAME(.*?^\s*Host\s|.*)"
+	local ENT=`sed -e 's/[ \t]*#.*//' ~/.ssh/config | grep -oiPz "(?s)^\s*Host\s+$1(.*?^\s*Host\s|.*)"`
+	local PORT=`echo "$ENT" | grep -oiPz "^\s*Port\s+\d+"| head -1 |awk '{print $2}'`
+	local IP=`echo "$ENT" | grep -oiPz "^\s*HostName\s+[^\s]+"| head -1 |awk '{print $2}'`
+	echo "$IP:$PORT"
 }
+
 
 function get_field2(){
 	echo $@|awk '{print $2}'
 }
 
-error="\033[31mError"
-red="\033[31m"
-green="\033[32m"
-cyan="\033[36m"
-plain="\033[m"
-normal="\033[m"
-warning="\033[33mWarining"
-yellow="\033[33m"
 
-if [ -z "$REINSTALL" ];then
-	if [ -n "`get_ssh_config_entry`" ];then
-		CONFIG_ENTRY=1
-		CONFIG_IP_LINE=`get_ssh_config_entry |  grep -oiPz '^\s*HostName[\t ]+[\w\-\.]+'`
+# check IP and PORT in ~/.ssh/config
+# load IP and PORT if missing in both command line and user_config.yml
+function get_ssh_config_ip_from_name(){
+	local HNAME=$1
+	if [ -n "`get_ssh_config_entry $HNAME`" ];then
+		# $HNAME entry found in ~/.ssh/config 
+		local CONFIG_IP_LINE=`get_ssh_config_entry $HNAME |  grep -oiPz '^\s*HostName[\t ]+[\w\-\.]+'`
 		if [ -z "$CONFIG_IP_LINE" ];then
-			echo -e "$error: cannot find a line, $cyan'HostName [ip address or resolvable host name]'$red in the entry of $cyan'Host $HNAME'$red in $cyan~/.ssh/config$red.$plain"
-			exit 1
+			return 1
 		else
 			IP_IN_CONFIG=`get_field2 $CONFIG_IP_LINE`
-			if [ -n "$IP" ];then
-				if [ "$IP" != "$IP_IN_CONFIG" ];then
-					echo -e "$error: Already different ip address or resolvable host name specified in $cyan'~/.ssh/config'$red with an entry of $cyan'Host $HNAME'$red, by the line $cyan'`echo $CONFIG_IP_LINE`'$plain."
-					exit 1
-				fi
-			else
-				IP=$IP_IN_CONFIG
+			if [ -z $IP_IN_CONFIG ]; then
+				return 1
 			fi
 		fi
-		CONFIG_PORT_LINE=`get_ssh_config_entry |  grep -oiPz '^\s*Port\s+[0-9]+'`
-		if [ -z "$CONFIG_PORT_LINE" ];then
-			PORT_IN_CONFIG=22
-		else
-			PORT_IN_CONFIG=`get_field2 $CONFIG_PORT_LINE`
-		fi
-			if [ -n "$PORT" ];then
-				if [ "$PORT" != "$PORT_IN_CONFIG" ];then
-					echo -ne "$error: cannot specify ssh port, $cyan'$PORT'$red in the command line, because $cyan~/.ssh/config$red has an entry of $cyan'Host $HNAME'$red "
-					if [ -n "$CONFIG_PORT_LINE" ]; then
-						echo -e "with a line, $cyan'`echo $CONFIG_PORT_LINE`'$red.$plain"
-					else
-						echo -e "without line, $cyan'Port xxxxx'$red, implying usage of default port,$cyan 22$red.$plain"
-					fi
-				fi
-				exit 1
-			else
-				PORT=$PORT_IN_CONFIG
-			fi
-		if [ -z "$CONFIG_PORT_LINE" ];then
-			PORT=22
-		else
-			PORT=`get_field2 $CONFIG_PORT_LINE`
-		fi
+		return 0
 	else
-		if [ -z "$IP" ]; then
-			IP=$INST_IP
+		return 1
+	fi
+}
+
+
+
+# indispensable arguments
+if [ -z "$INST_IP" ]; then
+	if [ -n "$CMD_HNAME" ];then
+		CTMP=`get_ssh_config_entry $CMD_HNAME`
+		if [ -n "$CTMP" ];then
+			INST_IP=${CTMP/:*}
+		else
+			dig
 		fi
-		if [ -z "$IP" ];then
-			echo -e "\033[31m$error: Missing IP address for installation in the command line and cannot find section, $cyan'Host $HNAME'$red in $cyan~./ssh/config$red, where a line like $cyan'HostName [ip address or resolvable host name]'$red should be found.$plain"
-			exit 1
-		fi
-		if [ -z "$PORT" ];then
-			RD=0
-			while [ "$RD" -le 1024 -o  -n "`grep $RD/tcp /etc/services`" ]; do
-				RD=$((RANDOM + RANDOM))
-			done
-			RANDOM_PORT=1
-			PORT=$RD
-		fi
-		mkdir -m 700 -p ~/.ssh
-		echo "Host $HNAME
-		HostName $IP
-		User rancher
-		Port $PORT
-	" >> ~/.ssh/config
 	fi
 fi
-
+if [ -z "$INST_IP" ]; then
+	err IP address is not found in command line nor in ~/.ssh/config. 
+fi
 KEY=`cat ~/.ssh/id_ed25519.pub 2>/dev/null`
 if [ -z "$KEY" ];then
-	echo -e "\033[31mError: Cannot find public key in ~/.ssh/id_ed25519.pub. exit.\033[m"
-	exit 1
+	err Cannot find public key in ~/.ssh/id_ed25519.pub.
 fi
+exit_if_err
 
-if [ -z "$INST_IP" ];then
-	INST_IP=$IP
-fi
+
+# ssh functions
+function wait_sshd_start(){
+	local SSH_CON_
+	info_n connecting SSH...
+	for i in $(seq 1 120); do
+		sleep 1
+		blue_n "."
+		SSH_CON_=`echo | nc 198.19.24.185 22 2>&1`
+		if [ "${SSH_CON_:0:3}" = "SSH" ];then
+			cyanBgBlue connected
+			return
+		fi
+	done
+	echo
+	die Tried 120 times. Still cannot connect SSH port "(22)". Exited.
+}
+
 
 function ssh_inst(){
 	ssh -q -p 22 -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher $INST_IP $@
@@ -166,6 +240,9 @@ function ssh_inst(){
 function  install_ssh_key(){
 	local SET_KEY_CNT=0
 	while ! ssh_inst echo; do
+		if [ "$SET_KEY_CNT" = "5" ]; then
+			return 1
+		fi
 		expect -c "
 		set timeout 1
 		spawn ssh -p 22 -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" -l rancher $INST_IP
@@ -176,103 +253,411 @@ function  install_ssh_key(){
 		expect \"rancher ~]$ \"
 		send \"chmod 700 ~/.ssh\n\"
 		expect \"rancher ~]$ \"
-		send \"echo $KEY > ~/.ssh/authorized_keys\n\"
+		send \"if ! grep \\\"$KEY\\\" ~/.ssh/authorized_keys;then echo $KEY >> ~/.ssh/authorized_keys; fi\n\"
 		expect \"rancher ~]$ \"
 		send \"exit\"
 		"
 		sleep 1
 		SET_KEY_CNT=$(( SET_KEY_CNT + 1 ))
-		if [ "$SET_KEY_CNT" = "5" ]; then
-			echo "failed to install ssh public key"
-			exit 1
-		fi
 	done
+	return 0
 }
 
 
-if [ -z "$FORCE" ];then
-	if ! ssh_inst echo; then
-		install_ssh_key
-	else
-		if [ "`ssh_inst sudo mount | grep /usr/bin/ros | awk '{print $1}'`" != "none" ]; then
-			echo -e "$error: not booted from installer disk$normal"
-		else
-			echo -e "$error: RancherOS is already installed?$plain"
-		fi
-		exit 1
-	fi
-fi
+# wait ssh connectable
+wait_sshd_start
 
 
+# install ssh key if not installed
 if ! ssh_inst echo; then
-	if [ -n "$FORCE" ];then
-		install_ssh_key
-		if ! ssh_inst echo; then
-			CANT_INSTALL_KEY=1
-		fi
-	else
-		CANT_INSTALL_KEY=1
+	if ! install_ssh_key; then
+		die "Cannot logon as user, 'rancher' by password, 'rancher'.
+$CyanPlease enter following commands on console.
+	sudo passwd rancher
+	rancher
+	rancher"
 	fi
 fi
-if [ -n "$CANT_INSTALL_KEY" ];then
-	echo -e "$error: Cannot logon as user, 'rancher' by password, 'rancher'"
-	echo "Please enter following commands on console"
-	echo -e $cyan"sudo passwd rancher
-rancher
-rancher$plain"
-	exit 1
-fi
 
+
+# check booted from installer disk
 if [ "`ssh_inst sudo mount | grep /usr/bin/ros | awk '{print $1}'`" != "none" ]; then
-	echo -e "$error: not booted from installer disk$normal"
-	exit 1
+	die Not booted from installer disk
 fi
 
+# check uefi-grub-enabled installer
+if ssh_inst sudo mount /dev/disk/by-label/RANCHEROS /mnt; then
+	if [ -z "`ssh_inst sudo cat /mnt/boot/grub/grub.cfg`" ]; then
+		die Installer disk is not uefi-grub enabled.
+	else
+		ssh_inst sudo umount /mnt
+	fi
+else
+	die Installer disk with label, RANCHEROS is not found.
+fi
+
+# get network parameters from target server booted by installer
+NET_DEV=`ssh_inst ip route show|grep default|awk '{print $5}'|head -1`
+if [ -z "$NET_DEV" ]; then
+	die Cannot find net device for default route.
+fi
+DS=`ssh_inst cat /etc/resolv.conf| sed -e 's/[ \t]*#.*//' | grep "nameserver" | sed -e 's/^[ \t]*//' | awk '{print $2}'`
+DNS_SETTINGS=`echo "$DS" | sed -e 's/^/      - /'`
+DSX=""
+DSX2=""
+for i in $DS; do
+	if [ -z "$DSX" ]; then
+		DSX='"'$i'"'
+		DSX2='\"'$i'\"'
+	else
+		DSX="$DSX",'"'$i'"'
+		DSX2="$DSX2",'\"'$i'\"'
+	fi
+done
+DNS_SETTINGS_YQ="[$DSX]"
+DNS_SETTINGS_YQ2="[$DSX2]"
+
+
+if [ -z "$DNS_SETTINGS" ]; then
+	die Cannot find DNS setting.
+fi
+NETMASK=`ssh_inst ip address show dev $NET_DEV | grep 'inet ' | grep global | awk '{print $2}'| sed -e 's/.*\///'|head -1`
+if [ -z "$NETMASK" ]; then
+	die Cannot find net mask.
+else
+	for i in 8 16 24; do
+		if [ "$NETMASK" = "$i" ]; then
+			netmask_ok=1
+		fi
+	done
+	if [ -z "$netmask_ok" ];then
+		die Unsupported netmask, $NETMASK
+	fi
+fi
+GATEWAY=`ssh_inst ip route |egrep '^default via'|awk '{print $3}'|head -1`
+if [ -z "$GATEWAY" ]; then
+	die Cannot find default gateway.
+fi
+
+
+
+function extract_uc_params(){
+	ssh_inst sudo bash <<'END'
+		F=/mnt3/var/lib/rancher/conf/cloud-config.d/user_config.yml
+		if [ -e $F ]; then
+			if [ ! -x /usr/bin/yq ]; then
+				if [ -n "`uname -a|grep armv7`" ]; then
+					sudo wget "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_arm" -q -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
+				fi
+				if [ -n "`uname -a|grep aarc64`" ]; then
+					sudo wget "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_arm64" -q -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
+				fi
+				if [ -n "`uname -a|grep x86_64`" ]; then
+					sudo wget "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64" -q -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
+				fi
+			fi
+			if [ ! -x /usr/bin/yq ];then
+				echo "ERROR:Cannot download /usr/bin/yq" >&2
+			fi
+			UC_PORT=`sudo yq '.write_files | select(.[].path == "/opt/rancher/bin/start.sh") | .[0].content' $F|egrep  -o '/Port\s+[0-9]+' | awk '{print  $2}'`
+			UC_HNAME_FULL=`sudo yq .hostname $F`
+			UC_IPS=`sudo yq .rancher.network.interfaces $F| egrep -o "address:\s+[0-9.:]+" | awk '{print $2}'`
+			if [ -n "`sudo grep state_root $F`" ]; then
+				echo USER_CONFIG=1
+				echo UC_PORT=$UC_PORT
+				echo UC_HNAME_FULL=$UC_HNAME_FULL
+				echo UC_IPS=$UC_IPS
+			fi
+		fi
+END
+}
+
+
+# check oem drive for getting "user_config.yml" and "$TARGET_DEV"
 ssh_inst sudo mkdir -p /mnt3
-ssh_inst sudo umount /mnt3
+ssh_inst sudo umount /mnt3 2> /dev/null
 for DRV in `ssh_inst sudo ls /dev | egrep ".*7$" | grep -v tty | grep -v loop`; do
 	if ssh_inst sudo mount -t btrfs -odegraded,subvol=/oem_root /dev/$DRV /mnt3; then
-		USER_CONFIG=`ssh_inst sudo cat /mnt3/var/lib/rancher/conf/cloud-config.d/user_config.yml`
+		PARAMS="`extract_uc_params`"
+		eval "$PARAMS"
 		ssh_inst sudo umount /mnt3
 		ssh_inst sudo rmdir /mnt3
-		uc=`echo "$USER_CONFIG"|grep state_root`
-		if [ -z "$uc" ]; then
-			echo -e "$warning: malformed user_config.yml$normal"
-			USER_CONFIG=""
-		else
-			echo -e "$cyan: user_config.yml found$normal"
+		if [ -n "$USER_CONFIG" ]; then
+			info "user_config.yml found"
 			break
 		fi
 	fi
 done
 
+# set up target device
 if [ -n "$USER_CONFIG" ];then
 	DRV=${DRV:0:-1}
 else
 	DRV=""
 fi
 
-
 if [ -n "$TARGET_DEV" ];then
 	if [ "$TARGET_DEV" = "$DRV" ]; then
 		TARGET_DEV=/dev/$DRV
 	else
 		if [ -n "$DRV" ]; then
-			if [ -n "$FORCE" ];then
-				echo -e "$warning: command line specified drive, '$TARGET_DEV' is different instralled state drive, '/dev/$DRV'.$normal"
-			else
-				echo -e "$error: command line specified drive, '$TARGET_DEV' is different instralled state drive, '/dev/$DRV'.$normal"
-				exit 1
-			fi
+			die "Command line specified drive, '$TARGET_DEV' is different from instralled drive, '/dev/$DRV'."
 		fi
 	fi
 else
 	if [ -n "$DRV" ]; then
 		TARGET_DEV=/dev/$DRV
 	else
+		warning destination device not specified. Using \'/dev/sda\'.
 		TARGET_DEV=/dev/sda
 	fi
 fi
+
+
+function reachable(){
+	local mask=$2
+	local gateway=$3
+	local ip=$1
+	local prefix
+	case $mask in
+		"24" )
+			prefix=`echo $ip|grep -oP '^\d{1,3}\.\d{1,3}.\d{1,3}\.'`
+			;;
+		"16" )
+			prefix=`echo $ip|grep -oP '^\d{1,3}\.\d{1,3}\.'`
+			;;
+		"8" )
+			prefix=`echo $ip|grep -oP '^\d{1,3}\.'`
+			;;
+	esac
+	if [ -z "$prefix" ]; then
+		return 1
+	fi
+	local psize=${#prefix}
+	if [ "${gateway:0:$psize}" = "$prefix" ]; then
+		return 0
+	else
+		return 1
+	fi
+}
+
+
+# set up ip address from command line or user_config.yml found in previous installation.
+if [ -n "$IP" ]; then
+	if [ -n "$UC_IPS" ]; then
+		for i in $UC_IPS; do
+			if [ $i == "$IP" ]; then
+				UC_IP=$IP
+				break
+			fi
+		done
+		if [ -z "$UC_IP" ];then
+			if [ -n "$FORCE" ];then
+				warn "Overwrite ip address with new one, $Cyan'$IP'$Yellow over current ip, $Cyan'$UC_IPS'$Yellow defined in user_config.yml"
+			else
+				die "Command line specified ip address, $Cyan'$IP'$Red is different from current ip, $Cyan'$UC_IPS'$Red defined in user_config.yml"
+			fi
+		fi
+	fi
+	if ! reachable $IP $NETMASK $GATEWAY; then
+		die "IP address, $Cyan'$IP'$red is not accessible to gateway, $Cyan'$GATEWAY/$NETMASK'$red."
+	fi
+else
+	if [ -n "$UC_IPS" ]; then
+		for i in $UC_IPS; do
+			if reachable $i $NETMASK $GATEWAY; then
+				info "Using ip address, '$i', defined in user_config.yml"
+				IP=$i
+				break
+			fi
+		done
+	fi
+fi
+
+
+# set up ssh port number from command line or user_config.yml found in previous installation.
+if [ -n "$PORT" ]; then
+	if [ -n "$UC_PORT" ]; then
+		if [ "$PORT" != "$UC_PORT" ];then
+			if [ -n "$FORCE" ];then
+				warn "Overwrite ssh port number with new one, $Cyan'$PORT'$Yellow over current ip, $Cyan'$UC_PORT'$Yellow defined in user_config.yml"
+			else
+				die "Command line specified ssh port number, $Cyan'$PORT'$Red is different from current one, $Cyan'$UC_PORT'$Red defined in user_config.yml"
+			fi
+		fi
+	fi
+else
+	if [ -n "$UC_PORT" ]; then
+		info "Using ssh port number, '$UC_PORT' defined in user_config.yml."
+		PORT=$UC_PORT
+	fi
+fi
+
+
+# set up host name from command line or user_config.yml found in previous installation.
+if [ -n "$HNAME" ]; then
+	if [ -n "$UC_HNAME_FULL" -a "$HNAME_FULL" != "$UC_HNAME_FULL" ]; then
+		if [ -n "$FORCE" ]; then
+			warn "Overwriting host name with new name, $Cyan'$UC_HNAME_FULL'$Yellow in user_config.yml (original: $Cyan'$HNAME_FULL'$Yellow)."
+		else
+			die "Command line specified host name, $Cyan'$HNAME_FULL'$Red is different from original host name, $Cyan'$HNAME_FULL'$Red defined in  user_config.yml."
+		fi
+	fi
+else
+	if [ -n "$UC_HNAME_FULL" ]; then
+		info "Using host name, '$UC_HNAME_FULL', defined in user_config.yml."
+		HNAME=${UC_HNAME_FULL%%.*}
+		HNAME_FULL=$UC_HNAME_FULL
+	else
+		if [ -n "$FORCE" ]; then
+			warn "Using host name, $Cyan'burmilla'$Yellow, befause missing host name in both command line and user_config.yml."
+		else
+			die "Missing host name in both command line and user_config.yml."
+		fi
+	fi
+fi
+
+
+
+# check ~/.ssh/config for hostname and ip address, port number
+
+function get_field2(){
+	echo $@|awk '{print $2}'
+}
+
+
+function write_ssh_config(){
+	info "writing entry of $1 in ~/.ssh/config with $IP:$PORT"
+	mkdir -m 700 -p ~/.ssh
+	echo  >> ~/.ssh/config
+	echo "Host $1
+HostName $IP
+User rancher
+Port $PORT
+" >> ~/.ssh/config
+}
+
+
+function rewrite_ssh_config(){
+	warn "rewriting entry of $HNAME_FULL in ~/.ssh/config with $IP:$PORT"
+	local insect=""
+	while read line; do
+		hln=`echo "$line"|grep -ioP "^\s*Host\s+[^#\s]+"|sed -e 's/[ \t]//g'`
+		if [ "$hln" = "Host$1" ]; then
+			insect=1
+		else
+			if [ -n "$hln" ]; then
+				insect=""
+			fi
+		fi
+		if [ -n "$insect" ]; then
+			line=`echo "$line"| sed -e 's/^\s*Port\s\s*[0-9][0-9]*/Port '$PORT'/ig'`
+            line=`echo "$line"| sed -e 's/^\s*Hostname\s\s*[^\s][^\s]*/HostName '$IP'/ig'`
+		fi
+		echo "$line"
+	done < ~/.ssh/config > ~/.ssh/config.new
+	if [ "`cat ~/.ssh/config`" != "`cat ~/.ssh/config.new`"; then
+		mv -f ~/.ssh/config ~/.ssh/config.bak
+		mv ~/.ssh/config.new ~/.ssh/config
+		chmod 600 ~/.ssh/config
+	fi
+}
+
+
+function check_ip_and_port(){
+	if [ -z "$IP" ];then
+		die "Missing IP address for both in the command line and user_config.yml, and cannot find section, $Cyan'Host $HNAME'$Red in $Cyan~./ssh/config$Red, where a line like $Cyan'HostName [ip address or resolvable host name]'$Red should be found."
+	fi
+	if [ -z "$PORT" ];then
+		RD=0
+		while [ "$RD" -le 1024 -o  -n "`grep $RD/tcp /etc/services`" ]; do
+			RD=$((RANDOM + RANDOM))
+		done
+		RANDOM_PORT=1
+		PORT=$RD
+		warn using randomely chosen port number, $PORT for ssh
+	fi
+}
+
+
+function loadOrRewrite(){
+	eval local hname='$'$1
+	if [ -z "$IP" -a -z "$PORT" ]; then
+		local ent=`get_ssh_config_entry $hname`
+		IP=${ent/:*}
+		PORT=${ent#*:}
+	else
+		if [ -n "$FORCE" ]; then
+			CMD_HNAME=$hname
+			check_ip_and_port
+			rewrite_ssh_config $hname
+		else
+			local ent=`get_ssh_config_entry $hname`
+			local EIP=${2/:*}
+			local EPORT=${2#*:}
+			if [ -n "$IP" ]; then
+				if [ -n "$PORT" ]; then
+					die "$IP:$PORT is different from relevant entry, '$EIP:$EPORT' of '$1' in ~/.ssh/config."
+				else
+					die "$IP is different from entrym,'$EIP' of '$1' in ~/.ssh/config, and port number for ssh is not specified."
+				fi
+			else
+				die "ssh port number, '$PORT' is different from relevant entry, '$EPORT' of '$1' in ~/.ssh/config, and IP address for server is not specified."
+			fi
+		fi
+	fi
+}
+
+
+if [ -z "$CMD_HNAME" ]; then
+	hnEnt=`get_ssh_config_entry $HNAME`
+	hnfEnt=`get_ssh_config_entry $HNAME_FULL`
+	if [ -n "$hnEnt" ]; then
+		if [ -n "$hnfEnt" ]; then
+			if [ "$hnEnt" = "$IP:$PORT" ]; then
+				CMD_HNAME=$HNAME
+			else # shorname entry not match for ip or port number
+				if [ "$hnfEnt" = "$IP:$PORT" ]; then #long name match
+					CMD_HNAME=$HNAME_FULL
+				else # ip and port not matches both short and full name
+					loadOrRewrite HNAME
+				fi
+			fi
+		else # only short name entry exists
+			if [ "$hnEnt" = "$IP:$PORT" ]; then
+				CMD_HNAME=$HNAME
+			else # shorname not match
+				loadOrRewrite HNAME
+			fi
+		fi
+	else
+		if [ -n "$hnfEnt"]; then # only long name entry exists
+			if [ "$hnfEnt" = "$IP:$PORT" ]; then
+				CMD_HNAME=$HNAME_FULL
+			else
+				loadOrRewrite HNAME_FULL
+			fi
+		else # no entry found
+			check_ip_and_port
+			rewrite_ssh_config $HNAME
+			CMD_HNAME=$HNAME
+		fi
+	fi
+else
+	hncEnt=`get_ssh_config_entry $CMD_HNAME`
+	if [ -n "$hncEnt" ]; then
+		if [ "$hncEnt" != "$IP:$PORT" ]; then
+			loadOrRewrite CMD_HNAME
+		fi
+	else
+		check_ip_and_port
+		write_ssh_config $CMD_HNAME
+	fi
+fi
+
+
+
+##################
 
 
 TARGET_DEV1="$TARGET_DEV"1
@@ -285,34 +670,14 @@ TARGET_DEV7="$TARGET_DEV"7
 
 
 if [ -z "$USER_CONFIG" ]; then
-	echo -e "$cyan""cannot find /var/lib/rancher/conf/cloud-config.d/user_config.yml on oem partition.$normal"
+	info Cannot find /var/lib/rancher/conf/cloud-config.d/user_config.yml on oem partition.
 fi
 
 
-NET_DEV=`ssh_inst ip route show|grep default|awk '{print $5}'|head -1`
-if [ -z "$NET_DEV" ]; then
-	echo -e "$error: Cannot find net device for default route."
-	exit 1
+ssh_inst sudo apt-get -y update
+if ! ssh_inst sudo apt-get -y install fdisk; then
+	die cannot install fdisk
 fi
-DNS_SETTINGS=`ssh_inst cat /etc/resolv.conf| sed -e 's/[ \t]*#.*//' | grep "nameserver" | sed -e 's/^[ \t]*//' | awk '{print $2}' | sed -e 's/^/      - /'`
-if [ -z "$DNS_SETTINGS" ]; then
-	echo -e "$error: Cannot find DNS setting."
-	exit 1
-fi
-NETMASK=`ssh_inst ip address show dev $NET_DEV | grep 'inet ' | grep global | awk '{print $2}'| sed -e 's/.*\///'|head -1`
-if [ -z "$NETMASK" ]; then
-	echo -e "$error: Cannot find net mask."
-	exit 1
-fi
-GATEWAY=`ssh_inst ip route |egrep '^default via'|awk '{print $3}'|head -1`
-if [ -z "$GATEWAY" ]; then
-	echo -e "$error: Cannot find defalt gateway."
-	exit 1
-fi
-
-
-ssh_inst sudo apt-get update
-ssh_inst sudo apt-get -y install fdisk
 
 
 DISK_SIZE=`ssh_inst -t sudo bash -c "'"sudo fdisk -l $TARGET_DEV \|grep \"Disk $TARGET_DEV\"\|awk \"{print $\"\"5}\""'"|grep -v boundary`
@@ -335,22 +700,20 @@ fi
 INST_DRIVE=/dev/`ssh_inst readlink /dev/disk/by-label/RANCHEROS | sed -e 's/.*\///'`
 
 if [ "$INST_DRIVE" = "/dev/" ];then
+	die "Abnormal installer's drive $Cyan'$INST_DRIVE'$Red."
 	exit 1
 fi
 
 if [ "${INST_DRIVE:0:-1}" = "$TARGET_DEV" ];then
-	echo -e "$error: Installer device is same as target device, $TARGET_DEV. Stop installation.$plain"
-	exit 1
+	die "Installer device is same as target device, $TARGET_DEV. Stop installation."
 fi
 
 if [ "$INST_DRIVE" = "" ];then
-	echo -e "$error: Installer device is not detected. Stop installation.$plain"
-	exit 1
+	die "Installer device is not detected. Stop installation."
 fi
 
 if [ "$DISK_SIZE" -le 1073741824 ];then
-	echo -e "$error: size of $TARGET_DEV, less than 1G.$plain"
-	exit 1
+	die "size of $TARGET_DEV, less than 1G."
 fi
 
 # TZ environmental variable
@@ -374,24 +737,33 @@ else
 fi
 TZL="$TZ_N$TZ_DS$TZ_DH$TZ_DM"
 
-echo -e $cyan
-echo INSTALL FROM "$INST_DRIVE"
-echo NET_INTERFACE="$NET_DEV"
-echo IP=$IP
-echo DNS_SETTINGS="$DNS_SETTINGS"
-echo GATEWAY=$GATEWAY
-echo NETMASK=$NETMASK
-echo DISK_SIZE=$DISK_SIZE
-echo MEM_SIZE=$MEM_SIZE
-echo TZ=$TZL
-echo PORT=$PORT
-echo -e $plain
+info "INSTALL FROM "$INST_DRIVE"
+NET_INTERFACE="$NET_DEV"
+IP=$IP
+DNS_SETTINGS="$DNS_SETTINGS"
+GATEWAY=$GATEWAY
+NETMASK=$NETMASK
+DISK_SIZE=$DISK_SIZE
+MEM_SIZE=$MEM_SIZE
+TZ=$TZL
+PORT=$PORT"
 
 
 #ssh_inst sudo ros console switch ubuntu -f
 sleep 5
 ssh_inst bash -c "cat - > __install_rancher" <<FINAL
 #!/bin/bash
+
+function die(){
+	echo $error"$@"$plain
+	exit 1
+}
+
+function info(){
+	echo $info"$@"$plain
+}
+
+
 apt-get update; apt-get install -y gdisk lvm2 dosfstools btrfs-progs parted
 dd if=/dev/zero of=$TARGET_DEV bs=1G count=1
 partprobe
@@ -428,12 +800,12 @@ n
 n
 5
 
-+1G
+$STATE_PART_SIZE
 8300
 n
 6
 
-$STATE_PART_SIZE
++1G
 8300
 n
 7
@@ -475,10 +847,9 @@ ssh_authorized_keys:
 ln $INST_DRIVE /dev/sr0
 ls -la /dev/sr0
 if ros install --no-reboot -f -t gptsyslinux -c cloud-config.yml -d $TARGET_DEV -p $TARGET_DEV4; then
-	echo ros insall finished
+	info ros insall finished
 else
-	echo Error: ros install failed
-	exit 1
+	die ros install failed
 fi
 mkdir /mnt/efipart
 mount $TARGET_DEV2 /mnt/efipart
@@ -490,51 +861,50 @@ mkfs.btrfs -L RANCHER_STATE_SIBLING -f $TARGET_DEV5
 partprobe
 STATE_UUID=\`sudo ls -l /dev/disk/by-uuid | grep "${TARGET_DEV5##*/}" | awk '{print \$9}'\`
 if [ -z "\$STATE_UUID" ];then
-	echo "Error: cannot detect uuid of state device, $TARGET_DEV5."
-	exit 1
+	die cannot detect uuid of state device, $TARGET_DEV5.
 fi
 mount $TARGET_DEV5 /mnt
 btrfs subvolume create /mnt/state_root
 btrfs subvolume set-default \`btrfs subvolume list /mnt|grep state_root|awk '{print \$2}'\` /mnt
-mkdir /mnt/state_root/btrfs_top_lvl
-cp -av /opt/* /mnt/state_root
+mkdir /mnt/state_root/state_top_lvl
+cp -a /opt/* /mnt/state_root
 umount /opt
 mkfs.btrfs -L RANCHER_BOOT_SIBLING -f $TARGET_DEV4
 partprobe
 BOOT_UUID=\`sudo ls -l /dev/disk/by-uuid | grep ${TARGET_DEV4##*/} | awk '{print \$9}'\`
 if [ -z "\$BOOT_UUID" ];then
-	echo "Error: cannot detect uuid of boot device, $TARGET_DEV4."
-	exit 1
+	die cannot detect uuid of boot device, $TARGET_DEV4.
 fi
 
-mkfs.btrfs -L RANCHER_OEM_SIBLING -f $TARGET_DEV7
-partprobe
-OEM_UUID=\`sudo ls -l /dev/disk/by-uuid | grep "${TARGET_DEV7##*/}" | awk '{print \$9}'\`
-if [ -z "\$OEM_UUID" ];then
-	echo "Error: cannot detect uuid of state device, $TARGET_DEV7."
-	exit 1
+if [ ! -e /dev/disk/by-label/RANCHER_OEM_SIBLING ]; then
+	mkfs.btrfs -L RANCHER_OEM_SIBLING -f $TARGET_DEV7
+	partprobe
+	OEM_UUID=\`sudo ls -l /dev/disk/by-uuid | grep "${TARGET_DEV7##*/}" | awk '{print \$9}'\`
+	if [ -z "\$OEM_UUID" ];then
+		die cannot detect uuid of state device, $TARGET_DEV7.
+	fi
+	mkdir -p /opt2
+	mount $TARGET_DEV7 /opt2
+	btrfs subvolume create /opt2/oem_root
+	btrfs subvolume set-default \`btrfs subvolume list /opt2|grep oem_root|awk '{print \$2}'\` /opt2
+	umount /opt2
+else
+	OEM_UUID=\`sudo ls -l /dev/disk/by-uuid | grep "${TARGET_DEV7##*/}" | awk '{print \$9}'\`
 fi
-mkdir -p /opt2
-mount $TARGET_DEV7 /opt2
-btrfs subvolume create /opt2/oem_root
-btrfs subvolume set-default \`btrfs subvolume list /opt2|grep oem_root|awk '{print \$2}'\` /opt2
-umount /opt2
 
 mount $TARGET_DEV4 /opt
-cp -av /mnt/state_root/boot/* /opt/
+cp -a /mnt/state_root/boot/* /opt/
 rm -rf /mnt/state_root/boot/*
 
 VMLINUZ_FILE=\`cd /opt;ls -d vmlinuz-*\`
 VMLINUZ_FILE_COUNT=\`echo "\$VMLINUZ_FILE" | wc | awk '{print \$1}'\`
 if [ "\$VMLINUZ_FILE_COUNT" != "1" ];then
-    echo \"$error\"\"cannot detect linux kernel in iso image, or multiple kernel detected.\"\"$plain\"
-    exit 1
+    die cannot detect linux kernel in iso image, or multiple kernel detected.
 fi
 INITRD_FILE=\`cd /opt;ls -d initrd-*\`
 INITRD_FILE_COUNT=\`echo "\$INITRD_FILE" | wc | awk '{print \$1}'\`
 if [ "\$INITRD_FILE_COUNT" != "1" ];then
-    echo \"$error\"\"cannot detect initrd in iso image, or multiple initrd detected.\"\"$plain\"
-    exit 1
+    die cannot detect initrd in iso image, or multiple initrd detected.
 fi
 
 INITRD_VER=\${INITRD_FILE#*-}
@@ -546,7 +916,7 @@ GLOBAL_APPEND_ARGS=\${GLOBAL_APPEND#APPEND *}
 KERNEL_ARGS="rancher.state.oem_mountopt=degraded,subvol=/oem_root rancher.state.mountopt=degraded,subvol=/state_root rancher.password=rancher \$GLOBAL_APPEND_ARGS rw rootflags=degraded,subvol=/state_root"
 VGA_SIZE=1024x768
 VGA_MODE=775
-VGA_ARGS="nomodeset vga=\$VGA_MODE video=\$VGA_SIZE"
+VGA_ARGS="i915.force_probe vga=\$VGA_MODE video=\$VGA_SIZE"
 echo APPEND \$VGA_ARGS \$KERNEL_ARGS > /opt/global.cfg
 ROOT_ARGS="rancher.state.boot_dev=UUID=\$BOOT_UUID rancher.state.oem_dev=UUID=\$OEM_UUID rancher.state.dev=UUID=\$STATE_UUID root=UUID=\$STATE_UUID"
 
@@ -587,29 +957,29 @@ function reboot_by_passwd(){
 	"
 }
 
-echo -e "$green""rebooting ... $normal"
+green rebooting ...
 
 wait_sshd_start
 
 while ! ssh_inst echo; do
-	echo -e "$green""Switch to boot by desitination disk$normal"
-	echo -e "rebooting ...$normal"
+	green Switch to boot by desitination disk
+	green rebooting ...
 	reboot_by_passwd
 	sleep 10
 	wait_sshd_start
 done
 
 if [ "`ssh_inst cat /proc/cmdline | grep -o rancher.state.dev=`" = "rancher.state.dev=" ]; then
+	cyan_n Waiting initialization.
 	while [ -z "`ssh_inst ps ax | grep 'containerd --config /var/run/docker/containerd/containerd.toml'`" ]; do
-		echo -e "$cyan waiting initilization$normal"
 		sleep 1
+		cyan_n .
 	done
-	echo -e "$green""Switch to boot by installer$normal"
+	green Switch to boot by installer
 	ssh_inst sudo reboot
 	wait_sshd_start
 else
-	echo -e "$error: destination disk not found$normal"
-	exit 1
+	die destination disk not found
 fi
 
 
@@ -618,29 +988,22 @@ install_ssh_key
 ssh_inst sudo mkdir -p /mnt2
 ssh_inst sudo mount $TARGET_DEV5 /mnt2 -odegraded
 if [ -z "`ssh_inst ls -ld /mnt2/home`" ];then
-	echo -e "$error: Please boot from installed hard disk only ONCE.$plain"
-	exit 1
+	die "Please boot from installed hard disk only ONCE."
 fi
 if [ -n "`ssh_inst ls -ld /mnt2/home|grep oem`" ];then
-	echo -e "$error: Already installed with oem disk.$plain"
-	exit 1
+	die "Already installed with oem disk."
 fi
 
-
+UF=/opt2/var/lib/rancher/conf/cloud-config.d/user_config.yml
 ssh_inst bash -c "cat - > __install_rancher" <<FINAL
 #!/bin/bash
-apt-get update; apt-get install -y gdisk lvm2 dosfstools btrfs-progs parted
+#apt-get update; apt-get install -y gdisk lvm2 dosfstools btrfs-progs parted
 mkdir -p /opt2
 mount -t btrfs -odegraded,subvol=/oem_root $TARGET_DEV7 /opt2
 if [ -z "$USER_CONFIG" ]; then
-	cp -av /mnt2/root /opt2
-	cp -av /mnt2/home /opt2
-	mkdir -p /opt2/var
-	cp -av /mnt2/var/log /opt2/var
-	mkdir -p /opt2/var/lib/rancher
-	cp -av /mnt2/var/lib/rancher/conf /opt2/var/lib/rancher
 	echo -n "
 hostname: $HNAME_FULL
+date: \"`date`\"
 rancher:
   network:
     dns:
@@ -687,27 +1050,120 @@ write_files:
         fi
       fi
 runcmd:
-- mkdir -p /btrfs_top_lvl
-- mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`readlink /dev/root|egrep -o "[0-9a-f-]+"\\\` | egrep -o "sd.")5 -odegraded,subvol=/ /btrfs_top_lvl
-#- mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`readlink /dev/root|egrep -o "[0-9a-f-]+"\\\` | egrep -o "sd.")4 -odegraded /boot
+- mkdir -p /state_top_lvl
+- mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`readlink /dev/root|egrep -o "[0-9a-f-]+"\\\` | egrep -o "sd.")5 -odegraded,subvol=/ /state_top_lvl
+- mkdir -p /oem_top_lvl
+- mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`readlink /dev/root|egrep -o "[0-9a-f-]+"\\\` | egrep -o "sd.")7 -odegraded,subvol=/ /oem_top_lvl
 - mkdir -p /boot/efi
 - mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`readlink /dev/root|egrep -o "[0-9a-f-]+"\\\` | egrep -o "sd.")2 /boot/efi
 - swapon /dev/\\\$(readlink /dev/disk/by-uuid/\\\`readlink /dev/root|egrep -o "[0-9a-f-]+"\\\` | egrep -o "sd.")3
-- btrfs quota enable /btrfs_top_lvl
-- btrfs quota enable /btrfs_top_lvl/state_root
+- btrfs quota enable /state_top_lvl
+- btrfs quota enable /state_top_lvl/state_root
+- btrfs quota enable /oem_top_lvl
+- btrfs quota enable /oem_top_lvl/oem_root
 #cloud-config
 ssh_authorized_keys:
  - $KEY
-" > /opt2/var/lib/rancher/conf/cloud-config.d/user_config.yml
+" > $UF
+else
+	if [ ! -x /usr/bin/yq ]; then
+		if [ -n "`uname -a|grep armv7`" ]; then
+			wget "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_arm" -q -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
+		fi
+		if [ -n "`uname -a|grep aarc64`" ]; then
+			wget "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_arm64" -q -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
+		fi
+		if [ -n "`uname -a|grep x86_64`" ]; then
+			wget "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64" -q -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
+		fi
+	fi
+	if [ ! -x /usr/bin/yq ];then
+		echo "ERROR:Cannot download /usr/bin/yq" >&2
+	fi
+	yq e -i ".hostname|=\"$HNAME_FULL\"" $UF
+	yq e -i ".rancher.network.dns.nameservers|=$DNS_SETTINGS_YQ2" $UF
+	yq e -i ".rancher.network.interfaces.$NET_DEV.address|=\"$IP/$NETMASK\"" $UF
+	yq e -i ".rancher.network.interfaces.$NET_DEV.gateway|=\"$GATEWAY\"" $UF
+	yq e -i ".rancher.services.console.environment.TZ|=\"$TZL\"" $UF
+	yq e -i ".rancher.services.syslog.environment.TZ|=\"$TZL\"" $UF
+	yq e -i ".date|=\"`date`\"" $UF
+	c=""
+	i=0
+	pre="sudo sed -i 's/#Port 22/Port "
+	post="/' /etc/ssh/sshd_config"
+	while [ 1 ]; do
+		case "\`yq e '.write_files.['\$i'].path' $UF\`" in
+			"/opt/rancher/bin/start.sh" )
+				yq e '.write_files.['\$i'].content' $UF > ./tmp_file
+				while IFS= read line; do
+					if [ "\${line:0:\${#pre}}" ==  "\$pre" ]; then
+						if [ "\${line:\$((\${#line} - \${#post})):\${#post}}" == "\$post" ]; then
+							line="\$pre"$PORT"\$post"
+						fi
+					fi
+					echo "\$line"
+				done < ./tmp_file > ./tmp_file2
+				yq e -i '.write_files.['\$i'].content|="'"\`cat ./tmp_file2\`"'"' $UF
+				break
+				;;
+			"null" )
+				break
+				;;
+		esac
+		i=\$(( i + 1 ))
+		if [ "$i" == "1000" ];then
+			break
+		fi
+	done
+	i=0
+	while [ 1 ]; do
+		k="\`yq e '.ssh_authorized_keys.['\$i']' $UF\`"
+		case "\$k" in
+			"$KEY" )
+				break
+				;;
+			"null" )
+				echo null
+				yq e -i '.ssh_authorized_keys.['\$i']|="'"$KEY"'"' $UF
+				break
+				;;
+		esac
+		i=\$(( i + 1 ))
+		if [ "$i" == "1000" ];then
+			break
+		fi
+	done
 fi
 
+mkdir -p /mnt2/oem_top_lvl
+mkdir -p /mnt2/state_top_lvl
 
-mkdir -p /opt2/btrfs_top_lvl
+[ ! -e /opt2/home ] && cp -af /mnt2/home /opt2
+[ ! -e /opt2/root ] && cp -af /mnt2/root /opt2
+mkdir -p /opt2/var
+[ ! -e /opt2/var/log ] && cp -af /mnt2/var/log /opt2/var
+mkdir -p /opt2/var/lib/rancher
+[ ! -e /opt2/var/lib/rancher/conf ] && cp -af /mnt2/var/lib/rancher/conf /opt2/var/lib/rancher
+
 rm -rf /mnt2/{root,home,var/log,var/lib/rancher/conf}
-ln -s /usr/share/ros/oem/root /mnt2/root 
+ln -s /usr/share/ros/oem/root /mnt2/root
 ln -s /usr/share/ros/oem/home /mnt2/home
 ln -s /usr/share/ros/oem/var/log /mnt2/var/log
 ln -s /usr/share/ros/oem/var/lib/rancher/conf /mnt2/var/lib/rancher/conf
+
+mkdir -p /opt2/etc/ssh
+for f in \`find /mnt2 -name "ssh_host_*_key*"\`; do
+	fx=/opt2/etc/ssh/\${f##*/}
+	if [ ! -e \$fx ];then
+		cp -af \$f /opt2/etc/ssh
+	fi
+	ln -sf /usr/share/ros/oem/etc/ssh/\${f##*/} \$f
+done
+
+mkdir -p /opt2/var/lib/yougain/burmilla
+echo -n "USER_SETTINGS='rancher.network.interfaces.$NET_DEV.address=$IP/$NETMASK rancher.network.interfaces.$NET_DEV.gateway=$GATEWAY rancher.network.dns.nameservers=$DNS_SETTINGS_YQ'" > /opt2/var/lib/yougain/burmilla/grub_env_for_installer
+chmod +x /opt2/var/lib/yougain/burmilla/grub_env_for_installer
+
 reboot
 
 FINAL
