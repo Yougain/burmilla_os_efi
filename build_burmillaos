@@ -9,7 +9,9 @@ fi
 
 sudo apt-get install -y make
 git-force-clone https://github.com/burmilla/os.git ~/os
+ODIR=`pwd`
 cd ~/os
+patch -p1 < $ODIR/mountOpt.patch
 sudo make
 cd ~/
 mkdir -p ~/burmillaos_efi

@@ -10,6 +10,11 @@ function check_cmd {
 	done
 }
 
+
+if [ -x "apt-get" ];then
+	sudo apt-get install -y gdisk genisoimage dosfstools mount
+fi
+
 check_cmd fallocate gdisk losetup mkfs.fat mkisofs
 if [ -n "$NO_CMD" ];then
 	echo "Terminated."
