@@ -141,10 +141,15 @@ function WG(){
 			echo "ERROR: wget $@ failed. Exiting." >&2
 			exit 1
 		fi
-		echo "'$outFile'"
 		if [ "$outFie" != "-" ]; then
 			if [ ! -s "$outFie" ]; then
-				echo "ERROR: `ls $outFile` 'wget $outOpt2 $nc $@' failed. Exiting." >&2
+				ls -la $outFile
+				if [ ! -s "$outFie" ]; then
+					echo "err"
+				else
+					echo "non err"
+				fi
+				echo "ERROR: 'wget $outOpt2 $nc $@' failed. Exiting." >&2
 				exit 1
 			fi
 		fi
