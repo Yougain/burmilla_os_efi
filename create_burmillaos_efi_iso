@@ -262,9 +262,12 @@ fi
 
 
 if search --set=oem --label RANCHER_OEM_SIBLING; then
-	ev_f=(\$oem)/oem_root/var/lib/yougain/burmilla/grub_env_for_installer
+	set timeout=100
+	set ev_f=(\$oem)/oem_root/var/lib/yougain/burmilla/grub_env_for_installer
 	if [ -e \$ev_f ]; then
+		set timeout=200
 		source \$ev_f
+		set timeout=300
 	fi
 fi
 
