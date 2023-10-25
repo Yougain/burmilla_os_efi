@@ -126,7 +126,7 @@ function WG(){
 			go=1
 			;;
 		"")
-			echo "Error: argument error for wget $@. Exiting"
+			echo "Error: argument error for wget $@. Exiting" >&2
 			exit 1
 			;;
 		*)
@@ -137,13 +137,13 @@ function WG(){
 	esac
 	
 	if [ -n "$go" ]; then
-		if ! wget $outOpt2 $nc -q $@;then
-			echo "ERROR: wget $@ failed. Exiting."
+		if ! wget $outOpt2 $nc $@;then
+			echo "ERROR: wget $@ failed. Exiting." >&2
 			exit 1
 		fi
 		if [ "$outFie" != "-" ]; then
 			if [ ! -s "$outFie" ]; then
-				echo "ERROR: wget $@ failed. Exiting."
+				echo "ERROR: wget $outOpt2 $nc $@. failed. Exiting." >&2
 				exit 1
 			fi
 		fi
