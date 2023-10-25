@@ -90,19 +90,35 @@ if [ -z "$BURMILLAOS_VER" ];then
 	exit 1
 fi
 
+UB_CERT_URL=https://letsencrypt.org/certs/lets-encrypt-r3.pem
+UB_CERT=$T/${UB_CERT_URL##*/}
+
+
+function WG(){
+	if ! wget $@; then
+		echo "ERROR: wget $@ failed exitting."
+		exit 1
+	fi
+}
+
+
+if [ ! -s $UB_CERT ]; then
+	WG --no-check-certificate $UB_CERT_URL -q -nc -O $UB_CERT
+	WG --ca-certificate=$UB_CERT $UB_CERT_URL -q -nc -O $UB_CERT
+fi
 
 BURMILLAOS_VER=${BURMILLAOS_VER%$'\n'*}
 echo BurmillaOS Version: $BURMILLAOS_VER
 BURMILLA_ISO="$T"/burmillaos-$BURMILLAOS_VER.iso
 
-LATEST_U=`wget --no-check-certificate -O - https://releases.ubuntu.com/ 2>/dev/null|awk '/Ubuntu [0-9]+(\.[0-9]+)+ LTS/{print $0}'|head -1|awk '{match($0, /Ubuntu [0-9]+(\.[0-9]+)+ LTS \([^)]+\)/); print substr($0, RSTART, RLENGTH)}'`
+LATEST_U=`wget --ca-certificate=$UB_CERT -O - https://releases.ubuntu.com/ 2>/dev/null|awk '/Ubuntu [0-9]+(\.[0-9]+)+ LTS/{print $0}'|head -1|awk '{match($0, /Ubuntu [0-9]+(\.[0-9]+)+ LTS \([^)]+\)/); print substr($0, RSTART, RLENGTH)}'`
 LATEST_UV=`echo $LATEST_U | awk '{print $2}'`
-UDIR=`wget --no-check-certificate -O - https://releases.ubuntu.com/ 2>/dev/null|grep "$LATEST_U"|grep href| head -1|awk '{match($0,/href="[^"]+"/);print substr($0,RSTART+6,RLENGTH-7)}'`
+UDIR=`wget --ca-certificate=$UB_CERT -O - https://releases.ubuntu.com/ 2>/dev/null|grep "$LATEST_U"|grep href| head -1|awk '{match($0,/href="[^"]+"/);print substr($0,RSTART+6,RLENGTH-7)}'`
 UBUNTU_ISO="$T"/ubuntu-$LATEST_UV-live-server-amd64.iso
 echo Ubuntu Version: $LATEST_UV
 
 if [ ! -s $BURMILLA_ISO ];then
-	if ! wget -nc --no-check-certificate https://github.com/burmilla/os/releases/download/$BURMILLAOS_VER/burmillaos-$BURMILLAOS_VER.iso -O $BURMILLA_ISO; then
+	if ! wget -nc https://github.com/burmilla/os/releases/download/$BURMILLAOS_VER/burmillaos-$BURMILLAOS_VER.iso -O $BURMILLA_ISO; then
 		echo "Error: cannot download burmilla iso. exitting"
 		exit 1
 	else
@@ -114,7 +130,7 @@ if [ ! -s $BURMILLA_ISO ];then
 fi
 
 if [ ! -s $UBUNTU_ISO ];then
-	if ! wget -nc --no-check-certificate https://releases.ubuntu.com/$UDIR"ubuntu-$LATEST_UV-live-server-amd64.iso" -O $UBUNTU_ISO; then
+	if ! wget -nc --ca-certificate=$UB_CERT https://releases.ubuntu.com/$UDIR"ubuntu-$LATEST_UV-live-server-amd64.iso" -O $UBUNTU_ISO; then
 		echo "Error: cannot download ubuntu iso. exitting"
 		exit 1
 	else
