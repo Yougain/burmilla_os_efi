@@ -98,7 +98,9 @@ UB_CERT=$T/${UB_CERT_URL##*/}
 
 
 function WG(){
-	local outOpt, outFile, outOpt2
+	local outOpt
+	local outFile
+	local outOpt2
 	for ag in $@;do
 		if [ -n "$outOpt" ];then
 			outFile=$ag
@@ -117,7 +119,8 @@ function WG(){
 			fi
 		done
 	fi
-	local nc, go
+	local nc
+	local go
 	case "$outFile" in
 		"-")
 			go=1
