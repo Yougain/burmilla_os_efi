@@ -261,7 +261,7 @@ if search --set=state --label RANCHER_STATE_SIBLING; then
 fi
 
 
-if search --set=oem --label RANCHER_STATE_OEM; then
+if search --set=oem --label RANCHER_OEM_SIBLING; then
 	ev_f=(\$oem)/oem_root/var/lib/yougain/burmilla/grub_env_for_installer
 	if [ -e \$ev_f ]; then
 		source \$ev_f
@@ -282,8 +282,13 @@ menuentry "Install Burmilla $BURMILLAOS_VER" {
 }
 grub_platform
 if [ "\$grub_platform" = "efi" ]; then
-menuentry 'Boot from next volume' {
-    exit 1
+menuentry 'Boot from next UEFI' {
+	if search --no-floppy --set=efi --label EFI; then
+		prefix=(\$efi)/efi/boot
+		configfile \$prefix/grub.cfg
+	else
+		exit 1
+	fi
 }
 menuentry 'BIOS/UEFI Firmware Settings' {
     fwsetup
