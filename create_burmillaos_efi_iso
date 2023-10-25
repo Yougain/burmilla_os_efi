@@ -18,7 +18,7 @@ function check_cmd {
 PATH=/sbin:$PATH
 
 if [ -x "/usr/bin/apt-get" ];then
-	sudo apt-get install -y gdisk genisoimage dosfstools mount grub2 parted xorriso
+	sudo apt-get install -y gdisk genisoimage dosfstools mount grub2 parted xorriso grub-efi
 fi
 
 check_cmd fallocate gdisk losetup mkfs.fat mkisofs partprobe xorriso
