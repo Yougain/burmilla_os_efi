@@ -322,7 +322,7 @@ else
 	GMK=grub-mkimage
 fi
 
-if !sudo $GMK \
+if ! sudo $GMK \
 	-c "$T"/early-config.cfg \
     -C xz \
     -p '' \
