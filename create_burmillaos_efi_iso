@@ -137,7 +137,7 @@ function WG(){
 	esac
 	
 	if [ -n "$go" ]; then
-		if ! wget $outOpt2 $nc $@;then
+		if ! wget $outOpt2 -q $nc $@;then
 			echo "ERROR: wget $@ failed. Exiting." >&2
 			exit 1
 		fi
