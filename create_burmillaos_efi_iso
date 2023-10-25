@@ -322,7 +322,7 @@ else
 	GMK=grub-mkimage
 fi
 
-sudo $GMK \
+if !sudo $GMK \
 	-c "$T"/early-config.cfg \
     -C xz \
     -p '' \
@@ -332,7 +332,10 @@ sudo $GMK \
     part_gpt btrfs ext2 fat iso9660 loopback \
     test keystatus gfxmenu regexp probe \
     efi_gop efi_uga all_video gfxterm font \
-    echo read ls cat png jpeg halt reboot
+    echo read ls cat png jpeg halt reboot; then
+    	echo "Cannot exec mkgrub"
+    	exit 1
+fi
 
 sudo umount $BOOT_IMG_DATA
 sudo rm -rf $BOOT_IMG_DATA
