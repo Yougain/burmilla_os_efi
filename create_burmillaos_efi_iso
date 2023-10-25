@@ -277,7 +277,7 @@ set menu_color_normal=white/black
 set menu_color_highlight=black/light-gray
 
 menuentry "Install Burmilla $BURMILLAOS_VER" {
-    linux   /boot/$KERNEL_FILE $VGA_ARGS $USER_SETTINGS $KERNEL_ARGS ---
+    linux   /boot/$KERNEL_FILE $VGA_ARGS \$USER_SETTINGS $KERNEL_ARGS ---
     initrd  /boot/initrd-$BURMILLAOS_VER
 }
 grub_platform
@@ -294,7 +294,7 @@ menuentry 'Test memory' {
 }
 fi
 menuentry "Debug Burmilla $BURMILLAOS_VER" {
-    linux   /boot/$KERNEL_FILE vga=ask rancher.debug=true $USER_SETTINGS $KERNEL_ARGS ---
+    linux   /boot/$KERNEL_FILE vga=ask rancher.debug=true \$USER_SETTINGS $KERNEL_ARGS ---
     initrd  /boot/initrd-$BURMILLAOS_VER
 }
 END
