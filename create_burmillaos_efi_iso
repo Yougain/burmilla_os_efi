@@ -277,12 +277,6 @@ set menu_color_normal=white/black
 set menu_color_highlight=black/light-gray
 
 menuentry "Install Burmilla $BURMILLAOS_VER" {
-	if search --set=oem --label RANCHER_OEM_SIBLING; then
-		set ev_f=(\$oem)/oem_root/var/lib/yougain/burmilla/grub_env_for_installer
-		if [ -e \$ev_f ]; then
-			source \$ev_f
-		fi
-	fi
     linux   /boot/$KERNEL_FILE $VGA_ARGS \$USER_SETTINGS $KERNEL_ARGS ---
     initrd  /boot/initrd-$BURMILLAOS_VER
 }
@@ -304,12 +298,6 @@ else
 	}
 fi
 menuentry "Debug Burmilla $BURMILLAOS_VER" {
-	if search --set=oem --label RANCHER_OEM_SIBLING; then
-		set ev_f=(\$oem)/oem_root/var/lib/yougain/burmilla/grub_env_for_installer
-		if [ -e \$ev_f ]; then
-			source \$ev_f
-		fi
-	fi
     linux   /boot/$KERNEL_FILE vga=ask rancher.debug=true \$USER_SETTINGS $KERNEL_ARGS ---
     initrd  /boot/initrd-$BURMILLAOS_VER
 }
