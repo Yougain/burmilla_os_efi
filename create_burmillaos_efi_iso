@@ -344,9 +344,10 @@ echo iso boot from \"$BOOT_IMG\"
 
 echo All files are prepared.
 
-#sudo xorriso -as mkisofs -r -V "RANCHEROS" -cache-inodes -J -l -b boot/isolinux/isolinux.bin -isohybrid-mbr /usr/share/syslinux/isohdpfx.bin -c boot/isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -eltorito-alt-boot -eltorito-platform efi -eltorito-boot boot/isolinux/efiboot.img -o $P_ISO $PD
 
-mv $PD/ldlinux.sys{,.nouse}
+sudo rm -rf $PD/boot/isolinux
+sudo rm -rf $PD/boot/linux-current.cfg
+
 
 sudo xorriso -as mkisofs \
     -iso-level 3 \
