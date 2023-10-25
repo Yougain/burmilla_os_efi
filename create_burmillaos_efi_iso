@@ -333,7 +333,7 @@ if ! sudo $GMK \
     test keystatus gfxmenu regexp probe \
     efi_gop efi_uga all_video gfxterm font \
     echo read ls cat png jpeg halt reboot; then
-    	echo "Cannot exec mkgrub"
+    	echo "ERROR: 'grub-mkimage' failed."
     	exit 1
 fi
 
