@@ -127,14 +127,14 @@ function WG(){
 			exit 1
 			;;
 		*)
-			if [ ! -s "$outFile" ];
+			if [ ! -s "$outFile" ];then
 				go=1
 			fi
 			nc=-nc
 	esac
 	
 	if [ -n "$go" ]; then
-		if ! wget $outOpt2 $nc -q $@
+		if ! wget $outOpt2 $nc -q $@;then
 			echo "ERROR: wget $@ failed. Exiting."
 			exit 1
 		fi
