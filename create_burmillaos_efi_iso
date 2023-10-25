@@ -110,7 +110,7 @@ function WG(){
 	done
 	if [ -z "$outFile" ];then
 		for ag in $@;do
-			if [ -n "`echo $ag|grep -o '^(http|https|ftp)://'`" ];
+			if [ -n "`echo $ag|grep -o '^(http|https|ftp)://'`" ];then
 				outFile=${ag##*/}
 				outOpt2="-O $outFile"
 				break;
