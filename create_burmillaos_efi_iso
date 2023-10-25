@@ -280,23 +280,22 @@ menuentry "Install Burmilla $BURMILLAOS_VER" {
     linux   /boot/$KERNEL_FILE $VGA_ARGS \$USER_SETTINGS $KERNEL_ARGS ---
     initrd  /boot/initrd-$BURMILLAOS_VER
 }
-grub_platform
 if [ "\$grub_platform" = "efi" ]; then
-menuentry 'Boot from next UEFI' {
-	if search --no-floppy --set=efi --label EFI; then
-		prefix=(\$efi)/efi/boot
-		configfile \$prefix/grub.cfg
-	else
-		exit 1
-	fi
-}
-menuentry 'BIOS/UEFI Firmware Settings' {
-    fwsetup
-}
+	menuentry 'Boot from next UEFI' {
+		if search --no-floppy --set=efi --label EFI; then
+			prefix=(\$efi)/efi/boot
+			configfile \$prefix/grub.cfg
+		else
+			exit 1
+		fi
+	}
+	menuentry 'BIOS/UEFI Firmware Settings' {
+	    fwsetup
+	}
 else
-menuentry 'Test memory' {
-    linux16 /boot/memtest86+.bin
-}
+	menuentry 'Test memory' {
+	    linux16 /boot/memtest86+.bin
+	}
 fi
 menuentry "Debug Burmilla $BURMILLAOS_VER" {
     linux   /boot/$KERNEL_FILE vga=ask rancher.debug=true \$USER_SETTINGS $KERNEL_ARGS ---
