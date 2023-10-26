@@ -266,7 +266,7 @@ linux   /boot/$KERNEL_FILE $VGA_ARGS \$USER_SETTINGS $KERNEL_ARGS ---
 initrd  /boot/initrd-$BURMILLAOS_VER
 
 
-if [ -n \$chained ];then
+if [ \$chained == "1" ];then
 	echo "chained='$chained'"
 	sleep 10
 	boot
