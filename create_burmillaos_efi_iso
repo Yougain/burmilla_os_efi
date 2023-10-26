@@ -267,7 +267,8 @@ initrd  /boot/initrd-$BURMILLAOS_VER
 
 
 if [ \$chained == "1" ];then
-	echo "chained='$chained'"
+	echo "\$cmdpath == (\$installer)/EFI/BOOT"
+	echo "chained='\$chained'"
 	sleep 10
 	boot
 else
