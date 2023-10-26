@@ -262,6 +262,8 @@ if search --set=oem --label RANCHER_OEM_SIBLING; then
 	fi
 fi
 
+search --set=root --label RANCHEROS
+
 linux   /boot/$KERNEL_FILE $VGA_ARGS \$USER_SETTINGS $KERNEL_ARGS ---
 initrd  /boot/initrd-$BURMILLAOS_VER
 
