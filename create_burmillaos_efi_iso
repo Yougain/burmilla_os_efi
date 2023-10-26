@@ -249,7 +249,7 @@ cat - > "$T"/grub.cfg <<END
 
 search --set=installer --label RANCHEROS
 if [ \$cmdpath == (\$installer)/EFI/BOOT ];then
-	set chained=
+	set chained=0
 else
 	set chained=1  # chained from grub booted by hard disk
 fi
@@ -266,7 +266,7 @@ linux   /boot/$KERNEL_FILE $VGA_ARGS \$USER_SETTINGS $KERNEL_ARGS ---
 initrd  /boot/initrd-$BURMILLAOS_VER
 
 
-if [ \$chained == "1" ];then
+if [ "\$chained" == "1" ];then
 	echo "\$cmdpath == (\$installer)/EFI/BOOT"
 	echo "chained='\$chained'"
 	sleep 10
