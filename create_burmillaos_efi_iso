@@ -359,7 +359,7 @@ fi
  #   	exit 1
 #fi
 
-cp -av $UD/EFI/boot/*  $BOOT_IMG_DATA/efi/boot
+sudo cp -av $UD/EFI/boot/*  $BOOT_IMG_DATA/efi/boot
 
 sudo umount $BOOT_IMG_DATA
 sudo rm -rf $BOOT_IMG_DATA
