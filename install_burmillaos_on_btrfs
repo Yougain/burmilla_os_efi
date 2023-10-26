@@ -969,9 +969,10 @@ initrd   /\$INITRD_FILE
 
 
 search --set=installer --label RANCHEROS
-if [ -n \\\$installer ]; then
-	if [ \\\$cmdpath != (\\\$installer)/EFI/BOOT ];then
-		set chained=
+search --set=ros_efi --label ROS_EFI
+if [ -n \\\$ros_efi ]; then
+	if [ \\\$cmdpath != (\\\$ros_efi)/EFI/BOOT ];then
+		set chained=0
 	else
 		set chained=1 # chained from grub booted by installer
 	fi
@@ -993,7 +994,7 @@ if [ -n \\\$installer -a -e (\\\$boot)/.reinstall ]; then
 fi
 
 
-if [ -n \\\$chained ];then
+if [ "\\\$chained" == "1" ];then
     boot
 fi
 
@@ -1105,23 +1106,23 @@ write_files:
     owner: root
     content: |
       #!/bin/bash
-      sudo sed -i 's/#Port 22/Port $PORT/' /etc/ssh/sshd_config
-      sudo sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
+      sed -i 's/#Port 22/Port $PORT/' /etc/ssh/sshd_config
+      sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
       echo "PubkeyAcceptedKeyTypes=+ssh-dss" >>  /etc/ssh/sshd_config
-      sudo kill -HUP \\\$(ps ax |grep 'sshd -D' | grep -v grep | awk '{ print \\\$1 }')
-      sudo echo export LANG=en_US.UTF-8 > /etc/profile.d/lang_Yk.sh
-      sudo echo export LC_CTYPE=en_US.UTF-8 >> /etc/profile.d/lang_Yk.sh
-      sudo echo export LC_ALL=en_US.UTF-8 >> /etc/profile.d/lang_Yk.sh
-      sudo echo export TZ=$TZL > /etc/profile.d/time_zone_Yk.sh
+      kill -HUP \\\$(ps ax |grep 'sshd -D' | grep -v grep | awk '{ print \\\$1 }')
+      echo export LANG=en_US.UTF-8 > /etc/profile.d/lang_Yk.sh
+      echo export LC_CTYPE=en_US.UTF-8 >> /etc/profile.d/lang_Yk.sh
+      echo export LC_ALL=en_US.UTF-8 >> /etc/profile.d/lang_Yk.sh
+      echo export TZ=$TZL > /etc/profile.d/time_zone_Yk.sh
       if [ ! -f /bin/git ];then
         if [ -f /bin/dnf ];then
-          sudo dnf -y install git glibc-langpack-en langpacks-en glibc-locale-source
+          dnf -y install git glibc-langpack-en langpacks-en glibc-locale-source
         else
           if [ -f /bin/yum ];then
-             sudo yum -y install git glibc-langpack-en langpacks-en glibc-locale-source
+             yum -y install git glibc-langpack-en langpacks-en glibc-locale-source
           else
              if [ -f /bin/apt-get ];then
-                sudo apt-get -y install git
+                apt-get -y install git
              fi
           fi
         fi
