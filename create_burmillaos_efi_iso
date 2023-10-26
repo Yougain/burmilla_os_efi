@@ -247,7 +247,7 @@ sudo cp -ar $UD/EFI $PD/
 cat - > "$T"/grub.cfg <<END
 
 
-search --set=installer --label RANCHEROS
+search --set=installer --label ROS_EFI
 if [ \$cmdpath == (\$installer)/EFI/BOOT ];then
 	set chained=0
 else
@@ -329,7 +329,7 @@ BOOT_IMG=$ED2/efi.img
 sudo mkdir -p $(dirname $BOOT_IMG)
 
 truncate -s 8M $BOOT_IMG
-mkfs.vfat $BOOT_IMG
+mkfs.vfat -n ROS_EFI $BOOT_IMG
 sudo mount $BOOT_IMG $BOOT_IMG_DATA
 sudo mkdir -p $BOOT_IMG_DATA/efi/boot
 
