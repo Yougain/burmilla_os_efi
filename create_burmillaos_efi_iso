@@ -344,20 +344,22 @@ else
 	GMK=grub-mkimage
 fi
 
-if ! sudo $GMK \
-	-c "$T"/early-config.cfg \
-    -C xz \
-    -p '' \
-    -O x86_64-efi \
-    -o $BOOT_IMG_DATA/efi/boot/bootx64.efi \
-    boot linux search normal configfile \
-    part_gpt btrfs ext2 fat iso9660 loopback \
-    test keystatus gfxmenu regexp probe \
-    efi_gop efi_uga all_video gfxterm font \
-    echo read ls cat png jpeg halt reboot; then
-    	echo "ERROR: 'grub-mkimage' failed."
-    	exit 1
-fi
+#if ! sudo $GMK \
+#	-c "$T"/early-config.cfg \
+#    -C xz \
+#    -p '' \
+#    -O x86_64-efi \
+#    -o $BOOT_IMG_DATA/efi/boot/bootx64.efi \
+#    boot linux search normal configfile \
+#    part_gpt btrfs ext2 fat iso9660 loopback \
+ #   test keystatus gfxmenu regexp probe \
+ #   efi_gop efi_uga all_video gfxterm font \
+ #   echo read ls cat png jpeg halt reboot; then
+ #   	echo "ERROR: 'grub-mkimage' failed."
+ #   	exit 1
+#fi
+
+cp -av $UD/EFI/boot/*  $BOOT_IMG_DATA/efi/boot
 
 sudo umount $BOOT_IMG_DATA
 sudo rm -rf $BOOT_IMG_DATA
