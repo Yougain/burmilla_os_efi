@@ -238,7 +238,7 @@ function wait_sshd_start(){
 	for i in $(seq 1 120); do
 		sleep 1
 		blue_n "."
-		SSH_CON_=`echo | nc 198.19.24.185 22 2>&1`
+		SSH_CON_=`echo | nc $INST_IP 22 2>&1`
 		if [ "${SSH_CON_:0:3}" = "SSH" ];then
 			cyanBgBlue connected
 			return
@@ -963,32 +963,28 @@ if ! search --no-floppy --fs-uuid --set=oem \$OEM_UUID; then
 fi
 
 
-function set_burmilla {
-    root=\\\$boot
-    linux    /\$VMLINUZ_FILE \$VGA_ARGS \$KERNEL_ARGS \$ROOT_ARGS
-    initrd   /\$INITRD_FILE
-}
+root=\\\$boot
+linux    /\$VMLINUZ_FILE \$VGA_ARGS \$KERNEL_ARGS \$ROOT_ARGS
+initrd   /\$INITRD_FILE
 
-if search --set=installer --label RANCHEROS; then
+
+search --set=installer --label RANCHEROS
+if [ -n \\\$installer ]; then
 	if [ \\\$cmdpath != (\\\$installer)/EFI/BOOT ];then
 		set chained=
 	else
 		set chained=1 # chained from grub booted by installer
 	fi
-	function chain_installer {
-		root=\\\$installer
-		prefix=(\\\$root)/boot
-		configfile \\\$prefix/grub/grub.cfg
-	}
 fi
 
 
 if [ -n \\\$installer -a -e (\\\$boot)/.reinstall ]; then
 	if [ (\\\$boot)/.reinstall -nt (memdisk)/ ]; then
-		if [ -e (\\\$state)/state_root/home ]; then
-			chain_installer # starting reinstration or 3rd phase of installation
+		if [ -e (\\\$state)/state_root/home ]; then # starting reinstration or 3rd phase of installation
+			root=\\\$installer
+			prefix=(\\\$root)/boot
+			configfile \\\$prefix/grub/grub.cfg
 		else # 2nd phase of installation : boot by installed target disk
-			set_burmilla
 			boot
 		fi
 	#else
@@ -998,18 +994,18 @@ fi
 
 
 if [ -n \\\$chained ];then
-	set_burmilla
     boot
 fi
 
 
 menuentry "Burmilla OS \$INITRD_VER \$KERNEL_VER" {
-	set_burmilla
     boot
 }
-if [ -n $installer ]; then
+if [ -n \\\$installer ]; then
 	menuentry "Rescue/reinstall Burmilla OS \$INITRD_VER \$KERNEL_VER from installer" {
-		chain_installer
+		root=\\\$installer
+		prefix=(\\\$root)/boot
+		configfile \\\$prefix/grub/grub.cfg
 	}
 fi
 menuentry "Debug Burmilla OS \$INITRD_VER \$KERNEL_VER" {
@@ -1017,8 +1013,6 @@ menuentry "Debug Burmilla OS \$INITRD_VER \$KERNEL_VER" {
     linux    /\$VMLINUZ_FILE vga=ask rancher.debug=true \$KERNEL_ARGS \$ROOT_ARGS ---
     initrd   /\$INITRD_FILE
 }
-
-
 
 END
 
