@@ -246,18 +246,12 @@ sudo cp -ar $UD/EFI $PD/
 
 cat - > "$T"/grub.cfg <<END
 
-set timeout=30
 
-
-if search --set=state --label RANCHER_STATE_SIBLING; then
-	if [ -e (\$state)/state_root/home ]; then
-		set timeout=5
-	else
-		if search --no-floppy --set=efi --label EFI; then
-			prefix=(\$efi)/efi/boot
-			configfile \$prefix/grub.cfg
-		fi
-	fi
+search --set=installer --label RANCHEROS
+if [ \$cmdpath = (\$installer)/EFI/BOOT ];then
+	set chained=
+else
+	set chained=1  # chained from grub booted by hard disk
 fi
 
 
@@ -268,8 +262,37 @@ if search --set=oem --label RANCHER_OEM_SIBLING; then
 	fi
 fi
 
+function set_installer {
+    linux   /boot/$KERNEL_FILE $VGA_ARGS \$USER_SETTINGS $KERNEL_ARGS ---
+    initrd  /boot/initrd-$BURMILLAOS_VER
+}
 
-set default=1
+
+if [ -n \$chained ];then
+	set_installer
+	boot
+else
+
+	set timeout=30
+	set default=1
+
+	if search --set=state --label RANCHER_STATE_SIBLING; then
+		if [ -e (\$state)/state_root/home ]; then
+			if [ -e (\$state)/state_root/var/lib/rancher/conf/cloud-config.yml ]; then # 3rd phase of installation
+				set_installer
+				boot
+			else
+				set timeout=5
+			fi
+		else # 2nd phase of installation : boot by installed target disk
+			if search --no-floppy --set=efi --label EFI; then
+				prefix=(\$efi)/efi/boot
+				configfile \$prefix/grub.cfg
+			fi
+		fi
+	fi
+
+fi
 
 loadfont unicode
 
@@ -277,26 +300,22 @@ set menu_color_normal=white/black
 set menu_color_highlight=black/light-gray
 
 menuentry "Install Burmilla $BURMILLAOS_VER" {
-    linux   /boot/$KERNEL_FILE $VGA_ARGS \$USER_SETTINGS $KERNEL_ARGS ---
-    initrd  /boot/initrd-$BURMILLAOS_VER
+	set_installer
 }
-if [ "\$grub_platform" = "efi" ]; then
-	menuentry 'Boot from next UEFI' {
-		if search --no-floppy --set=efi --label EFI; then
-			prefix=(\$efi)/efi/boot
-			configfile \$prefix/grub.cfg
-		else
-			exit 1
-		fi
-	}
-	menuentry 'BIOS/UEFI Firmware Settings' {
-	    fwsetup
-	}
-else
-	menuentry 'Test memory' {
-	    linux16 /boot/memtest86+.bin
-	}
-fi
+menuentry 'Boot from installation detected on hard disk' {
+	if search --no-floppy --set=efi --label EFI; then
+		prefix=(\$efi)/efi/boot
+		configfile \$prefix/grub.cfg
+	else
+		exit 1
+	fi
+}
+menuentry 'BIOS/UEFI Firmware Settings' {
+    fwsetup
+}
+menuentry 'Test memory' {
+    linux16 /boot/memtest86+.bin
+}
 menuentry "Debug Burmilla $BURMILLAOS_VER" {
     linux   /boot/$KERNEL_FILE vga=ask rancher.debug=true \$USER_SETTINGS $KERNEL_ARGS ---
     initrd  /boot/initrd-$BURMILLAOS_VER

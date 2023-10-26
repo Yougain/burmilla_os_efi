@@ -198,9 +198,26 @@ if [ -z "$INST_IP" ]; then
 	if [ -n "$CMD_HNAME" ];then
 		CTMP=`get_ssh_config_entry $CMD_HNAME`
 		if [ -n "$CTMP" ];then
-			INST_IP=${CTMP/:*}
-		else
-			dig
+			INST_IP=${CTMP//:*}
+			INSTALLED_PORT=${CTMP##*:}
+			ssh $INST_IP -p $INSTALLED_PORT -l rancher -o ConnectTimeout=3 -o ConnectionAttempts=3 <<'END'
+				if [ -e /dev/disk/by-label/RANCHEROS ]; then
+					sudo touch -d @$((`date +%s` + 300)) /boot/.installing
+					sudo reboot
+					exit 0
+				else
+					exit 2
+				fi
+END
+			case "$?" in
+				0) # logon the target and reboot
+					;;
+				2)
+					die "Installer disk not inserted on target machine."
+					;;
+				*) # Time out. Already booted by installer ?
+					;;
+			esac
 		fi
 	fi
 fi
@@ -853,6 +870,7 @@ else
 fi
 mkdir /mnt/efipart
 mount $TARGET_DEV2 /mnt/efipart
+touch -d @\$\(\(\`date +%s\` + 300\)\) /mnt/efipart/.installing
 mkdir /mnt/installer
 mount $INST_DRIVE /mnt/installer
 cp -r /mnt/installer/EFI /mnt/efipart
@@ -922,23 +940,90 @@ ROOT_ARGS="rancher.state.boot_dev=UUID=\$BOOT_UUID rancher.state.oem_dev=UUID=\$
 
 umount /mnt
 cat - > /mnt/efipart/EFI/BOOT/grub.cfg <<END
+
 set timeout=5
+
 set gfxmode=\$VGA_SIZE
 set gfxpayload=keep
-menuentry "Burmilla OS \$INITRD_VER \$KERNEL_VER" {
-    search --no-floppy  --fs-uuid --set=root \$BOOT_UUID
+
+if ! search --no-floppy --fs-uuid --set=boot \$BOOT_UUID; then
+	echo "Sorry, no installation found or corrupted. Please reinstall by installer."
+	sleep 3000000
+fi
+
+if ! search --no-floppy --fs-uuid --set=state \$STATE_UUID; then
+	echo "Sorry, no installation found or corrupted. Please reinstall by installer."
+	sleep 3000000
+fi
+
+
+if ! search --no-floppy --fs-uuid --set=oem \$OEM_UUID; then
+	echo "Sorry, no installation found or corrupted. Please reinstall by installer."
+	sleep 3000000
+fi
+
+
+function set_burmilla {
+    root=\\\$boot
     linux    /\$VMLINUZ_FILE \$VGA_ARGS \$KERNEL_ARGS \$ROOT_ARGS
     initrd   /\$INITRD_FILE
 }
+
+if search --set=installer --label RANCHEROS; then
+	if [ \\\$cmdpath != (\\\$installer)/EFI/BOOT ];then
+		set chained=
+	else
+		set chained=1 # chained from grub booted by installer
+	fi
+	function chain_installer {
+		root=\\\$installer
+		prefix=(\\\$root)/boot
+		configfile \\\$prefix/grub/grub.cfg
+	}
+fi
+
+
+if [ -n \\\$installer -a -e (\\\$boot)/.reinstall ]; then
+	if [ (\\\$boot)/.reinstall -nt (memdisk)/ ]; then
+		if [ -e (\\\$state)/state_root/home ]; then
+			chain_installer # starting reinstration or 3rd phase of installation
+		else # 2nd phase of installation : boot by installed target disk
+			set_burmilla
+			boot
+		fi
+	#else
+		# reinstallation is aborted
+	fi
+fi
+
+
+if [ -n \\\$chained ];then
+	set_burmilla
+    boot
+fi
+
+
+menuentry "Burmilla OS \$INITRD_VER \$KERNEL_VER" {
+	set_burmilla
+    boot
+}
+if [ -n $installer ]; then
+	menuentry "Rescue/reinstall Burmilla OS \$INITRD_VER \$KERNEL_VER from installer" {
+		chain_installer
+	}
+fi
 menuentry "Debug Burmilla OS \$INITRD_VER \$KERNEL_VER" {
     search --no-floppy  --fs-uuid --set=root \$BOOT_UUID
     linux    /\$VMLINUZ_FILE vga=ask rancher.debug=true \$KERNEL_ARGS \$ROOT_ARGS ---
     initrd   /\$INITRD_FILE
 }
+
+
+
 END
 
 
-
+echo -e $green"rebooting by target disk ...."
 reboot
 FINAL
 ssh_inst chmod +x __install_rancher
@@ -957,12 +1042,10 @@ function reboot_by_passwd(){
 	"
 }
 
-green rebooting ...
-
 wait_sshd_start
 
 while ! ssh_inst echo; do
-	green Switch to boot by desitination disk
+	green Switch to boot by target disk
 	green rebooting ...
 	reboot_by_passwd
 	sleep 10
@@ -979,7 +1062,7 @@ if [ "`ssh_inst cat /proc/cmdline | grep -o rancher.state.dev=`" = "rancher.stat
 	ssh_inst sudo reboot
 	wait_sshd_start
 else
-	die destination disk not found
+	die target disk not found
 fi
 
 
@@ -1163,6 +1246,11 @@ done
 mkdir -p /opt2/var/lib/yougain/burmilla
 echo -n "USER_SETTINGS='rancher.network.interfaces.$NET_DEV.address=$IP/$NETMASK rancher.network.interfaces.$NET_DEV.gateway=$GATEWAY rancher.network.dns.nameservers=$DNS_SETTINGS_YQ'" > /opt2/var/lib/yougain/burmilla/grub_env_for_installer
 chmod +x /opt2/var/lib/yougain/burmilla/grub_env_for_installer
+#clear instration flag
+#check '\$'
+mkdir -p /mnt/efipart
+mount $TARGET_DEV2 /mnt/efipart
+rm -f /mnt/efipart/.installing
 
 reboot
 
