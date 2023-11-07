@@ -191,6 +191,21 @@ function get_ssh_config_ip_from_name(){
 	fi
 }
 
+function ask_yes_no {
+  while true; do
+    read ANS
+    case $ANS in
+      [Yy]*)
+        return 0
+        ;;  
+      [Nn]*)
+        return 1
+        ;;
+      *)
+        ;;
+    esac
+  done
+}
 
 
 # indispensable arguments
@@ -200,9 +215,20 @@ if [ -z "$INST_IP" ]; then
 		if [ -n "$CTMP" ];then
 			INST_IP=${CTMP//:*}
 			INSTALLED_PORT=${CTMP##*:}
+			if ssh $INST_IP -p $INSTALLED_PORT -l rancher -o ConnectTimeout=3 -o ConnectionAttempts=3 echo -n; then
+				whiteBgRed_n "Server "
+				cyanBgRed_n "'$CMD_HNAME'"
+				whiteBgRed_n ", still working. Really overwrite it with new installation? "
+				yellowBgRed_n  "[y/n]:"
+				echo -n " "
+				if ! ask_yes_no; then
+					info "Terminated by user."
+					exit 1
+				fi
+			fi
 			ssh $INST_IP -p $INSTALLED_PORT -l rancher -o ConnectTimeout=3 -o ConnectionAttempts=3 <<'END'
-				if [ -e /dev/disk/by-label/RANCHEROS ]; then
-					sudo touch -d @$((`date +%s` + 300)) /boot/.installing
+				if sudo mount LABEL=RANCHEROS /mnt; then
+					sudo touch -d @$((`date +%s` + 300)) /.installing
 					sudo reboot
 					exit 0
 				else
@@ -845,6 +871,7 @@ mkfs.vfat -F32 -n EFI $TARGET_DEV2 << END
 y
 END
 
+# initial cloud-config.yml
 echo -n "
 rancher:
   network:
@@ -861,6 +888,7 @@ ssh_authorized_keys:
  - $KEY
 " > cloud-config.yml
 
+# install on $TARGET_DEV4 (initial state drive, no boot, no state, no oem drive) first
 ln $INST_DRIVE /dev/sr0
 ls -la /dev/sr0
 if ros install --no-reboot -f -t gptsyslinux -c cloud-config.yml -d $TARGET_DEV -p $TARGET_DEV4; then
@@ -868,12 +896,15 @@ if ros install --no-reboot -f -t gptsyslinux -c cloud-config.yml -d $TARGET_DEV 
 else
 	die ros install failed
 fi
+
+# move all files from installer's efi directory to $TARGET_DEV2 (efi drive).
 mkdir /mnt/efipart
 mount $TARGET_DEV2 /mnt/efipart
-touch -d @\$\(\(\`date +%s\` + 300\)\) /mnt/efipart/.installing
 mkdir /mnt/installer
 mount $INST_DRIVE /mnt/installer
 cp -r /mnt/installer/EFI /mnt/efipart
+
+# move all files from $TARGET_DEV4 (initial state drive) to $TARGET_DEV5 (state drive) first
 mount $TARGET_DEV4 /opt
 mkfs.btrfs -L RANCHER_STATE_SIBLING -f $TARGET_DEV5
 partprobe
@@ -881,11 +912,13 @@ STATE_UUID=\`sudo ls -l /dev/disk/by-uuid | grep "${TARGET_DEV5##*/}" | awk '{pr
 if [ -z "\$STATE_UUID" ];then
 	die cannot detect uuid of state device, $TARGET_DEV5.
 fi
-mount $TARGET_DEV5 /mnt
-btrfs subvolume create /mnt/state_root
-btrfs subvolume set-default \`btrfs subvolume list /mnt|grep state_root|awk '{print \$2}'\` /mnt
-mkdir /mnt/state_root/state_top_lvl
-cp -a /opt/* /mnt/state_root
+mkdir /mnt2
+mount $TARGET_DEV5 /mnt2
+btrfs subvolume create /mnt2/state_root
+btrfs subvolume set-default \`btrfs subvolume list /mnt2|grep state_root|awk '{print \$2}'\` /mnt2
+mkdir /mnt2/state_root/state_top_lvl
+cp -a /opt/* /mnt2/state_root
+touch -d @\$((\`date +%s\` + 300)) /mnt2/state_root/.installing
 umount /opt
 mkfs.btrfs -L RANCHER_BOOT_SIBLING -f $TARGET_DEV4
 partprobe
@@ -894,6 +927,7 @@ if [ -z "\$BOOT_UUID" ];then
 	die cannot detect uuid of boot device, $TARGET_DEV4.
 fi
 
+# initialize oem drive if it does not exists, or remain contact
 if [ ! -e /dev/disk/by-label/RANCHER_OEM_SIBLING ]; then
 	mkfs.btrfs -L RANCHER_OEM_SIBLING -f $TARGET_DEV7
 	partprobe
@@ -910,10 +944,12 @@ else
 	OEM_UUID=\`sudo ls -l /dev/disk/by-uuid | grep "${TARGET_DEV7##*/}" | awk '{print \$9}'\`
 fi
 
+# move all files from $TARGET_DEV4/boot (initial state drive) to $TARGET_DEV2 (boot drive).
 mount $TARGET_DEV4 /opt
-cp -a /mnt/state_root/boot/* /opt/
-rm -rf /mnt/state_root/boot/*
+cp -a /mnt2/state_root/boot/* /opt/
+rm -rf /mnt2/state_root/boot/*
 
+# set up grub.cfg on EFI drive
 VMLINUZ_FILE=\`cd /opt;ls -d vmlinuz-*\`
 VMLINUZ_FILE_COUNT=\`echo "\$VMLINUZ_FILE" | wc | awk '{print \$1}'\`
 if [ "\$VMLINUZ_FILE_COUNT" != "1" ];then
@@ -938,7 +974,6 @@ VGA_ARGS="i915.force_probe vga=\$VGA_MODE video=\$VGA_SIZE"
 echo APPEND \$VGA_ARGS \$KERNEL_ARGS > /opt/global.cfg
 ROOT_ARGS="rancher.state.boot_dev=UUID=\$BOOT_UUID rancher.state.oem_dev=UUID=\$OEM_UUID rancher.state.dev=UUID=\$STATE_UUID root=UUID=\$STATE_UUID"
 
-umount /mnt
 cat - > /mnt/efipart/EFI/BOOT/grub.cfg <<END
 
 set timeout=5
@@ -979,17 +1014,13 @@ if [ -n \\\$ros_efi ]; then
 fi
 
 
-if [ -n \\\$installer -a -e (\\\$boot)/.reinstall ]; then
-	if [ (\\\$boot)/.reinstall -nt (memdisk)/ ]; then
-		if [ -e (\\\$state)/state_root/home ]; then # starting reinstration or 3rd phase of installation
-			root=\\\$installer
-			prefix=(\\\$root)/boot
-			configfile \\\$prefix/grub/grub.cfg
-		else # 2nd phase of installation : boot by installed target disk
-			boot
-		fi
-	#else
-		# reinstallation is aborted
+if [ -n \\\$installer -a -e (\\\$state)/state_root/.installing ]; then
+	if [ -e (\\\$state)/state_root/home ]; then # starting reinstration or 3rd phase of installation
+		root=\\\$installer
+		prefix=(\\\$root)/boot
+		configfile \\\$prefix/grub/grub.cfg
+	else # 2nd phase of installation : boot by installed target disk
+		boot
 	fi
 fi
 
@@ -1017,14 +1048,14 @@ menuentry "Debug Burmilla OS \$INITRD_VER \$KERNEL_VER" {
 
 END
 
-
 echo -e $green"rebooting by target disk ...."
+
 reboot
 FINAL
 ssh_inst chmod +x __install_rancher
 ssh_inst -t sudo ./__install_rancher
 
-
+# installation 2nd phase : boot by target disk
 
 function reboot_by_passwd(){
 	expect -c "
@@ -1036,6 +1067,7 @@ function reboot_by_passwd(){
 	send \"sudo reboot\n\"
 	"
 }
+
 
 wait_sshd_start
 
@@ -1060,22 +1092,77 @@ else
 	die target disk not found
 fi
 
+# installation 3rd phase : boot by installer
 
 install_ssh_key
 
-ssh_inst sudo mkdir -p /mnt2
-ssh_inst sudo mount $TARGET_DEV5 /mnt2 -odegraded
-if [ -z "`ssh_inst ls -ld /mnt2/home`" ];then
+ssh_inst sudo mkdir -p /mnt3
+ssh_inst sudo mount $TARGET_DEV5 /mnt3 -odegraded
+if [ -z "`ssh_inst ls -ld /mnt3/home`" ];then
 	die "Please boot from installed hard disk only ONCE."
 fi
-if [ -n "`ssh_inst ls -ld /mnt2/home|grep oem`" ];then
+if [ -n "`ssh_inst ls -ld /mnt3/home|grep oem`" ];then
 	die "Already installed with oem disk."
 fi
 
 UF=/opt2/var/lib/rancher/conf/cloud-config.d/user_config.yml
 ssh_inst bash -c "cat - > __install_rancher" <<FINAL
 #!/bin/bash
-#apt-get update; apt-get install -y gdisk lvm2 dosfstools btrfs-progs parted
+
+# patching os-config file
+if [ ! -x /usr/bin/yq ]; then
+	if [ -n "\`uname -a|grep armv7\`" ]; then
+		wget "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_arm" -q -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
+	fi
+	if [ -n "\`uname -a|grep aarc64\`" ]; then
+		wget "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_arm64" -q -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
+	fi
+	if [ -n "\`uname -a|grep x86_64\`" ]; then
+		wget "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64" -q -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
+	fi
+fi
+if [ ! -x /usr/bin/yq ];then
+	echo -e $Red"Cannot download /usr/bin/yq"$Plain
+	exit 1
+fi
+
+OS_CONFIG_FILE=\`find /mnt3 -name 'os-config.yml'\`
+if [ -z "\$OS_CONFIG_FILE" ];then
+	echo -e $Red"Cannot find 'os-config.yml'"$Plain
+	exit 1
+fi
+OS_CONFIG_FILE1=\`find /mnt3 -name 'os-config.yml'|head -1\`
+if [ "\$OS_CONFIG_FILE1" != "\$OS_CONFIG_FILE" ];then
+	echo -e $Red"Multiple 'os-config.yml' files found (\$OS_CONFIG_FILE)"$Plain
+	exit 1
+fi
+
+addConsoleVolume(){
+	local i=0
+	while [ 1 ]; do
+		k="\`yq e '.rancher.services.console.volumes.['\$i']' \$OS_CONFIG_FILE\`"
+		echo \$k
+		case "\$k" in
+			"\$1")
+				break
+				;;
+			"null" )
+				echo null
+				echo yq e -i '.rancher.services.console.volumes.['\$i']|="'"\$1"'"' \$OS_CONFIG_FILE
+				yq e -i '.rancher.services.console.volumes.['\$i']|="'"\$1"'"' \$OS_CONFIG_FILE
+				break
+				;;
+		esac
+		i=\$(( i + 1 ))
+		if [ "$i" == "1000" ];then
+			break
+		fi
+	done
+}
+
+addConsoleVolume "/root:/usr/share/ros/oem/root"
+addConsoleVolume "/etc/ssh:/usr/share/ros/oem/etc/ssh"
+
 mkdir -p /opt2
 mount -t btrfs -odegraded,subvol=/oem_root $TARGET_DEV7 /opt2
 if [ -z "$USER_CONFIG" ]; then
@@ -1100,33 +1187,6 @@ $DNS_SETTINGS
     syslog:
       environment:
         TZ: $TZL
-write_files:
-  - path: /opt/rancher/bin/start.sh
-    permissions: \"0755\"
-    owner: root
-    content: |
-      #!/bin/bash
-      sed -i 's/#Port 22/Port $PORT/' /etc/ssh/sshd_config
-      sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
-      echo "PubkeyAcceptedKeyTypes=+ssh-dss" >>  /etc/ssh/sshd_config
-      kill -HUP \\\$(ps ax |grep 'sshd -D' | grep -v grep | awk '{ print \\\$1 }')
-      echo export LANG=en_US.UTF-8 > /etc/profile.d/lang_Yk.sh
-      echo export LC_CTYPE=en_US.UTF-8 >> /etc/profile.d/lang_Yk.sh
-      echo export LC_ALL=en_US.UTF-8 >> /etc/profile.d/lang_Yk.sh
-      echo export TZ=$TZL > /etc/profile.d/time_zone_Yk.sh
-      if [ ! -f /bin/git ];then
-        if [ -f /bin/dnf ];then
-          dnf -y install git glibc-langpack-en langpacks-en glibc-locale-source
-        else
-          if [ -f /bin/yum ];then
-             yum -y install git glibc-langpack-en langpacks-en glibc-locale-source
-          else
-             if [ -f /bin/apt-get ];then
-                apt-get -y install git
-             fi
-          fi
-        fi
-      fi
 runcmd:
 - mkdir -p /state_top_lvl
 - mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`readlink /dev/root|egrep -o "[0-9a-f-]+"\\\` | egrep -o "sd.")5 -odegraded,subvol=/ /state_top_lvl
@@ -1144,20 +1204,6 @@ ssh_authorized_keys:
  - $KEY
 " > $UF
 else
-	if [ ! -x /usr/bin/yq ]; then
-		if [ -n "`uname -a|grep armv7`" ]; then
-			wget "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_arm" -q -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
-		fi
-		if [ -n "`uname -a|grep aarc64`" ]; then
-			wget "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_arm64" -q -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
-		fi
-		if [ -n "`uname -a|grep x86_64`" ]; then
-			wget "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64" -q -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
-		fi
-	fi
-	if [ ! -x /usr/bin/yq ];then
-		echo "ERROR:Cannot download /usr/bin/yq" >&2
-	fi
 	yq e -i ".hostname|=\"$HNAME_FULL\"" $UF
 	yq e -i ".rancher.network.dns.nameservers|=$DNS_SETTINGS_YQ2" $UF
 	yq e -i ".rancher.network.interfaces.$NET_DEV.address|=\"$IP/$NETMASK\"" $UF
@@ -1213,40 +1259,102 @@ else
 	done
 fi
 
-mkdir -p /mnt2/oem_top_lvl
-mkdir -p /mnt2/state_top_lvl
+mkdir -p /mnt3/oem_top_lvl
+mkdir -p /mnt3/state_top_lvl
 
-[ ! -e /opt2/home ] && cp -af /mnt2/home /opt2
-[ ! -e /opt2/root ] && cp -af /mnt2/root /opt2
+[ ! -e /opt2/home ] && cp -af /mnt3/home /opt2
+[ ! -e /opt2/root ] && cp -af /mnt3/root /opt2
 mkdir -p /opt2/var
-[ ! -e /opt2/var/log ] && cp -af /mnt2/var/log /opt2/var
+[ ! -e /opt2/var/log ] && cp -af /mnt3/var/log /opt2/var
 mkdir -p /opt2/var/lib/rancher
-[ ! -e /opt2/var/lib/rancher/conf ] && cp -af /mnt2/var/lib/rancher/conf /opt2/var/lib/rancher
+[ ! -e /opt2/var/lib/rancher/conf ] && cp -af /mnt3/var/lib/rancher/conf /opt2/var/lib/rancher
 
-rm -rf /mnt2/{root,home,var/log,var/lib/rancher/conf}
-ln -s /usr/share/ros/oem/root /mnt2/root
-ln -s /usr/share/ros/oem/home /mnt2/home
-ln -s /usr/share/ros/oem/var/log /mnt2/var/log
-ln -s /usr/share/ros/oem/var/lib/rancher/conf /mnt2/var/lib/rancher/conf
+rm -rf /mnt3/{root,opt,home,var/log,var/lib/rancher/conf}
+chmod 700 /mnt3/root
+ln -s /usr/share/ros/oem/root /mnt3/root
+ln -s /usr/share/ros/oem/home /mnt3/home
+ln -s /usr/share/ros/oem/opt /mnt3/opt
+ln -s /usr/share/ros/oem/var/log /mnt3/var/log
+ln -s /usr/share/ros/oem/var/lib/rancher/conf /mnt3/var/lib/rancher/conf
 
+# ssh config directory
 mkdir -p /opt2/etc/ssh
-for f in \`find /mnt2 -name "ssh_host_*_key*"\`; do
-	fx=/opt2/etc/ssh/\${f##*/}
-	if [ ! -e \$fx ];then
-		cp -af \$f /opt2/etc/ssh
-	fi
-	ln -sf /usr/share/ros/oem/etc/ssh/\${f##*/} \$f
+ssh_file=\`find /mnt3 -name "ssh_host_*_key*"| head -1\`
+ssh_dir=\${ssh_file%/*}
+if [ ! -e /opt2/etc/ssh/sshd_config ];then
+	NEW_SSHD_CONF=1
+fi
+cp -avn \$ssh_dir /opt2/etc
+if [ -n "\$NEW_SSHD_CONF" ];then
+	sed -i 's/#Port 22/Port $PORT/' /opt2/etc/ssh/sshd_config
+	sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /opt2/etc/ssh/sshd_config
+	echo "PubkeyAcceptedKeyTypes=+ssh-dss" >>  /opt2/etc/ssh/sshd_config
+fi
+echo rm -rf \$ssh_dir
+rm -rf \$ssh_dir
+echo ln -sf /usr/share/ros/oem/etc/ssh \$ssh_dir
+ln -sf /usr/share/ros/oem/etc/ssh \$ssh_dir
+
+#time zone
+etc_timezone=\`find /mnt3 -name "timezone"| awk '{print \$1}'\`
+
+apt-get update
+apt-get -y install binutils
+
+echo PORT=$PORT
+echo TZ=$TZ
+echo TZL=$TZL
+found=
+for d in \`find /mnt3 -name zoneinfo\`; do
+	for f in \`find \$d\`; do
+		for t in \`strings \$f\`; do
+			if [ "\$t" = "$TZL" ] ; then
+				found=\$f
+				break
+			fi
+		done
+		if [ -n "\$found" ];then
+			fn=\${found##*/}
+			prv=\${found%/*}
+			dstd=\${prv#*/diff}
+			mkdir -p /opt2/\$dstd
+			cp -av \$found /opt2/\$dstd
+			mv \$etc_timezone \$etc_timezone.org
+			ln -sf /usr/share/ros/oem/etc/timezone \$etc_timezone
+			ln -sf ..\$dstd/\$fn /opt2/etc/timezone
+			break
+		fi
+	done
 done
 
-mkdir -p /opt2/var/lib/yougain/burmilla
-echo -n "USER_SETTINGS='rancher.network.interfaces.$NET_DEV.address=$IP/$NETMASK rancher.network.interfaces.$NET_DEV.gateway=$GATEWAY rancher.network.dns.nameservers=$DNS_SETTINGS_YQ'" > /opt2/var/lib/yougain/burmilla/grub_env_for_installer
-chmod +x /opt2/var/lib/yougain/burmilla/grub_env_for_installer
-#clear instration flag
-#check '\$'
-mkdir -p /mnt/efipart
-mount $TARGET_DEV2 /mnt/efipart
-rm -f /mnt/efipart/.installing
 
+# create startup script
+if [ ! -e /opt2/opt/rancher/bin/start.sh ];then
+	cat - > /opt2/opt/rancher/bin/start.sh <<START_UP
+		mount --bind /usr/share/ros/oem/etc/ssh /etc/ssh
+		mount --bind /usr/share/ros/oem/root /root
+		kill -HUP \\\$(ps ax |grep 'sshd -D' | grep -v grep | awk '{ print \\\$1 }')
+		if [ ! -e /etc/profile.d/lang.sh ]; then
+			echo export LANG=$LANG > /etc/profile.d/lang.sh
+			echo export LC_CTYPE=$LC_TYPE >> /etc/profile.d/lang.sh
+			echo export LC_ALL=$LC_ALL>> /etc/profile.d/lang.sh
+		fi
+		if [ ! -e /etc/profile.d/timezone.sh ]; then
+			echo export TZ=$TZL > /etc/profile.d/timezone.sh
+		fi
+START_UP
+	chmod 0755 /opt2/opt/rancher/bin/start.sh
+fi
+
+# preserve user setting for grub
+if [ ! -e /opt2/opt/rancher/conf/grub ];then
+	mkdir -p /opt2/opt/rancher/conf
+	echo -n "USER_SETTINGS='rancher.network.interfaces.$NET_DEV.address=$IP/$NETMASK rancher.network.interfaces.$NET_DEV.gateway=$GATEWAY rancher.network.dns.nameservers=$DNS_SETTINGS_YQ'" > /opt2/opt/rancher/conf/grub_env_for_installer
+	chmod +x /opt2/opt/rancher/conf/grub/grub_env_for_installer
+fi
+
+#clear installation flag
+rm -f /mnt3/.installing
 reboot
 
 FINAL

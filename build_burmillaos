@@ -8,6 +8,21 @@ if [ -n "$1" ];then
 fi
 
 sudo apt-get install -y make patch apt-utils
+
+
+if [ ! -e /usr/lib/docker/cli-plugins/docker-buildx ];then
+	TAG=`wget -q https://github.com/docker/buildx/releases/latest -O - | grep Welcome | head -1 | grep -o -e 'v[0-9][^ "]*' | head -1`
+	sudo mkdir -p /usr/lib/docker/cli-plugins
+	sudo wget https://github.com/docker/buildx/releases/download/$TAG/buildx-$TAG.linux-amd64 -O /usr/lib/docker/cli-plugins/docker-buildx
+	sudo chmod +x /usr/lib/docker/cli-plugins/docker-buildx
+	docker buildx install
+	git-force-clone https://github.com/docker/buildx.git ~/buildx
+	sudo apt-get install -y make
+	cd buildx
+	make install
+	sudo mv -f $HOME/.docker/cli-plugins/docker-buildx /usr/lib/docker/cli-plugins/
+fi
+
 git-force-clone https://github.com/burmilla/os.git ~/os
 ODIR=`pwd`
 cd ~/os
