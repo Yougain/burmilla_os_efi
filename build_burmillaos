@@ -21,12 +21,13 @@ if [ ! -e /usr/lib/docker/cli-plugins/docker-buildx ];then
 	cd buildx
 	make install
 	sudo mv -f $HOME/.docker/cli-plugins/docker-buildx /usr/lib/docker/cli-plugins/
+	cd ~
 fi
 
 git-force-clone https://github.com/burmilla/os.git ~/os
 ODIR=`pwd`
 cd ~/os
-patch -p1 < $ODIR/mountOpt.patch
+patch -p1 < $ODIR/burmilla_os_efi/mountOpt.patch
 sudo make
 cd ~/
 mkdir -p ~/burmilla_os_iso
