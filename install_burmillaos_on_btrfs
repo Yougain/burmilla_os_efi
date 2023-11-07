@@ -1349,7 +1349,7 @@ fi
 # preserve user setting for grub
 if [ ! -e /opt2/opt/rancher/conf/grub ];then
 	mkdir -p /opt2/opt/rancher/conf
-	echo -n "USER_SETTINGS='rancher.network.interfaces.$NET_DEV.address=$IP/$NETMASK rancher.network.interfaces.$NET_DEV.gateway=$GATEWAY rancher.network.dns.nameservers=$DNS_SETTINGS_YQ'" > /opt2/opt/rancher/conf/grub_env_for_installer
+	echo -n "USER_SETTINGS='rancher.network.interfaces.$NET_DEV.address=$IP/$NETMASK rancher.network.interfaces.$NET_DEV.gateway=$GATEWAY rancher.network.dns.nameservers=$DNS_SETTINGS_YQ'" > /opt2/opt/rancher/conf/grub/grub_env_for_installer
 	chmod +x /opt2/opt/rancher/conf/grub/grub_env_for_installer
 fi
 
