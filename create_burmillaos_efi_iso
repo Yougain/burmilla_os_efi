@@ -297,31 +297,34 @@ if [ \$chained == 1 ];then
 	sleep 100000000
 else # grub directly loaded
 	# check undergoing installation
-	if [ -n \$state -a -e (\$state)/state_root/.installing ]; then
-		if [ -e (\$state)/state_root/var/lib/rancher/conf/cloud-config.yml ]; then 
-			if [ -e (\$state)/state_root/home ]; then
-				# 3rd phase of installation because /state_root/var/lib/rancher/conf is not a symbolick link
-				boot
-			else
-				set timeout=
-				set default=0
-				ERR_MSG0=" (Somthing wrong: both '/home' and '/var/lib/rancher/conf/cloud-config.yml' exists during installation)"
+	if [ -n \$state ];then
+		if [ -e (\$state)/state_root/.installing ]; then
+			if [ -e (\$state)/state_root/var/lib/rancher/conf/cloud-config.yml ]; then 
+				if [ -e (\$state)/state_root/home ]; then
+					# 3rd phase of installation because /state_root/var/lib/rancher/conf is not a symbolick link
+					boot
+				else
+					set timeout=
+					set default=0
+					ERR_MSG0=" (Somthing wrong: both '/home' and '/var/lib/rancher/conf/cloud-config.yml' exists during installation)"
+				fi
+			else # 2nd phase of installation : boot by target disk
+				if search --no-floppy --set=efi --label EFI; then
+					prefix=(\$efi)/efi/boot
+					configfile \$prefix/grub.cfg
+					echo "Cannot continue.... Please reset."
+					sleep 100000000
+				else
+					set timeout=
+					set default=1
+					ERR_MSG1=" (Somthing wrong: cannot find EFI partition on target hard disk for second stage of installation)"
+				fi
 			fi
-		else # 2nd phase of installation : boot by target disk
-			if search --no-floppy --set=efi --label EFI; then
-				prefix=(\$efi)/efi/boot
-				configfile \$prefix/grub.cfg
-				echo "Cannot continue.... Please reset."
-				sleep 100000000
-			else
-				set timeout=
-				set default=1
-				ERR_MSG1=" (Somthing wrong: cannot find EFI partition on target hard disk for second stage of installation)"
-			fi
+		else
+			# normal boot by hard disk
+			set default=1
+			set timeout=5
 		fi
-	else
-		# normal boot by installer
-		set timeout=5
 	fi
 fi
 
