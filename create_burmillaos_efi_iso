@@ -269,9 +269,22 @@ fi
 if search --set=oem --label RANCHER_OEM_SIBLING; then
 	set ev_f=(\$oem)/oem_root/opt/rancher/conf/grub/grub_env_for_installer
 	if [ -e \$ev_f ]; then
+		echo \$ev_f found
 		source \$ev_f
+	else
+		echo \$ev_f not found
+		set ev_f=(\$oem)/oem_root/var/lib/yougain/burmilla/grub_env_for_installer
+		if [ -e \$ev_f ]; then
+			echo \$ev_f found
+			source \$ev_f
+		else
+			echo \$ev_f not found
+		fi
 	fi
+else
+	echo RANCHER_OEM_SIBLING not found
 fi
+sleep 3
 
 # default parameters for installer boot
 linux   /boot/$KERNEL_FILE $VGA_ARGS \$USER_SETTINGS $KERNEL_ARGS ---
