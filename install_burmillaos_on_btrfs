@@ -228,7 +228,7 @@ if [ -z "$INST_IP" ]; then
 			fi
 			ssh $INST_IP -p $INSTALLED_PORT -l rancher -o ConnectTimeout=3 -o ConnectionAttempts=3 <<'END'
 				if sudo mount LABEL=RANCHEROS /mnt; then
-					sudo touch -d @$((`date +%s` + 300)) /.installing
+					sudo touch -d @$((`date +%s` + 300)) /state_top_lvl/state_root/.installing
 					sudo reboot
 					exit 0
 				else
