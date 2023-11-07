@@ -16,7 +16,7 @@ if [ ! -e "$1" ];then
 fi
 
 TARGET_DISK=$1
-HOME_DEV=`mount | grep /home | awk '{print \$1}'`
+HOME_DEV=`mount | grep /home | awk '{print \$1}'` # should be OEM disk  (symlinked)
 BOOT_DISK=${HOME_DEV:0:8}
 if [ "${BOOT_DISK:0:7}" != "/dev/sd" ]; then
 	echo "device of '/home' is not a /dev/sd? device."
@@ -102,6 +102,7 @@ fi
 #STATE_UUID=`ls -l /dev/disk/by-uuid | grep "$TARGET_DISK"5 | awk '{print $9}'`
 dd if=/dev/zero of="$TARGET_DISK"4 bs=100M count=1
 dd if=/dev/zero of="$TARGET_DISK"5 bs=100M count=1
+dd if=/dev/zero of="$TARGET_DISK"7 bs=100M count=1
 partprobe
 
 # modify grub.cfg in EFI partition with UUIDs of new disks
