@@ -256,7 +256,10 @@ if [ -z \$installer ];then
 	sleep 3000000
 fi
 
-if [ \$cmdpath == (\$installer)/EFI/BOOT ];then
+root=\$installer,msdos1
+
+
+if [ \$cmdpath == (\$installer,msdos2)/EFI/BOOT ];then
 	set chained=0
 else
 	set chained=1  # chained from grub booted by hard disk
@@ -273,7 +276,6 @@ fi
 # default parameters for installer boot
 linux   /boot/$KERNEL_FILE $VGA_ARGS \$USER_SETTINGS $KERNEL_ARGS ---
 initrd  /boot/initrd-$BURMILLAOS_VER
-root=\$installer
 
 # check installed in hard disk
 if search --set=state --label RANCHER_STATE_SIBLING;
