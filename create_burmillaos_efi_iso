@@ -334,7 +334,7 @@ menuentry "Install Burmilla $BURMILLAOS_VER \$ERR_MSG0" {
 	boot
 }
 if [ -n "$state"]; then
-	menuentry 'Boot from installation detected on hard disk \$ERR_MSG1' {
+	menuentry "Boot from installation detected on hard disk \$ERR_MSG1" {
 		if search --no-floppy --set=efi --label EFI; then
 			prefix=(\$efi)/efi/boot
 			configfile \$prefix/grub.cfg
@@ -353,7 +353,7 @@ menuentry 'BIOS/UEFI Firmware Settings' {
 menuentry 'Test memory' {
     linux16 /boot/memtest86+.bin
 }
-menuentry "Debug Burmilla $BURMILLAOS_VER" {
+menuentry "Install Burmilla $BURMILLAOS_VER (debug)" {
     linux   /boot/$KERNEL_FILE vga=ask rancher.debug=true \$USER_SETTINGS $KERNEL_ARGS ---
     initrd  /boot/initrd-$BURMILLAOS_VER
 }
