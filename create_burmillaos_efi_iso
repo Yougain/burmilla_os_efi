@@ -278,7 +278,7 @@ linux   /boot/$KERNEL_FILE $VGA_ARGS \$USER_SETTINGS $KERNEL_ARGS ---
 initrd  /boot/initrd-$BURMILLAOS_VER
 
 # check installed in hard disk
-if search --set=state --label RANCHER_STATE_SIBLING;
+if search --set=state --label RANCHER_STATE_SIBLING; then
 	set default=1 # default: boot from hard disk
 else
 	set default=0 # default: boot from installer
