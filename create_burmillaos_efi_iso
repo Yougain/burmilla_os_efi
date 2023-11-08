@@ -254,7 +254,7 @@ sudo cp -ar $UD/boot/grub $PD/boot/
 echo sudo cp -ar $UD/EFI $PD/
 sudo cp -ar $UD/EFI $PD/
 
-cat - > "$PD"/rancheros/Dockerfile.amd64 <<END
+cat - >> "$PD"/rancheros/Dockerfile.amd64 <<END
 RUN mkdir /mnt2 || true
 RUN mount -o degraded LABEL=RANCHER_STATE_SIBLING /mnt2 || true
 RUN rm -f /mnt2/.reinstalling || true
@@ -454,6 +454,7 @@ echo All files are prepared.
 sudo rm -rf $PD/boot/isolinux
 sudo rm -rf $PD/boot/linux-current.cfg
 
+exit 1
 
 sudo xorriso -as mkisofs \
     -iso-level 3 \
