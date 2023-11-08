@@ -242,6 +242,14 @@ echo sudo cp -ar $UD/boot/grub $PD/boot/
 sudo cp -ar $UD/boot/grub $PD/boot/
 echo sudo cp -ar $UD/EFI $PD/
 sudo cp -ar $UD/EFI $PD/
+
+cat - > "$PD"/rancheros/Dockerfile.amd64 <<END
+RUN mkdir /mnt2 || true
+RUN mount -o degraded LABEL=RANCHER_STATE_SIBLING /mnt2 || true
+RUN rm -f /mnt2/.reinstalling || true
+RUN umount /mnt2 || true
+END
+
 #sudo cp "$T"/efiboot.img $PD/boot/isolinux/
 
 cat - > "$T"/grub.cfg <<END
@@ -310,8 +318,10 @@ if [ \$chained == 1 ];then
 else # grub directly loaded
 	# check undergoing installation
 	if [ -n \$state ];then
-		if [ -e (\$state)/state_root/.installing ]; then
-			echo (\$state)/state_root/.installing found
+		if [ -e (\$state)/state_root/.reinstalling ]; then
+			echo (\$state)/state_root/.reinstalling found
+			boot
+		else
 			if [ -e (\$state)/state_root/var/lib/rancher/conf/cloud-config.yml ]; then 
 				echo (\$state)/state_root/var/lib/rancher/conf/cloud-config.yml found
 				if [ -e (\$state)/state_root/home ]; then
@@ -326,28 +336,23 @@ else # grub directly loaded
 				echo (\$state)/state_root/var/lib/rancher/conf/cloud-config.yml not found
 				if [ -e (\$state)/state_root/home ]; then
 					echo (\$state)/state_root/home found
-					# reinstall
-					boot
-					echo "Cannot continue.... Please reset."
-					sleep 100000000
-				fi
-				if search --no-floppy --set=efi --label EFI; then
-					echo EFI partition found
-					prefix=(\$efi)/efi/boot
-					configfile \$prefix/grub.cfg
-					echo "Cannot continue.... Please reset."
-					sleep 100000000
-				else
-					set timeout=
+					# normal boot (default: hard disk)
 					set default=1
-					ERR_MSG1=" (Somthing wrong: cannot find EFI partition on target hard disk for second stage of installation)"
+					set timeout=5
+				else
+					if search --no-floppy --set=efi --label EFI; then
+						echo EFI partition found
+						prefix=(\$efi)/efi/boot
+						configfile \$prefix/grub.cfg
+						echo "Cannot continue.... Please reset."
+						sleep 100000000
+					else
+						set timeout=
+						set default=1
+						ERR_MSG1=" (Somthing wrong: cannot find EFI partition on target hard disk for second stage of installation)"
+					fi
 				fi
 			fi
-		else
-			echo (\$state)/state_root/.installing not found
-			# normal boot by hard disk
-			set default=1
-			set timeout=5
 		fi
 	fi
 fi
@@ -455,4 +460,17 @@ sudo losetup -D $LDEVH
 rmdir $UD $RD $PD
 rm -rf $ED2
 rm $P_IMG
+
+if [ "$1" = "--overwrite-usb" ];then
+	if [ -x "`which usb_dev`" ];then
+		UD="`~/usb_dev | egrep -o "/dev/sd." | head -1`"
+		if [ -e "$UD" ];then
+			sudo dd if=$P_ISO of=$UD bs=10M
+		else
+			echo Error: USB disk not found.
+		fi
+	else
+		echo Error: command 'usb_dev' not found. 
+	fi
+fi
 

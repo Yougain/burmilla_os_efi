@@ -119,6 +119,12 @@ while (( "$#" )); do
 	if [ "$1" = "-r" ];then
 		REINSTALL=1
 	fi
+	if [ "$1" = "--initialize-oem" ];then
+		INITIALIZE_OEM=1
+	fi
+	if [ "$1" = "--init-oem" ];then
+		INITIALIZE_OEM=1
+	fi
 	if [ -n "`echo $1| egrep '^[0-9]+$'`" ];then
 		PORT=$1
 	fi
@@ -228,7 +234,7 @@ if [ -z "$INST_IP" ]; then
 			fi
 			ssh $INST_IP -p $INSTALLED_PORT -l rancher -o ConnectTimeout=3 -o ConnectionAttempts=3 <<'END'
 				if sudo mount LABEL=RANCHEROS /mnt; then
-					sudo touch -d @$((`date +%s` + 300)) /state_top_lvl/state_root/.installing
+					sudo touch -d @$((`date +%s` + 300)) /state_top_lvl/state_root/.reinstalling
 					sudo reboot
 					exit 0
 				else
@@ -918,7 +924,6 @@ btrfs subvolume create /mnt2/state_root
 btrfs subvolume set-default \`btrfs subvolume list /mnt2|grep state_root|awk '{print \$2}'\` /mnt2
 mkdir /mnt2/state_root/state_top_lvl
 cp -a /opt/* /mnt2/state_root
-touch -d @\$((\`date +%s\` + 300)) /mnt2/state_root/.installing
 umount /opt
 mkfs.btrfs -L RANCHER_BOOT_SIBLING -f $TARGET_DEV4
 partprobe
@@ -928,7 +933,7 @@ if [ -z "\$BOOT_UUID" ];then
 fi
 
 # initialize oem drive if it does not exists, or remain contact
-if [ ! -e /dev/disk/by-label/RANCHER_OEM_SIBLING ]; then
+if [ ! -e /dev/disk/by-label/RANCHER_OEM_SIBLING -o -n "$INITIALIZE_OEM" ]; then
 	mkfs.btrfs -L RANCHER_OEM_SIBLING -f $TARGET_DEV7
 	partprobe
 	OEM_UUID=\`sudo ls -l /dev/disk/by-uuid | grep "${TARGET_DEV7##*/}" | awk '{print \$9}'\`
@@ -977,6 +982,7 @@ ROOT_ARGS="rancher.state.boot_dev=UUID=\$BOOT_UUID rancher.state.oem_dev=UUID=\$
 cat - > /mnt/efipart/EFI/BOOT/grub.cfg <<END
 
 set timeout=5
+set default=0
 
 set gfxmode=\$VGA_SIZE
 set gfxpayload=keep
@@ -1004,30 +1010,36 @@ initrd   /\$INITRD_FILE
 
 
 search --set=installer --label RANCHEROS
-search --set=ros_efi --label ROS_EFI
-if [ -n \\\$ros_efi ]; then
-	if [ \\\$cmdpath != (\\\$ros_efi)/EFI/BOOT ];then
-		set chained=0
-	else
-		set chained=1 # chained from grub booted by installer
-	fi
+search --set=ros_efi --label ROS_EFI # installer's boot efi
+if [ -n \\\$ros_efi -a \\\$cmdpath == (\\\$ros_efi)/EFI/BOOT ];then
+	# chain loaded from installer's grub
+	boot
 fi
-
-
-if [ -n \\\$installer -a -e (\\\$state)/state_root/.installing ]; then
-	if [ -e (\\\$state)/state_root/home ]; then # starting reinstration or 3rd phase of installation
-		root=\\\$installer
-		prefix=(\\\$root)/boot
-		configfile \\\$prefix/grub/grub.cfg
-	else # 2nd phase of installation : boot by installed target disk
-		boot
-	fi
-fi
-
 
 if [ "\\\$chained" == "1" ];then
     boot
 fi
+
+
+if [ -n \\\$installer ]; then
+	if [ -e (\\\$state)/state_root/.reinstalling ]; then # starting reinstration
+		root=\\\$installer
+		prefix=(\\\$root)/boot
+		configfile \\\$prefix/grub/grub.cfg
+	else
+		# check 2nd phase or 3rd phase of installation
+		if [ -e (\$state)/state_root/var/lib/rancher/conf/cloud-config.yml ]; then 
+			if [ -e (\\\$state)/state_root/home ]; then # starting reinstration or 3rd phase of installation
+				root=\\\$installer
+				prefix=(\\\$root)/boot
+				configfile \\\$prefix/grub/grub.cfg
+			else # 2nd phase of installation : boot by installed target disk
+				boot
+			fi
+		fi
+	fi
+fi
+
 
 
 menuentry "Burmilla OS \$INITRD_VER \$KERNEL_VER" {
@@ -1040,7 +1052,7 @@ if [ -n \\\$installer ]; then
 		configfile \\\$prefix/grub/grub.cfg
 	}
 fi
-menuentry "Debug Burmilla OS \$INITRD_VER \$KERNEL_VER" {
+menuentry "Burmilla OS \$INITRD_VER \$KERNEL_VER (debug)" {
     search --no-floppy  --fs-uuid --set=root \$BOOT_UUID
     linux    /\$VMLINUZ_FILE vga=ask rancher.debug=true \$KERNEL_ARGS \$ROOT_ARGS ---
     initrd   /\$INITRD_FILE
@@ -1331,6 +1343,7 @@ done
 # create startup script
 if [ ! -e /opt2/opt/rancher/bin/start.sh ];then
 	cat - > /opt2/opt/rancher/bin/start.sh <<START_UP
+		rm -f /state_top_lvl/state_root/.reinstalling
 		mount --bind /usr/share/ros/oem/etc/ssh /etc/ssh
 		mount --bind /usr/share/ros/oem/root /root
 		kill -HUP \\\$(ps ax |grep 'sshd -D' | grep -v grep | awk '{ print \\\$1 }')
@@ -1353,8 +1366,6 @@ if [ ! -e /opt2/opt/rancher/conf/grub ];then
 	chmod +x /opt2/opt/rancher/conf/grub/grub_env_for_installer
 fi
 
-#clear installation flag
-rm -f /mnt3/.installing
 reboot
 
 FINAL
