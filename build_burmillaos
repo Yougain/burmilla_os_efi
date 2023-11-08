@@ -25,9 +25,8 @@ if [ ! -e /usr/lib/docker/cli-plugins/docker-buildx ];then
 fi
 
 git-force-clone https://github.com/burmilla/os.git ~/os
-ODIR=`pwd`
 cd ~/os
-patch -p1 < $ODIR/burmilla_os_efi/mountOpt.patch
+patch -p1 < ~/burmilla_os_efi/mountOpt.patch
 sudo make
 cd ~/
 mkdir -p ~/burmilla_os_iso
