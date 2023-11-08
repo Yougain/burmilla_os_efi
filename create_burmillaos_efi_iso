@@ -261,6 +261,9 @@ RUN rm -f /mnt2/.reinstalling || true
 RUN umount /mnt2 || true
 END
 
+echo "$PD"/rancheros/Dockerfile.amd64
+cat "$PD"/rancheros/Dockerfile.amd64
+
 #sudo cp "$T"/efiboot.img $PD/boot/isolinux/
 
 cat - > "$T"/grub.cfg <<END
@@ -453,6 +456,10 @@ echo All files are prepared.
 
 sudo rm -rf $PD/boot/isolinux
 sudo rm -rf $PD/boot/linux-current.cfg
+
+
+echo "$PD"/rancheros/Dockerfile.amd64
+cat "$PD"/rancheros/Dockerfile.amd64
 
 exit 1
 
