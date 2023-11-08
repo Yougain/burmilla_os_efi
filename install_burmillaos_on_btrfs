@@ -234,8 +234,17 @@ if [ -z "$INST_IP" ]; then
 			fi
 			ssh $INST_IP -p $INSTALLED_PORT -l rancher -o ConnectTimeout=3 -o ConnectionAttempts=3 <<'END'
 				if sudo mount LABEL=RANCHEROS /mnt; then
-					sudo touch -d @$((`date +%s` + 300)) /state_top_lvl/state_root/.reinstalling
-					sudo reboot
+					if [ -e /state_top_lvl/state_root ];then
+						sudo touch -d @$((`date +%s` + 300)) /state_top_lvl/state_root/.reinstalling
+						sudo reboot
+					else
+						sudo mkdir /opt2
+						sudo mount LABEL=RANCHER_STATE_SIBLING /opt2
+						sudo touch -d @$((`date +%s` + 300)) /opt2/.reinstalling
+						sudo umount /opt2
+						sudo rmdir /opt2
+						sudo reboot
+					fi
 					exit 0
 				else
 					exit 2
@@ -943,7 +952,11 @@ if [ ! -e /dev/disk/by-label/RANCHER_OEM_SIBLING -o -n "$INITIALIZE_OEM" ]; then
 	mkdir -p /opt2
 	mount $TARGET_DEV7 /opt2
 	btrfs subvolume create /opt2/oem_root
+	echo btrfs subvolume set-default \`btrfs subvolume list /opt2|grep oem_root|awk '{print \$2}'\` /opt2
 	btrfs subvolume set-default \`btrfs subvolume list /opt2|grep oem_root|awk '{print \$2}'\` /opt2
+	mkdir -p /opt2/oem_root/opt/rancher/conf/grub
+	echo -n "USER_SETTINGS='rancher.network.interfaces.$NET_DEV.address=$IP/$NETMASK rancher.network.interfaces.$NET_DEV.gateway=$GATEWAY rancher.network.dns.nameservers=$DNS_SETTINGS_YQ'" > /opt2/oem_root/opt/rancher/conf/grub/grub_env_for_installer
+	chmod +x /opt2/oem_root/opt/rancher/conf/grub/grub_env_for_installer
 	umount /opt2
 else
 	OEM_UUID=\`sudo ls -l /dev/disk/by-uuid | grep "${TARGET_DEV7##*/}" | awk '{print \$9}'\`
@@ -1083,6 +1096,8 @@ function reboot_by_passwd(){
 
 wait_sshd_start
 
+
+
 while ! ssh_inst echo; do
 	green Switch to boot by target disk
 	green rebooting ...
@@ -1097,8 +1112,10 @@ if [ "`ssh_inst cat /proc/cmdline | grep -o rancher.state.dev=`" = "rancher.stat
 		sleep 1
 		cyan_n .
 	done
+	ssh_inst sudo rm /var/lib/rancher/conf/cloud-config.d/user_config.yml
 	green Switch to boot by installer
 	ssh_inst sudo reboot
+	INST_IP=$IP
 	wait_sshd_start
 else
 	die target disk not found
@@ -1108,7 +1125,7 @@ fi
 
 install_ssh_key
 
-ssh_inst sudo mkdir -p /mnt3
+ssh_inst sudo mkdir -p /mnt3 /opt2
 ssh_inst sudo mount $TARGET_DEV5 /mnt3 -odegraded
 if [ -z "`ssh_inst ls -ld /mnt3/home`" ];then
 	die "Please boot from installed hard disk only ONCE."
@@ -1175,8 +1192,8 @@ addConsoleVolume(){
 addConsoleVolume "/root:/usr/share/ros/oem/root"
 addConsoleVolume "/etc/ssh:/usr/share/ros/oem/etc/ssh"
 
-mkdir -p /opt2
 mount -t btrfs -odegraded,subvol=/oem_root $TARGET_DEV7 /opt2
+mkdir -p /opt2/var/lib/rancher/conf/cloud-config.d
 if [ -z "$USER_CONFIG" ]; then
 	echo -n "
 hostname: $HNAME_FULL
@@ -1342,6 +1359,7 @@ done
 
 # create startup script
 if [ ! -e /opt2/opt/rancher/bin/start.sh ];then
+	mkdir -p /opt2/opt/rancher/bin
 	cat - > /opt2/opt/rancher/bin/start.sh <<START_UP
 		rm -f /state_top_lvl/state_root/.reinstalling
 		mount --bind /usr/share/ros/oem/etc/ssh /etc/ssh
