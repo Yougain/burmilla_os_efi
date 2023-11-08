@@ -311,7 +311,7 @@ function  install_ssh_key(){
 		expect \"rancher ~]$ \"
 		send \"chmod 700 ~/.ssh\n\"
 		expect \"rancher ~]$ \"
-		send \"if ! grep \\\"$KEY\\\" ~/.ssh/authorized_keys;then echo $KEY >> ~/.ssh/authorized_keys; fi\n\"
+		send \"echo $KEY >> ~/.ssh/authorized_keys\n\"
 		expect \"rancher ~]$ \"
 		send \"exit\"
 		"
@@ -338,13 +338,14 @@ $CyanPlease enter following commands on console.
 fi
 
 # clear reinstallation flag
-ssh_inst sudo bash -c '
-	mkdir -p /mntx
-	mount LABEL=RANCHER_STATE_SIBLING /mntx
-	rm /mntx/.reinstalling
-	umount /mntx
-	rmdir /mntx
-'
+ssh_inst <<END
+	sudo mkdir -p /mntx
+	if sudo mount LABEL=RANCHER_STATE_SIBLING /mntx; then
+		sudo rm -f /mntx/.reinstalling
+		sudo umount /mntx
+	fi
+	sudo rmdir /mntx
+END
 
 # check booted from installer disk
 if [ "`ssh_inst sudo mount | grep /usr/bin/ros | awk '{print $1}'`" != "none" ]; then
@@ -1187,31 +1188,31 @@ if [ "\$OS_CONFIG_FILE1" != "\$OS_CONFIG_FILE" ];then
 	exit 1
 fi
 
-addConsoleVolume(){
-	local i=0
-	while [ 1 ]; do
-		k="\`yq e '.rancher.services.console.volumes.['\$i']' \$OS_CONFIG_FILE\`"
-		echo \$k
-		case "\$k" in
-			"\$1")
-				break
-				;;
-			"null" )
-				echo null
-				echo yq e -i '.rancher.services.console.volumes.['\$i']|="'"\$1"'"' \$OS_CONFIG_FILE
-				yq e -i '.rancher.services.console.volumes.['\$i']|="'"\$1"'"' \$OS_CONFIG_FILE
-				break
-				;;
-		esac
-		i=\$(( i + 1 ))
-		if [ "$i" == "1000" ];then
-			break
-		fi
-	done
-}
-
-addConsoleVolume "/root:/usr/share/ros/oem/root"
-addConsoleVolume "/etc/ssh:/usr/share/ros/oem/etc/ssh"
+#addConsoleVolume(){
+#	local i=0
+#	while [ 1 ]; do
+#		k="\`yq e '.rancher.services.console.volumes.['\$i']' \$OS_CONFIG_FILE\`"
+#		echo \$k
+#		case "\$k" in
+#			"\$1")
+#				break
+#				;;
+#			"null" )
+#				echo null
+#				echo yq e -i '.rancher.services.console.volumes.['\$i']|="'"\$1"'"' \$OS_CONFIG_FILE
+#				yq e -i '.rancher.services.console.volumes.['\$i']|="'"\$1"'"' \$OS_CONFIG_FILE
+#				break
+#				;;
+#		esac
+#		i=\$(( i + 1 ))
+#		if [ "$i" == "1000" ];then
+#			break
+#		fi
+#	done
+#}
+#
+#addConsoleVolume "/root:/usr/share/ros/oem/root"
+#addConsoleVolume "/etc/ssh:/usr/share/ros/oem/etc/ssh"
 
 mount -t btrfs -odegraded,subvol=/oem_root $TARGET_DEV7 /opt2
 mkdir -p /opt2/var/lib/rancher/conf/cloud-config.d
