@@ -254,15 +254,12 @@ sudo cp -ar $UD/boot/grub $PD/boot/
 echo sudo cp -ar $UD/EFI $PD/
 sudo cp -ar $UD/EFI $PD/
 
-cat - >> "$PD"/rancheros/Dockerfile.amd64 <<END
+sudo cat - >> "$PD"/rancheros/Dockerfile.amd64 <<END
 RUN mkdir /mnt2 || true
 RUN mount -o degraded LABEL=RANCHER_STATE_SIBLING /mnt2 || true
 RUN rm -f /mnt2/.reinstalling || true
 RUN umount /mnt2 || true
 END
-
-echo "$PD"/rancheros/Dockerfile.amd64
-cat "$PD"/rancheros/Dockerfile.amd64
 
 #sudo cp "$T"/efiboot.img $PD/boot/isolinux/
 
