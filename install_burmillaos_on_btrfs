@@ -651,16 +651,29 @@ function loadOrRewrite(){
 			rewrite_ssh_config $hname
 		else
 			local ent=`get_ssh_config_entry $hname`
-			local EIP=${2/:*}
-			local EPORT=${2#*:}
+			local EIP=${ent/:*}
+			local EPORT=${ent#*:}
 			if [ -n "$IP" ]; then
-				if [ -n "$PORT" ]; then
-					die "$IP:$PORT is different from relevant entry, '$EIP:$EPORT' of '$1' in ~/.ssh/config."
-				else
-					die "$IP is different from entrym,'$EIP' of '$1' in ~/.ssh/config, and port number for ssh is not specified."
+				if [ -n "$EIP" ]; then
+					if [ "$IP" != "$EIP" ]; then
+						die "ip address, '$IP' is different from relevant entry, ip adderss, '$EIP' of '$1' in ~/.ssh/config."
+					fi
 				fi
 			else
-				die "ssh port number, '$PORT' is different from relevant entry, '$EPORT' of '$1' in ~/.ssh/config, and IP address for server is not specified."
+				if [ -n "$EIP" ]; then
+					IP=$EIP
+				fi
+			fi
+			if [ -n "$PORT" ]; then
+				if [ -n "$EPORT" ]; then
+					if [ "$PORT" != "$EPORT" ]; then
+						die "port number, '$PORT' is different from relevant entry, '$EPORT' of '$1' in ~/.ssh/config."
+					fi
+				fi
+			else
+				if [ -n "$EPORT" ]; then
+					PORT=$EPORT
+				fi
 			fi
 		fi
 	fi
@@ -1194,7 +1207,7 @@ addConsoleVolume "/etc/ssh:/usr/share/ros/oem/etc/ssh"
 
 mount -t btrfs -odegraded,subvol=/oem_root $TARGET_DEV7 /opt2
 mkdir -p /opt2/var/lib/rancher/conf/cloud-config.d
-if [ -z "$USER_CONFIG" ]; then
+if [ -z "$USER_CONFIG" -o ! -e "$UF" ]; then
 	echo -n "
 hostname: $HNAME_FULL
 date: \"`date`\"
