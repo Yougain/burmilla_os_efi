@@ -1361,18 +1361,19 @@ done
 if [ ! -e /opt2/opt/rancher/bin/start.sh ];then
 	mkdir -p /opt2/opt/rancher/bin
 	cat - > /opt2/opt/rancher/bin/start.sh <<START_UP
-		rm -f /state_top_lvl/state_root/.reinstalling
-		mount --bind /usr/share/ros/oem/etc/ssh /etc/ssh
-		mount --bind /usr/share/ros/oem/root /root
-		kill -HUP \\\$(ps ax |grep 'sshd -D' | grep -v grep | awk '{ print \\\$1 }')
-		if [ ! -e /etc/profile.d/lang.sh ]; then
-			echo export LANG=$LANG > /etc/profile.d/lang.sh
-			echo export LC_CTYPE=$LC_TYPE >> /etc/profile.d/lang.sh
-			echo export LC_ALL=$LC_ALL>> /etc/profile.d/lang.sh
-		fi
-		if [ ! -e /etc/profile.d/timezone.sh ]; then
-			echo export TZ=$TZL > /etc/profile.d/timezone.sh
-		fi
+#!/bin/env sh
+rm -f /state_top_lvl/state_root/.reinstalling
+mount --bind /usr/share/ros/oem/etc/ssh /etc/ssh
+mount --bind /usr/share/ros/oem/root /root
+kill -HUP \\\$(ps ax |grep 'sshd -D' | grep -v grep | awk '{ print \\\$1 }')
+if [ ! -e /etc/profile.d/lang.sh ]; then
+	echo export LANG=$LANG > /etc/profile.d/lang.sh
+	echo export LC_CTYPE=$LC_CTYPE >> /etc/profile.d/lang.sh
+	echo export LC_ALL=$LC_ALL >> /etc/profile.d/lang.sh
+fi
+if [ ! -e /etc/profile.d/timezone.sh ]; then
+	echo export TZ=$TZL > /etc/profile.d/timezone.sh
+fi
 START_UP
 	chmod 0755 /opt2/opt/rancher/bin/start.sh
 fi
