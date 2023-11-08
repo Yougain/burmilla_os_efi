@@ -57,38 +57,46 @@ LATEST_BETA_V=$(ver $LATEST_BETA)
 LATEST_RC_V=$(ver $LATEST_RC)
 
 
-case "$1" in
-	"rc" )
-		if [ $(vc $LATEST_STABLE_V) -ge $(vc $LATEST_RC_V) ];then
-			echo "latest rc not found"
-			exit 1
-		fi
-		BURMILLAOS_VER=$LATEST_RC
-		;;
-	"beta" )
-		if [ $(vc $LATEST_STABLE_V) -ge $(vc $LATEST_BETA_V) ];then
-			echo "latest beta not found"
-			exit 1
-		fi
-		if [ $(vc $LATEST_RC_V) -ge $(vc $LATEST_BETA_V) ];then
-			echo "latest beta not found"
-			exit 1
-		fi
-		BURMILLAOS_VER=$LATEST_BETA
-		;;
-	"" )
-		BURMILLAOS_VER=$LATEST_STABLE
-		;;
-	"--overwrite-usb" )
-		OVERWRITE_USB=1
-		;;
-	* )
-		for i in $VERSIONS; do
-			if [ "$i" = "$1" ];then
-				BURMILLAOS_VER=$1
+# argument analysis
+while (( "$#" )); do
+	case "$1" in
+		"rc" )
+			if [ $(vc $LATEST_STABLE_V) -ge $(vc $LATEST_RC_V) ];then
+				echo "latest rc not found"
+				exit 1
 			fi
-		done
-esac
+			ARG_FOUND=1
+			BURMILLAOS_VER=$LATEST_RC
+			;;
+		"beta" )
+			if [ $(vc $LATEST_STABLE_V) -ge $(vc $LATEST_BETA_V) ];then
+				echo "latest beta not found"
+				exit 1
+			fi
+			if [ $(vc $LATEST_RC_V) -ge $(vc $LATEST_BETA_V) ];then
+				echo "latest beta not found"
+				exit 1
+			fi
+			ARG_FOUND=1
+			BURMILLAOS_VER=$LATEST_BETA
+			;;
+		"--overwrite-usb" )
+			OVERWRITE_USB=1
+			;;
+		* )
+			ARG_FOUND=1
+			for i in $VERSIONS; do
+				if [ "$i" = "$1" ];then
+					BURMILLAOS_VER=$1
+				fi
+			done
+	esac
+	shift
+done
+
+if [ -z "$ARG_FOUND" ];then
+	BURMILLAOS_VER=$LATEST_STABLE
+fi
 
 if [ -z "$BURMILLAOS_VER" ];then
 	echo "Version, $1 is not found"
@@ -468,7 +476,7 @@ if [ -n "$OVERWRITE_USB" ];then
 	if [ -x "`which usb_dev`" ];then
 		UD="`~/usb_dev | egrep -o "/dev/sd." | head -1`"
 		if [ -e "$UD" ];then
-			sudo dd if=$P_ISO of=$UD bs=10M
+			sudo dd if=$P_ISO of=$UD bs=10M status=progress
 		else
 			echo Error: USB disk not found.
 		fi
