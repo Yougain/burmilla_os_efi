@@ -337,6 +337,14 @@ $CyanPlease enter following commands on console.
 	fi
 fi
 
+# clear reinstallation flag
+ssh_inst sudo bash -c '
+	mkdir -p /mntx
+	mount LABEL=RANCHER_STATE_SIBLING /mntx
+	rm /mntx/.reinstalling
+	umount /mntx
+	rmdir /mntx
+'
 
 # check booted from installer disk
 if [ "`ssh_inst sudo mount | grep /usr/bin/ros | awk '{print $1}'`" != "none" ]; then
