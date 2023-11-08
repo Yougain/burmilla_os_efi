@@ -79,6 +79,9 @@ case "$1" in
 	"" )
 		BURMILLAOS_VER=$LATEST_STABLE
 		;;
+	"--overwrite-usb" )
+		OVERWRITE_USB=1
+		;;
 	* )
 		for i in $VERSIONS; do
 			if [ "$i" = "$1" ];then
@@ -461,7 +464,7 @@ rmdir $UD $RD $PD
 rm -rf $ED2
 rm $P_IMG
 
-if [ "$1" = "--overwrite-usb" ];then
+if [ -n "$OVERWRITE_USB" ];then
 	if [ -x "`which usb_dev`" ];then
 		UD="`~/usb_dev | egrep -o "/dev/sd." | head -1`"
 		if [ -e "$UD" ];then
