@@ -20,7 +20,7 @@ end
 
 
 if system "dd if=#{DISK} of=/tmp/disk_head_reaplace.data bs=1M count=1"
-	File.open "/tmp/disk_head_reaplace.data", "br" do |fr|
+	File.open "/tmp/disk_head_reaplace.data", "rb" do |fr|
 		data = fr.read
 	end
 	if data.sub! OLD, NEW
