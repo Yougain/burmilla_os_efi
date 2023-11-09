@@ -11,6 +11,10 @@ fi
 if [ ! -x "`which btrfs`" ]; then
 	apt-get install -y btrfs-progs
 fi
+if [ ! -x "`which partprobe`" ]; then
+	apt-get install -y parted
+fi
+
 
 
 if [ "$1" = "" ];then
@@ -100,7 +104,7 @@ EUUID=`xxd -u -l 2 -p /dev/urandom`-`xxd -u -l 2 -p /dev/urandom`
 printf "\x${EUUID:7:2}\x${EUUID:5:2}\x${EUUID:2:2}\x${EUUID:0:2}" \
 | dd bs=1 seek=67 count=4 conv=notrunc of="$TARGET_DISK"2
 partprobe
-if ! mkswap -L RANCHER_SWAP_SIBLING "$TARGET_DISK"3
+if ! mkswap -L RANCHER_SWAP_SIBLING "$TARGET_DISK"3; then
 	echo "cannot create swap partition"
 	exit 1
 fi
