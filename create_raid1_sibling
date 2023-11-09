@@ -1,5 +1,18 @@
 #!/bin/bash
 
+if [ "`id | awk '{print $1}'`" != "uid=0(root)" ];then
+	sudo $0 $@
+	exit $?
+fi
+
+if [ ! -x "`wchich gdisk`" ]; then
+	apt-get install -y gdisk
+fi
+if [ ! -x "`wchich btrfs`" ]; then
+	apt-get install -y btrfs-progs
+fi
+
+
 if [ "$1" = "" ];then
 	echo "Error: Argument missing."
 	exit 1
