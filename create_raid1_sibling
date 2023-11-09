@@ -5,10 +5,10 @@ if [ "`id | awk '{print $1}'`" != "uid=0(root)" ];then
 	exit $?
 fi
 
-if [ ! -x "`wchich gdisk`" ]; then
+if [ ! -x "`which gdisk`" ]; then
 	apt-get install -y gdisk
 fi
-if [ ! -x "`wchich btrfs`" ]; then
+if [ ! -x "`which btrfs`" ]; then
 	apt-get install -y btrfs-progs
 fi
 
