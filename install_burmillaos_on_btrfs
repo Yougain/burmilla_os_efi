@@ -1247,6 +1247,7 @@ runcmd:
 - mkdir -p /oem_top_lvl
 - mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`readlink /dev/root|egrep -o "[0-9a-f-]+"\\\` | egrep -o "sd.")7 -odegraded,subvol=/ /oem_top_lvl
 - mkdir -p /boot/efi
+- mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`readlink /dev/root|egrep -o "[0-9a-f-]+"\\\` | egrep -o "sd.")4 /boot
 - mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`readlink /dev/root|egrep -o "[0-9a-f-]+"\\\` | egrep -o "sd.")2 /boot/efi
 - swapon /dev/\\\$(readlink /dev/disk/by-uuid/\\\`readlink /dev/root|egrep -o "[0-9a-f-]+"\\\` | egrep -o "sd.")3
 - btrfs quota enable /state_top_lvl
