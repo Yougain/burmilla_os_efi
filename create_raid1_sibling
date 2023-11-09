@@ -92,25 +92,10 @@ if ! mkswap -L RANCHER_SWAP_SIBLING "$TARGET_DISK"3
 	exit 1
 fi
 
-##format btrfs partition for new boot device
-#mkfs.btrfs -L RANCHER_BOOT_SIBLING -f "$TARGET_DISK"4
-#partprobe
-#BOOT_UUID=`ls -l /dev/disk/by-uuid | grep "$TARGET_DISK"4 | awk '{print $9}'`
-##format btrfs partition for new state device
-#mkfs.btrfs -L RANCHER_STATE_SIBLING -f "$TARGET_DISK"5
-#partprobe
-#STATE_UUID=`ls -l /dev/disk/by-uuid | grep "$TARGET_DISK"5 | awk '{print $9}'`
 dd if=/dev/zero of="$TARGET_DISK"4 bs=100M count=1
 dd if=/dev/zero of="$TARGET_DISK"5 bs=100M count=1
 dd if=/dev/zero of="$TARGET_DISK"7 bs=100M count=1
 partprobe
-
-# modify grub.cfg in EFI partition with UUIDs of new disks
-mount "$TARGET_DISK"2 /mnt
-sed -i "s/^\s*search.*/\tsearch --no-floppy --fs-uuid --set=root $BOOT_UUID/g" /mnt/EFI/boot/grub.cfg
-sed -i "s/rancher\.state\.dev=UUID=[^ ]*/rancher.state.dev=UUID=$STATE_UUID/g" /mnt/EFI/boot/grub.cfg
-sed -i "s/ root=[^ ]*/ root=UUID=$STATE_UUID/g" /mnt/EFI/boot/grub.cfg
-unmount /mnt
 
 # copy boot partition to new disk (optional)
 # mkdir -p /tmp/{src,dst}
@@ -121,13 +106,13 @@ unmount /mnt
 
 # remove missing device
 btrfs device delete missing /boot
-btrfs device delete missing /btrfs_top_lvl
+btrfs device delete missing /state_top_lvl
+btrfs device delete missing /oem_top_lvl
 
 # add new device
 btrfs device add "$TARGET_DISK"4 /boot
-btrfs device add "$TARGET_DISK"5 /btrfs_top_lvl
-BOOT_UUID=`ls -l /dev/disk/by-uuid | grep "$TARGET_DISK"4 | awk '{print $9}'`
-STATE_UUID=`ls -l /dev/disk/by-uuid | grep "$TARGET_DISK"5 | awk '{print $9}'`
+btrfs device add "$TARGET_DISK"5 /state_top_lvl
+btrfs device add "$TARGET_DISK"7 /oem_top_lvl
 
 # select raid mode and start balancing
 function bstart(){
@@ -138,6 +123,12 @@ function bstart(){
 		"4" ) btrfs balance start -mconvert=raid1c4 -dconvert=raid1c4 $2 ;;
 	esac
 }
-bstart $BOOT_UUID /boot
-bstart $STATE_UUID /btrfs_top_lvl
+
+for uuid in `ls /dev/disk/by-uuid`; do
+	case "`readlink /dev/disk$uuid`" in
+		"$BOOT_DISK"4 ) bstart $uuid ;;
+		"$BOOT_DISK"5 ) bstart $uuid ;;
+		"$BOOT_DISK"7 ) bstart $uuid ;;
+	esac
+done
 
