@@ -1,0 +1,38 @@
+#!/bin/env ruby
+
+
+DISK = ARGV[0]
+
+OLD = ARGV[1]
+
+NEW = ARGV[2]
+
+
+if !DISK || !OLD || !NEW
+	STDERR.write "Argument error.\n"
+	exit 1
+end
+
+
+if OLD.size != NEW.size
+	STDERR.write "String size different."
+end
+
+
+if system "dd if=#{DISK} of=/tmp/disk_head_reaplace.data bs=1M count=1"
+	File.open "/tmp/disk_head_reaplace.data", "br" do |fr|
+		data = fr.read
+	end
+	if data.sub! OLD, NEW
+		IO.write "/tmp/disk_head_reaplace.data", data
+		if system "dd if=/tmp/disk_head_reaplace.data of=#{DISK} bs=1M count=1"
+			STDERR.write "Expression replaced."
+		else
+			STDERR.write "Cannot write."
+		end
+	else
+		STDERR.write "Expression not found."
+	end
+else
+	STDERR.write "Cannot read."
+end
