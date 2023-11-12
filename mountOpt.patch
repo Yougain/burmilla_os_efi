@@ -66,3 +66,26 @@ diff -Naurb os-org/config/types.go os/config/types.go
  	BootDev    string   `yaml:"boot_dev,omitempty"`
  }
  
+diff -Naur os/scripts/version os.patched/scripts/version
+--- os/scripts/version	2023-11-12 20:51:19.589540387 +0900
++++ os.patched/scripts/version	2023-11-12 21:17:48.992900670 +0900
+@@ -1,15 +1,15 @@
+ #!/bin/bash
+ 
+-if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+-    DIRTY="-dirty"
+-fi
++#if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
++#    DIRTY="-dirty"
++#fi
+ 
+ COMMIT=$(git rev-parse --short HEAD)
+ GIT_TAG=$(git tag -l --contains HEAD | head -n 1)
+ 
+ if [ -z "$VERSION" ]; then
+     if [[ -z "$DIRTY" && -n "$GIT_TAG" ]]; then
+-        VERSION=$GIT_TAG
++        VERSION=$GIT_TAG-btrfs
+     else
+         VERSION="${COMMIT}${DIRTY}"
+     fi

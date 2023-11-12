@@ -1007,7 +1007,7 @@ KERNEL_VER=\${VMLINUZ_FILE#*-}
 GLOBAL_APPEND=\`cat /opt/global.cfg | sed "s/ rancher\.state\.dev=[^ ]*//g"\`
 GLOBAL_APPEND_ARGS=\${GLOBAL_APPEND#APPEND *}
 
-KERNEL_ARGS="rancher.state.oem_mountopt=degraded,subvol=/oem_root rancher.state.mountopt=degraded,subvol=/state_root rancher.password=rancher \$GLOBAL_APPEND_ARGS rw rootflags=degraded,subvol=/state_root"
+KERNEL_ARGS="rancher.state.boot_mountopt=degraded rancher.state.oem_mountopt=degraded,subvol=/oem_root rancher.state.mountopt=degraded,subvol=/state_root rancher.password=rancher \$GLOBAL_APPEND_ARGS rw rootflags=degraded,subvol=/state_root"
 VGA_SIZE=1024x768
 VGA_MODE=775
 VGA_ARGS="i915.force_probe vga=\$VGA_MODE video=\$VGA_SIZE"
