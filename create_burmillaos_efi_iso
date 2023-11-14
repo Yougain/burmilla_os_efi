@@ -338,7 +338,7 @@ fi
 set timeout=30
 
 
-if [ -z \$chained_menu ];then
+if ! regexp menu "\\\$chosen";then
 	if [ \$chained == 1 ];then
 		# if chainloaded, just boot up from installer
 		echo "\$cmdpath == (\$installer)/EFI/BOOT"
@@ -388,6 +388,7 @@ if [ -z \$chained_menu ];then
 		fi
 	fi
 else
+	set menu_chained=1
 	timeout=
 fi
 
@@ -400,7 +401,7 @@ menuentry "Install Burmilla $BURMILLAOS_VER \$ERR_MSG0" {
 	linux   /boot/$KERNEL_FILE $VGA_ARGS \$USER_SETTINGS $KERNEL_ARGS rancher.autologin=ttyS\$serial_port console=ttyS\$serial_port,115200n8 panic=10 ---
 	initrd  /boot/initrd-$BURMILLAOS_VER
 }
-if [ -n \$state -a -z \$chained_menu ]; then
+if [ -n \$state -a -z \$menu_chained ]; then
 	menuentry "Directly boot hard disk \$ERR_MSG1" {
 		if search --no-floppy --set=efi --label EFI; then
 			prefix=(\$efi)/efi/boot
@@ -412,15 +413,14 @@ if [ -n \$state -a -z \$chained_menu ]; then
 		sleep 100000000
 	}
 	menuentry "Boot menu of hard disk \$ERR_MSG1" {
-		set chained_menu=1
 		if search --no-floppy --set=efi --label EFI; then
+			prev_prefix=\$prefix
 			prefix=(\$efi)/efi/boot
 			configfile \$prefix/grub.cfg
+			prefix=\$prev_prefix
 		else
 			echo "Cannot find EFI partition of target hard disk for booting."
 		fi
-		echo "Cannot continue.... Please reset."
-		sleep 100000000
 	}
 else
 	default=0

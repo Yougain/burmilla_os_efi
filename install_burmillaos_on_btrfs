@@ -1078,7 +1078,7 @@ search --set=installer --label RANCHEROS
 search --set=ros_efi --label ROS_EFI # installer's boot efi
 
 
-if [ -z \\\$chained_menu ];then
+if ! regexp menu "\\\$chosen";then
 	if [ -n \\\$ros_efi -a \\\$cmdpath == (\\\$ros_efi)/EFI/BOOT ];then
 		# chain loaded from installer's grub
 		boot
@@ -1104,6 +1104,7 @@ if [ -z \\\$chained_menu ];then
 		fi
 	fi
 else
+	set menu_chained=1
 	timeout=
 fi
 
@@ -1112,17 +1113,20 @@ menuentry "Burmilla OS \$INITRD_VER \$KERNEL_VER" {
 	linux    /\$VMLINUZ_FILE \$VGA_ARGS \$KERNEL_ARGS console=ttyS\\\$serial_port,115200n8 \$ROOT_ARGS panic=10
 	initrd   /\$INITRD_FILE
 }
-if [ -n \\\$installer -a -z \\\$chained_menu ]; then
+if [ -n \\\$installer -a -z \\\$menu_chained ]; then
 	menuentry "Directly boot installer" {
 		root=\\\$installer
 		prefix=(\\\$root)/boot
 		configfile \\\$prefix/grub/grub.cfg
 	}
 	menuentry "Display boot menu in installer" {
-		chained_menu=1
+		prev_root=\\\$root
 		root=\\\$installer
+		prev_prefix=\\\$prefix
 		prefix=(\\\$root)/boot
 		configfile \\\$prefix/grub/grub.cfg
+		root=\\\$prev_root
+		prefix=\\\$prev_prefix
 	}
 fi
 menuentry "Burmilla OS \$INITRD_VER \$KERNEL_VER (debug)" {
