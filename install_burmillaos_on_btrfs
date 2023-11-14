@@ -983,6 +983,7 @@ if [ ! -e /dev/disk/by-label/RANCHER_OEM_SIBLING -o -n "$INITIALIZE_OEM" ]; then
 else
 	OEM_UUID=\`sudo ls -l /dev/disk/by-uuid | grep "${TARGET_DEV7##*/}" | awk '{print \$9}'\`
 fi
+EFI_UUID=\`sudo ls -l /dev/disk/by-uuid | grep "${TARGET_DEV2##*/}" | awk '{print \$9}'\`
 
 # move all files from $TARGET_DEV4/boot (initial state drive) to $TARGET_DEV2 (boot drive).
 mount $TARGET_DEV4 /opt
@@ -1030,6 +1031,7 @@ set gfxpayload=keep
 set boot_uuid=\$BOOT_UUID
 set state_uuid=\$STATE_UUID
 set oem_uuid=\$OEM_UUID
+set efi_uuid=\$EFI_UUID
 
 if ! search --no-floppy --fs-uuid --set=boot \\\$boot_uuid; then
 	echo "Sorry, no installation found or corrupted. Please reinstall by installer."
@@ -1043,6 +1045,12 @@ fi
 
 
 if ! search --no-floppy --fs-uuid --set=oem \\\$oem_uuid; then
+	echo "Sorry, no installation found or corrupted. Please reinstall by installer."
+	sleep 3000000
+fi
+
+
+if ! search --no-floppy --fs-uuid --set=efi \\\$efi_uuid; then
 	echo "Sorry, no installation found or corrupted. Please reinstall by installer."
 	sleep 3000000
 fi
@@ -1080,7 +1088,6 @@ function boot_default_kernel {
 
 search --set=installer --label RANCHEROS
 search --set=ros_efi --label ROS_EFI # installer's boot efi
-search --set=efi --label EFI # hard disk's boot efi
 
 
 if ! regexp menu "\\\$chosen";then
