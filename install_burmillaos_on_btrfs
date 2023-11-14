@@ -987,7 +987,9 @@ fi
 # move all files from $TARGET_DEV4/boot (initial state drive) to $TARGET_DEV2 (boot drive).
 mount $TARGET_DEV4 /opt
 cp -a /mnt2/state_root/boot/* /opt/
-cp -a /boot/grub /opt/boot/
+mkdir /installer
+mount LABEL=RANCHEROS /installer
+cp -a /installer/boot/grub /opt/boot/
 rm -f /opt/boot/grub/*.cfg
 ln -sf efi/EFI/boot/grub.cfg /opt/boot/grub/grub.cfg
 rm -rf /mnt2/state_root/boot/*
