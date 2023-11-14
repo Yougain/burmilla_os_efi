@@ -1007,7 +1007,7 @@ fi
 INITRD_VER=\${INITRD_FILE#*-}
 KERNEL_VER=\${VMLINUZ_FILE#*-}
 
-GLOBAL_APPEND=\`cat /opt/global.cfg | sed "s/ rancher\.state\.dev=[^ ]*//g" | sed "s/ console=ttyS[^ ]*//g" \ | |sed "s/ rancher.autologin=ttyS[^ ]*//g"`
+GLOBAL_APPEND=\`cat /opt/global.cfg | sed "s/ rancher\.state\.dev=[^ ]*//g" | sed "s/ console=ttyS[^ ]*//g" | sed "s/ rancher.autologin=ttyS[^ ]*//g"\`
 GLOBAL_APPEND_ARGS=\${GLOBAL_APPEND#APPEND *}
 
 KERNEL_ARGS="rancher.state.boot_mountopt=degraded rancher.state.oem_mountopt=degraded,subvol=/oem_root rancher.state.mountopt=degraded,subvol=/state_root rancher.password=rancher \$GLOBAL_APPEND_ARGS rw rootflags=degraded,subvol=/state_root"
