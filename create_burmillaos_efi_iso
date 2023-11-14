@@ -419,8 +419,10 @@ function disp_menu {
 				prefix=(\$efi)/efi/boot
 				configfile \$prefix/grub.cfg
 				prefix=\$prev_prefix
-				disp_menu
-				reboot
+				chosen=
+				while true;do
+					configfile (\$installer)/boot/grub/grub.cfg
+				done
 			else
 				echo "Cannot find EFI partition of target hard disk for booting."
 			fi
