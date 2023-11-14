@@ -1107,7 +1107,7 @@ fi
 
 
 menuentry "Burmilla OS \$INITRD_VER \$KERNEL_VER" {
-	linux    /\$VMLINUZ_FILE \$VGA_ARGS \$KERNEL_ARGS rancher.autologin=ttyS\\\$serial_port console=ttyS\\\$serial_port,115200n8 \$ROOT_ARGS panic=10
+	linux    /\$VMLINUZ_FILE \$VGA_ARGS \$KERNEL_ARGS console=ttyS\\\$serial_port,115200n8 \$ROOT_ARGS panic=10
 	initrd   /\$INITRD_FILE
 }
 if [ -n \\\$installer -a -z \\\$chained_menu ]; then
@@ -1124,7 +1124,7 @@ if [ -n \\\$installer -a -z \\\$chained_menu ]; then
 	}
 fi
 menuentry "Burmilla OS \$INITRD_VER \$KERNEL_VER (debug)" {
-    linux    /\$VMLINUZ_FILE vga=ask rancher.debug=true \$KERNEL_ARGS rancher.autologin=ttyS\\\$serial_port console=ttyS\\\$serial_port \$ROOT_ARGS ---
+    linux    /\$VMLINUZ_FILE vga=ask rancher.debug=true \$KERNEL_ARGS console=ttyS\\\$serial_port \$ROOT_ARGS ---
     initrd   /\$INITRD_FILE
 }
 
