@@ -1080,6 +1080,7 @@ function boot_default_kernel {
 
 search --set=installer --label RANCHEROS
 search --set=ros_efi --label ROS_EFI # installer's boot efi
+search --set=efi --label EFI # hard disk's boot efi
 
 
 if ! regexp menu "\\\$chosen";then
@@ -1131,11 +1132,15 @@ function disp_menu {
 			configfile \\\$prefix/grub/grub.cfg
 			root=\\\$prev_root
 			prefix=\\\$prev_prefix
-			chosen=escaped
-			while true; do
-				configfile (\\\$root)/grub/grub.cfg
+			if [ -n "\\\$efi" ];then
 				chosen=escaped
-			done
+				while true; do
+					configfile (\\\$efi)/efi/boot/grub.cfg
+					chosen=escaped
+				done
+			else
+				reboot
+			fi
 		}
 	fi
 	menuentry "Burmilla OS \$INITRD_VER \$KERNEL_VER (debug)" {
