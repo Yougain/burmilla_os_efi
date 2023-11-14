@@ -1379,7 +1379,7 @@ mkdir -p /opt2/var/lib/rancher
 [ ! -e /opt2/var/lib/rancher/conf ] && cp -af /mnt3/var/lib/rancher/conf /opt2/var/lib/rancher
 
 rm -rf /mnt3/{root,opt,home,var/log,var/lib/rancher/conf}
-chmod 700 /mnt3/root
+chmod 700 /opt2/root
 ln -s /usr/share/ros/oem/root /mnt3/root
 ln -s /usr/share/ros/oem/home /mnt3/home
 ln -s /usr/share/ros/oem/opt /mnt3/opt
