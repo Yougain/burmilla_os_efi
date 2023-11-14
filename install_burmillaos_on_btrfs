@@ -1070,7 +1070,7 @@ if [ -n \\\$serial_port ]; then
 fi
 
 
-linux    /\$VMLINUZ_FILE \$VGA_ARGS \$KERNEL_ARGS rancher.autologin=ttyS\\\$serial_port console=ttyS\\\$serial_port,115200n8 \$ROOT_ARGS
+linux    /\$VMLINUZ_FILE \$VGA_ARGS \$KERNEL_ARGS console=ttyS\\\$serial_port,115200n8 \$ROOT_ARGS
 initrd   /\$INITRD_FILE
 
 
