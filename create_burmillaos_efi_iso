@@ -269,7 +269,13 @@ cat - > "$T"/grub.cfg <<END
 # check this grub has been chainloaded
 
 if [ -z "\$installer" ];then
-	search --set=installer --label RANCHEROS
+	echo finding installer device ...
+	search --set=installer --label RANCHEROS;
+	if [ -n "\$installer" ];then
+		echo installer device found (\$installer).
+	else
+		echo installer device is missing.
+	fi
 fi
 
 if [ -z "\$installer" ];then
@@ -309,9 +315,13 @@ fi
 
 # get preserved parameters for installer boot
 if [ -z "\$oem" ];then
+	echo finding oem device ...
 	search --set=oem --label RANCHER_OEM_SIBLING;
-else
-	echo oem partition not found
+	if [ -n "\$oem" ];then
+		echo oem device found (\$oem).
+	else
+		echo oem device is missing.
+	fi
 fi
 if [ -n "\$oem" ];then
 	if [ -z "\$ev_f" ];then
@@ -319,6 +329,7 @@ if [ -n "\$oem" ];then
 		if [ -e \$ev_f ]; then
 			echo \$ev_f found
 			source \$ev_f
+			echo \$ev_f loaded
 		else
 			echo \$ev_f not found
 			set ev_f=(\$oem)/oem_root/var/lib/yougain/burmilla/grub_env_for_installer
@@ -335,10 +346,17 @@ fi
 # default parameters for installer boot
 linux   /boot/$KERNEL_FILE $VGA_ARGS \$USER_SETTINGS $KERNEL_ARGS \$SERIAL_ARGS ---
 initrd  /boot/initrd-$BURMILLAOS_VER
+echo set default kernel and initrd
 
 # check installed in hard disk
 if [ -z "\$state" ];then
+	echo finding state device ...
 	search --set=state --label RANCHER_STATE_SIBLING;
+	if [ -n "\$state" ];then
+		echo state device found (\$state).
+	else
+		echo state device missing.
+	fi
 fi
 if [ -n "\$state" ]; then
 	set default=1 # default: boot from hard disk
@@ -347,7 +365,13 @@ else
 fi
 
 if [ -z "\$efi" ]; then
+	echo finding efi partition ...
 	search --no-floppy --set=efi --label EFI
+	if [ -n "\$efi" ];then
+		echo efi device found (\$efi).
+	else
+		echo efi device missing.
+	fi
 fi
 
 # default timeout
@@ -369,6 +393,7 @@ if ! regexp menu "\$chosen";then
 				echo (\$state)/state_root/.reinstalling found
 				boot
 			else
+				echo (\$state)/state_root/.reinstalling not found
 				if [ -e (\$state)/state_root/var/lib/rancher/conf/cloud-config.yml ]; then 
 					echo (\$state)/state_root/var/lib/rancher/conf/cloud-config.yml found
 					if [ -e (\$state)/state_root/home ]; then
