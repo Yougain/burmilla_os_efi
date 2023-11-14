@@ -354,7 +354,7 @@ fi
 set timeout=30
 
 
-if ! regexp menu "\\\$chosen";then
+if ! regexp menu "\$chosen";then
 	if [ "\$chained" == 1 ];then
 		# if chainloaded, just boot up from installer
 		echo "\$cmdpath == (\$installer)/EFI/BOOT"
@@ -420,7 +420,7 @@ function disp_menu {
 	}
 	if [ -n "\$state" -a -z "\$menu_chained" ]; then
 		menuentry "Directly boot hard disk \$ERR_MSG1" {
-			if [ -n "$efi" ]; then
+			if [ -n "\$efi" ]; then
 				prefix=(\$efi)/efi/boot
 				configfile \$prefix/grub.cfg
 			else
@@ -430,7 +430,7 @@ function disp_menu {
 			sleep 100000000
 		}
 		menuentry "Boot menu of hard disk \$ERR_MSG1" {
-			if [ -n "$efi" ]; then
+			if [ -n "\$efi" ]; then
 				prev_prefix=\$prefix
 				prefix=(\$efi)/efi/boot
 				configfile \$prefix/grub.cfg
