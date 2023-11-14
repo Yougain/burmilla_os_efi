@@ -989,9 +989,9 @@ mount $TARGET_DEV4 /opt
 cp -a /mnt2/state_root/boot/* /opt/
 mkdir /installer
 mount LABEL=RANCHEROS /installer
-cp -a /installer/boot/grub /opt/boot/
-rm -f /opt/boot/grub/*.cfg
-ln -sf efi/EFI/boot/grub.cfg /opt/boot/grub/grub.cfg
+cp -a /installer/boot/grub /opt/
+rm -f /opt/grub/*.cfg
+ln -sf efi/EFI/boot/grub.cfg /opt/grub/grub.cfg
 rm -rf /mnt2/state_root/boot/*
 
 # set up grub.cfg on EFI drive
@@ -1048,8 +1048,8 @@ if ! search --no-floppy --fs-uuid --set=oem \\\$oem_uuid; then
 fi
 
 
-insmod /boot/grub/x86_64-efi/terminfo.mod
-insmod /boot/grub/x86_64-efi/serial.mod
+insmod /grub/x86_64-efi/terminfo.mod
+insmod /grub/x86_64-efi/serial.mod
 if serial --unit=0 --speed=115200 --word=8 --parity=no --stop=1; then
 	set serial_port=0
 else
