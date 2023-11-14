@@ -991,7 +991,7 @@ mkdir /installer
 mount LABEL=RANCHEROS /installer
 cp -a /installer/boot/grub /opt/
 rm -f /opt/grub/*.cfg
-ln -sf efi/EFI/boot/grub.cfg /opt/grub/grub.cfg
+ln -sf ../efi/EFI/boot/grub.cfg /opt/grub/grub.cfg
 rm -rf /mnt2/state_root/boot/*
 
 # set up grub.cfg on EFI drive
@@ -1048,6 +1048,9 @@ if ! search --no-floppy --fs-uuid --set=oem \\\$oem_uuid; then
 fi
 
 
+root=\\\$boot
+
+
 insmod /grub/x86_64-efi/terminfo.mod
 insmod /grub/x86_64-efi/serial.mod
 if serial --unit=0 --speed=115200 --word=8 --parity=no --stop=1; then
@@ -1062,12 +1065,11 @@ else
 	fi
 fi
 if [ -n \\\$serial_port ]; then
-	terminal_input console serial_com$serial_port
-	terminal_output console serial_com$serial_port
+	terminal_input console serial_com\\\$serial_port
+	terminal_output console serial_com\\\$serial_port
 fi
 
 
-root=\\\$boot
 linux    /\$VMLINUZ_FILE \$VGA_ARGS \$KERNEL_ARGS rancher.autologin=ttyS\\\$serial_port console=ttyS\\\$serial_port,115200n8 \$ROOT_ARGS
 initrd   /\$INITRD_FILE
 
@@ -1090,7 +1092,7 @@ if [ -z \\\$chained_menu ];then
 			configfile \\\$prefix/grub/grub.cfg
 		else
 			# check 2nd phase or 3rd phase of installation
-			if [ -e (\$state)/state_root/var/lib/rancher/conf/cloud-config.yml ]; then 
+			if [ -e (\\\$state)/state_root/var/lib/rancher/conf/cloud-config.yml ]; then 
 				if [ -e (\\\$state)/state_root/home ]; then # starting reinstration or 3rd phase of installation
 					root=\\\$installer
 					prefix=(\\\$root)/boot
