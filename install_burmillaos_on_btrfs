@@ -1127,8 +1127,11 @@ function disp_menu {
 			configfile \\\$prefix/grub/grub.cfg
 			root=\\\$prev_root
 			prefix=\\\$prev_prefix
-			disp_menu
-			reboot
+			chosen=escaped
+			while true; do
+				configfile (\\\$root)/grub/grub.cfg
+				chosen=escaped
+			done
 		}
 	fi
 	menuentry "Burmilla OS \$INITRD_VER \$KERNEL_VER (debug)" {
@@ -1137,6 +1140,9 @@ function disp_menu {
 	}
 }
 
+if [ \\\$chosen == "escaped" ]; then
+	timeout=
+fi
 disp_menu
 
 END

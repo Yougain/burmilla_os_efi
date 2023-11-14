@@ -419,9 +419,10 @@ function disp_menu {
 				prefix=(\$efi)/efi/boot
 				configfile \$prefix/grub.cfg
 				prefix=\$prev_prefix
-				chosen=
+				chosen=escaped
 				while true;do
 					configfile (\$installer)/boot/grub/grub.cfg
+					chosen=escaped
 				done
 			else
 				echo "Cannot find EFI partition of target hard disk for booting."
@@ -441,7 +442,9 @@ function disp_menu {
 	    initrd  /boot/initrd-$BURMILLAOS_VER
 	}
 }
-
+if [ \$chosen == "escaped" ]; then
+	timeout=
+fi
 disp_menu
 
 END
