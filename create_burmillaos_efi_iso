@@ -387,7 +387,7 @@ if ! regexp menu "\\\$chosen";then
 						set default=1
 						set timeout=5
 					else
-						if [ -n "$efi" ]; then
+						if [ -n "\$efi" ]; then
 							echo EFI partition found
 							prefix=(\$efi)/efi/boot
 							configfile \$prefix/grub.cfg
