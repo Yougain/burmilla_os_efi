@@ -1064,14 +1064,18 @@ else
 		fi
 	fi
 fi
-if [ -n \\\$serial_port ]; then
+if [ -n "\\\$serial_port" ]; then
 	terminal_input console serial_com\\\$serial_port
 	terminal_output console serial_com\\\$serial_port
+	console="console=ttyS\\\$serial_port,115200n8"
 fi
 
 
-linux    /\$VMLINUZ_FILE \$VGA_ARGS \$KERNEL_ARGS console=ttyS\\\$serial_port,115200n8 \$ROOT_ARGS
-initrd   /\$INITRD_FILE
+function boot_default_kernel {
+	linux    /\$VMLINUZ_FILE \$VGA_ARGS \$KERNEL_ARGS \\\$console \$ROOT_ARGS
+	initrd   /\$INITRD_FILE
+	boot
+}
 
 
 search --set=installer --label RANCHEROS
@@ -1079,13 +1083,13 @@ search --set=ros_efi --label ROS_EFI # installer's boot efi
 
 
 if ! regexp menu "\\\$chosen";then
-	if [ -n \\\$ros_efi -a \\\$cmdpath == (\\\$ros_efi)/EFI/BOOT ];then
+	if [ -n "\\\$ros_efi" -a "\\\$cmdpath" == (\\\$ros_efi)/EFI/BOOT ];then
 		# chain loaded from installer's grub
-		boot
+		boot_default_kernel
 	fi
 
 
-	if [ -n \\\$installer ]; then
+	if [ -n "\\\$installer" ]; then
 		if [ -e (\\\$state)/state_root/.reinstalling ]; then # starting reinstration
 			root=\\\$installer
 			prefix=(\\\$root)/boot
@@ -1098,7 +1102,7 @@ if ! regexp menu "\\\$chosen";then
 					prefix=(\\\$root)/boot
 					configfile \\\$prefix/grub/grub.cfg
 				else # 2nd phase of installation : boot by installed target disk
-					boot
+					boot_default_kernel
 				fi
 			fi
 		fi
@@ -1110,10 +1114,10 @@ fi
 
 function disp_menu {
 	menuentry "Burmilla OS \$INITRD_VER \$KERNEL_VER" {
-		linux    /\$VMLINUZ_FILE \$VGA_ARGS \$KERNEL_ARGS console=ttyS\\\$serial_port,115200n8 \$ROOT_ARGS panic=10
+		linux    /\$VMLINUZ_FILE \$VGA_ARGS \$KERNEL_ARGS \\\$console \$ROOT_ARGS panic=10
 		initrd   /\$INITRD_FILE
 	}
-	if [ -n \\\$installer -a -z \\\$menu_chained ]; then
+	if [ -n "\\\$installer" -a -z "\\\$menu_chained" ]; then
 		menuentry "Directly boot installer" {
 			root=\\\$installer
 			prefix=(\\\$root)/boot
