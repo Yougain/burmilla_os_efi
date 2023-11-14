@@ -442,7 +442,7 @@ function disp_menu {
 	    initrd  /boot/initrd-$BURMILLAOS_VER
 	}
 }
-if [ \$chosen == "escaped" ]; then
+if [ "\$chosen" == "escaped" ]; then
 	timeout=
 fi
 disp_menu
