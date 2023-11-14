@@ -987,6 +987,9 @@ fi
 # move all files from $TARGET_DEV4/boot (initial state drive) to $TARGET_DEV2 (boot drive).
 mount $TARGET_DEV4 /opt
 cp -a /mnt2/state_root/boot/* /opt/
+cp -a /boot/grub /opt/boot/
+rm -f /opt/boot/grub/*.cfg
+ln -sf efi/EFI/boot/grub.cfg /opt/boot/grub/grub.cfg
 rm -rf /mnt2/state_root/boot/*
 
 # set up grub.cfg on EFI drive
@@ -1004,7 +1007,7 @@ fi
 INITRD_VER=\${INITRD_FILE#*-}
 KERNEL_VER=\${VMLINUZ_FILE#*-}
 
-GLOBAL_APPEND=\`cat /opt/global.cfg | sed "s/ rancher\.state\.dev=[^ ]*//g"\`
+GLOBAL_APPEND=\`cat /opt/global.cfg | sed "s/ rancher\.state\.dev=[^ ]*//g" | sed "s/ console=ttyS[^ ]*//g" \ | |sed "s/ rancher.autologin=ttyS[^ ]*//g"`
 GLOBAL_APPEND_ARGS=\${GLOBAL_APPEND#APPEND *}
 
 KERNEL_ARGS="rancher.state.boot_mountopt=degraded rancher.state.oem_mountopt=degraded,subvol=/oem_root rancher.state.mountopt=degraded,subvol=/state_root rancher.password=rancher \$GLOBAL_APPEND_ARGS rw rootflags=degraded,subvol=/state_root"
@@ -1043,56 +1046,83 @@ if ! search --no-floppy --fs-uuid --set=oem \\\$oem_uuid; then
 fi
 
 
+insmod /boot/grub/x86_64-efi/terminfo.mod
+insmod /boot/grub/x86_64-efi/serial.mod
+if serial --unit=0 --speed=115200 --word=8 --parity=no --stop=1; then
+	set serial_port=0
+else
+	if serial --unit=1 --speed=115200 --word=8 --parity=no --stop=1; then
+		set serial_port=1
+	else
+		if serial --unit=2 --speed=115200 --word=8 --parity=no --stop=1; then
+			set serial_port=2
+		fi
+	fi
+fi
+if [ -n \\\$serial_port ]; then
+	terminal_input console serial_com$serial_port
+	terminal_output console serial_com$serial_port
+fi
+
+
 root=\\\$boot
-linux    /\$VMLINUZ_FILE \$VGA_ARGS \$KERNEL_ARGS \$ROOT_ARGS
+linux    /\$VMLINUZ_FILE \$VGA_ARGS \$KERNEL_ARGS rancher.autologin=ttyS\\\$serial_port console=ttyS\\\$serial_port,115200n8 \$ROOT_ARGS
 initrd   /\$INITRD_FILE
 
 
 search --set=installer --label RANCHEROS
 search --set=ros_efi --label ROS_EFI # installer's boot efi
-if [ -n \\\$ros_efi -a \\\$cmdpath == (\\\$ros_efi)/EFI/BOOT ];then
-	# chain loaded from installer's grub
-	boot
-fi
-
-if [ "\\\$chained" == "1" ];then
-    boot
-fi
 
 
-if [ -n \\\$installer ]; then
-	if [ -e (\\\$state)/state_root/.reinstalling ]; then # starting reinstration
-		root=\\\$installer
-		prefix=(\\\$root)/boot
-		configfile \\\$prefix/grub/grub.cfg
-	else
-		# check 2nd phase or 3rd phase of installation
-		if [ -e (\$state)/state_root/var/lib/rancher/conf/cloud-config.yml ]; then 
-			if [ -e (\\\$state)/state_root/home ]; then # starting reinstration or 3rd phase of installation
-				root=\\\$installer
-				prefix=(\\\$root)/boot
-				configfile \\\$prefix/grub/grub.cfg
-			else # 2nd phase of installation : boot by installed target disk
-				boot
+if [ -z \\\$chained_menu ];then
+	if [ -n \\\$ros_efi -a \\\$cmdpath == (\\\$ros_efi)/EFI/BOOT ];then
+		# chain loaded from installer's grub
+		boot
+	fi
+
+
+	if [ -n \\\$installer ]; then
+		if [ -e (\\\$state)/state_root/.reinstalling ]; then # starting reinstration
+			root=\\\$installer
+			prefix=(\\\$root)/boot
+			configfile \\\$prefix/grub/grub.cfg
+		else
+			# check 2nd phase or 3rd phase of installation
+			if [ -e (\$state)/state_root/var/lib/rancher/conf/cloud-config.yml ]; then 
+				if [ -e (\\\$state)/state_root/home ]; then # starting reinstration or 3rd phase of installation
+					root=\\\$installer
+					prefix=(\\\$root)/boot
+					configfile \\\$prefix/grub/grub.cfg
+				else # 2nd phase of installation : boot by installed target disk
+					boot
+				fi
 			fi
 		fi
 	fi
+else
+	timeout=
 fi
 
 
-
 menuentry "Burmilla OS \$INITRD_VER \$KERNEL_VER" {
-    boot
+	linux    /\$VMLINUZ_FILE \$VGA_ARGS \$KERNEL_ARGS rancher.autologin=ttyS\\\$serial_port console=ttyS\\\$serial_port,115200n8 \$ROOT_ARGS panic=10
+	initrd   /\$INITRD_FILE
 }
-if [ -n \\\$installer ]; then
-	menuentry "Rescue/reinstall Burmilla OS \$INITRD_VER \$KERNEL_VER from installer" {
+if [ -n \\\$installer -a -z \\\$chained_menu ]; then
+	menuentry "Directly boot installer" {
+		root=\\\$installer
+		prefix=(\\\$root)/boot
+		configfile \\\$prefix/grub/grub.cfg
+	}
+	menuentry "Display boot menu in installer" {
+		chained_menu=1
 		root=\\\$installer
 		prefix=(\\\$root)/boot
 		configfile \\\$prefix/grub/grub.cfg
 	}
 fi
 menuentry "Burmilla OS \$INITRD_VER \$KERNEL_VER (debug)" {
-    linux    /\$VMLINUZ_FILE vga=ask rancher.debug=true \$KERNEL_ARGS \$ROOT_ARGS ---
+    linux    /\$VMLINUZ_FILE vga=ask rancher.debug=true \$KERNEL_ARGS rancher.autologin=ttyS\\\$serial_port console=ttyS\\\$serial_port \$ROOT_ARGS ---
     initrd   /\$INITRD_FILE
 }
 

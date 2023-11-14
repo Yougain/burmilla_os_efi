@@ -239,9 +239,9 @@ partprobe
 LDEVH=`sudo losetup --partscan --show --find $P_IMG`
 LDEV=$LDEVH"p1"
 ls $LDEV
-GLOBAL_APPEND=`cat $RD/boot/global.cfg` 
+GLOBAL_APPEND=`cat $RD/boot/global.cfg|sed "s/ console=ttyS[^ ]*//g"|sed "s/ rancher.autologin=ttyS[^ ]*//g"` 
 GLOBAL_APPEND_ARGS=${GLOBAL_APPEND#APPEND *}
-KERNEL_ARGS="rancher.password=rancher $GLOBAL_APPEND_ARGS root=/dev/sdb1 panic=10"
+KERNEL_ARGS="rancher.password=rancher $GLOBAL_APPEND_ARGS root=LABEL=RANCHEROS"
 VGA_ARGS="nomodeset vga=775 video=1024x768"
 
 sudo mkfs.fat $LDEV
@@ -277,6 +277,25 @@ fi
 
 root=\$installer,msdos1
 
+insmod /boot/grub/x86_64-efi/terminfo.mod
+insmod /boot/grub/x86_64-efi/serial.mod
+if serial --unit=0 --speed=115200 --word=8 --parity=no --stop=1; then
+	set serial_port=0
+else
+	if serial --unit=1 --speed=115200 --word=8 --parity=no --stop=1; then
+		set serial_port=1
+	else
+		if serial --unit=2 --speed=115200 --word=8 --parity=no --stop=1; then
+			set serial_port=2
+		fi
+	fi
+fi
+if [ -n \$serial_port ]; then
+	terminal_input console serial_com$serial_port
+	terminal_output console serial_com$serial_port
+	set SERIAL_ARGS="rancher.autologin=ttyS\$serial_port console=ttyS\$serial_port,115200n8"
+fi
+
 
 if [ \$cmdpath == (\$installer,msdos2)/EFI/BOOT ];then
 	set chained=0
@@ -305,7 +324,7 @@ else
 fi
 
 # default parameters for installer boot
-linux   /boot/$KERNEL_FILE $VGA_ARGS \$USER_SETTINGS $KERNEL_ARGS ---
+linux   /boot/$KERNEL_FILE $VGA_ARGS \$USER_SETTINGS $KERNEL_ARGS \$SERIAL_ARGS ---
 initrd  /boot/initrd-$BURMILLAOS_VER
 
 # check installed in hard disk
@@ -319,53 +338,57 @@ fi
 set timeout=30
 
 
-if [ \$chained == 1 ];then
-	# if chainloaded, just boot up from installer
-	echo "\$cmdpath == (\$installer)/EFI/BOOT"
-	echo "chained='\$chained'"
-	boot
-	echo "Cannot continue.... Please reset."
-	sleep 100000000
-else # grub directly loaded
-	# check undergoing installation
-	if [ -n \$state ];then
-		if [ -e (\$state)/state_root/.reinstalling ]; then
-			echo (\$state)/state_root/.reinstalling found
-			boot
-		else
-			if [ -e (\$state)/state_root/var/lib/rancher/conf/cloud-config.yml ]; then 
-				echo (\$state)/state_root/var/lib/rancher/conf/cloud-config.yml found
-				if [ -e (\$state)/state_root/home ]; then
-					# 3rd phase of installation because /state_root/var/lib/rancher/conf is not a symbolick link
-					boot
-				else
-					set timeout=
-					set default=0
-					ERR_MSG0=" (Somthing wrong: both '/home' and '/var/lib/rancher/conf/cloud-config.yml' exists during installation)"
-				fi
-			else # 2nd phase of installation : boot by target disk
-				echo (\$state)/state_root/var/lib/rancher/conf/cloud-config.yml not found
-				if [ -e (\$state)/state_root/home ]; then
-					echo (\$state)/state_root/home found
-					# normal boot (default: hard disk)
-					set default=1
-					set timeout=5
-				else
-					if search --no-floppy --set=efi --label EFI; then
-						echo EFI partition found
-						prefix=(\$efi)/efi/boot
-						configfile \$prefix/grub.cfg
-						echo "Cannot continue.... Please reset."
-						sleep 100000000
+if [ -z \$chained_menu ];then
+	if [ \$chained == 1 ];then
+		# if chainloaded, just boot up from installer
+		echo "\$cmdpath == (\$installer)/EFI/BOOT"
+		echo "chained='\$chained'"
+		boot
+		echo "Cannot continue.... Please reset."
+		sleep 100000000
+	else # grub directly loaded
+		# check undergoing installation
+		if [ -n \$state ];then
+			if [ -e (\$state)/state_root/.reinstalling ]; then
+				echo (\$state)/state_root/.reinstalling found
+				boot
+			else
+				if [ -e (\$state)/state_root/var/lib/rancher/conf/cloud-config.yml ]; then 
+					echo (\$state)/state_root/var/lib/rancher/conf/cloud-config.yml found
+					if [ -e (\$state)/state_root/home ]; then
+						# 3rd phase of installation because /state_root/var/lib/rancher/conf is not a symbolick link
+						boot
 					else
 						set timeout=
+						set default=0
+						ERR_MSG0=" (Somthing wrong: both '/home' and '/var/lib/rancher/conf/cloud-config.yml' exists during installation)"
+					fi
+				else # 2nd phase of installation : boot by target disk
+					echo (\$state)/state_root/var/lib/rancher/conf/cloud-config.yml not found
+					if [ -e (\$state)/state_root/home ]; then
+						echo (\$state)/state_root/home found
+						# normal boot (default: hard disk)
 						set default=1
-						ERR_MSG1=" (Somthing wrong: cannot find EFI partition on target hard disk for second stage of installation)"
+						set timeout=5
+					else
+						if search --no-floppy --set=efi --label EFI; then
+							echo EFI partition found
+							prefix=(\$efi)/efi/boot
+							configfile \$prefix/grub.cfg
+							echo "Cannot continue.... Please reset."
+							sleep 100000000
+						else
+							set timeout=
+							set default=1
+							ERR_MSG1=" (Somthing wrong: cannot find EFI partition on target hard disk for second stage of installation)"
+						fi
 					fi
 				fi
 			fi
 		fi
 	fi
+else
+	timeout=
 fi
 
 loadfont unicode
@@ -374,10 +397,22 @@ set menu_color_normal=white/black
 set menu_color_highlight=black/light-gray
 
 menuentry "Install Burmilla $BURMILLAOS_VER \$ERR_MSG0" {
-	boot
+	linux   /boot/$KERNEL_FILE $VGA_ARGS \$USER_SETTINGS $KERNEL_ARGS rancher.autologin=ttyS\$serial_port console=ttyS\$serial_port,115200n8 panic=10 ---
+	initrd  /boot/initrd-$BURMILLAOS_VER
 }
-if [ -n \$state ]; then
-	menuentry "Boot from installation detected on hard disk \$ERR_MSG1" {
+if [ -n \$state -a -z \$chained_menu ]; then
+	menuentry "Directly boot hard disk \$ERR_MSG1" {
+		if search --no-floppy --set=efi --label EFI; then
+			prefix=(\$efi)/efi/boot
+			configfile \$prefix/grub.cfg
+		else
+			echo "Cannot find EFI partition of target hard disk for booting."
+		fi
+		echo "Cannot continue.... Please reset."
+		sleep 100000000
+	}
+	menuentry "Boot menu of hard disk \$ERR_MSG1" {
+		set chained_menu=1
 		if search --no-floppy --set=efi --label EFI; then
 			prefix=(\$efi)/efi/boot
 			configfile \$prefix/grub.cfg
@@ -397,7 +432,7 @@ menuentry 'Test memory' {
     linux16 /boot/memtest86+.bin
 }
 menuentry "Install Burmilla $BURMILLAOS_VER (debug)" {
-    linux   /boot/$KERNEL_FILE vga=ask rancher.debug=true \$USER_SETTINGS $KERNEL_ARGS ---
+    linux   /boot/$KERNEL_FILE vga=ask rancher.debug=true \$USER_SETTINGS $KERNEL_ARGS rancher.autologin=ttyS\$serial_port console=ttyS\$serial_port,115200n8 ---
     initrd  /boot/initrd-$BURMILLAOS_VER
 }
 END
