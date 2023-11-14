@@ -344,9 +344,13 @@ if [ -n "\$oem" ];then
 fi
 
 # default parameters for installer boot
-linux   /boot/$KERNEL_FILE $VGA_ARGS \$USER_SETTINGS $KERNEL_ARGS \$SERIAL_ARGS ---
-initrd  /boot/initrd-$BURMILLAOS_VER
-echo set default kernel and initrd
+function boot_default_kernel {
+	linux   /boot/$KERNEL_FILE $VGA_ARGS \$USER_SETTINGS $KERNEL_ARGS \$SERIAL_ARGS ---
+	initrd  /boot/initrd-$BURMILLAOS_VER
+	echo set default kernel and initrd
+	echo booting ...
+	boot
+}
 
 # check installed in hard disk
 if [ -z "\$state" ];then
@@ -383,7 +387,7 @@ if ! regexp menu "\$chosen";then
 		# if chainloaded, just boot up from installer
 		echo "\$cmdpath == (\$installer)/EFI/BOOT"
 		echo "chained='\$chained'"
-		boot
+		boot_default_kernel
 		echo "Cannot continue.... Please reset."
 		sleep 100000000
 	else # grub directly loaded
@@ -391,14 +395,14 @@ if ! regexp menu "\$chosen";then
 		if [ -n "\$state" ];then
 			if [ -e (\$state)/state_root/.reinstalling ]; then
 				echo (\$state)/state_root/.reinstalling found
-				boot
+				boot_default_kernel
 			else
 				echo (\$state)/state_root/.reinstalling not found
 				if [ -e (\$state)/state_root/var/lib/rancher/conf/cloud-config.yml ]; then 
 					echo (\$state)/state_root/var/lib/rancher/conf/cloud-config.yml found
 					if [ -e (\$state)/state_root/home ]; then
 						# 3rd phase of installation because /state_root/var/lib/rancher/conf is not a symbolick link
-						boot
+						boot_default_kernel
 					else
 						set timeout=
 						set default=0
