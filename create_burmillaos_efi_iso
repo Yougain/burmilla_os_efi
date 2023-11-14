@@ -267,9 +267,12 @@ sudo cp -ar $UD/EFI $PD/
 cat - > "$T"/grub.cfg <<END
 
 # check this grub has been chainloaded
-search --set=installer --label RANCHEROS
 
-if [ -z \$installer ];then
+if [ -z "\$installer" ];then
+	search --set=installer --label RANCHEROS
+fi
+
+if [ -z "\$installer" ];then
 	echo "Cannot find disk label 'RANCHEROS'. Stop all."
 	echo "Please do not modify label of installer disk."
 	sleep 3000000
@@ -277,50 +280,56 @@ fi
 
 root=\$installer,msdos1
 
-insmod /boot/grub/x86_64-efi/terminfo.mod
-insmod /boot/grub/x86_64-efi/serial.mod
-if serial --unit=0 --speed=115200 --word=8 --parity=no --stop=1; then
-	set serial_port=0
-else
-	if serial --unit=1 --speed=115200 --word=8 --parity=no --stop=1; then
-		set serial_port=1
+if [ -z "\$serial_port" ];then
+	insmod /boot/grub/x86_64-efi/terminfo.mod
+	insmod /boot/grub/x86_64-efi/serial.mod
+	if serial --unit=0 --speed=115200 --word=8 --parity=no --stop=1; then
+		set serial_port=0
 	else
-		if serial --unit=2 --speed=115200 --word=8 --parity=no --stop=1; then
-			set serial_port=2
+		if serial --unit=1 --speed=115200 --word=8 --parity=no --stop=1; then
+			set serial_port=1
+		else
+			if serial --unit=2 --speed=115200 --word=8 --parity=no --stop=1; then
+				set serial_port=2
+			fi
 		fi
 	fi
-fi
-if [ -n \$serial_port ]; then
-	terminal_input console serial_com\$serial_port
-	terminal_output console serial_com\$serial_port
-	set SERIAL_ARGS="rancher.autologin=ttyS\$serial_port console=ttyS\$serial_port,115200n8"
+	if [ -n "\$serial_port" ]; then
+		terminal_input console serial_com\$serial_port
+		terminal_output console serial_com\$serial_port
+		set SERIAL_ARGS="rancher.autologin=ttyS\$serial_port console=ttyS\$serial_port,115200n8"
+	fi
 fi
 
-
-if [ \$cmdpath == (\$installer,msdos2)/EFI/BOOT ];then
+if [ "\$cmdpath" == "(\$installer,msdos2)/EFI/BOOT" ];then
 	set chained=0
 else
 	set chained=1  # chained from grub booted by hard disk
 fi
 
 # get preserved parameters for installer boot
-if search --set=oem --label RANCHER_OEM_SIBLING; then
-	set ev_f=(\$oem)/oem_root/opt/rancher/conf/grub/grub_env_for_installer
-	if [ -e \$ev_f ]; then
-		echo \$ev_f found
-		source \$ev_f
-	else
-		echo \$ev_f not found
-		set ev_f=(\$oem)/oem_root/var/lib/yougain/burmilla/grub_env_for_installer
+if [ -z "\$oem" ];then
+	search --set=oem --label RANCHER_OEM_SIBLING;
+else
+	echo oem partition not found
+fi
+if [ -n "\$oem" ];then
+	if [ -z "\$ev_f" ];then
+		set ev_f=(\$oem)/oem_root/opt/rancher/conf/grub/grub_env_for_installer
 		if [ -e \$ev_f ]; then
 			echo \$ev_f found
 			source \$ev_f
 		else
 			echo \$ev_f not found
+			set ev_f=(\$oem)/oem_root/var/lib/yougain/burmilla/grub_env_for_installer
+			if [ -e \$ev_f ]; then
+				echo \$ev_f found
+				source \$ev_f
+			else
+				echo \$ev_f not found
+			fi
 		fi
 	fi
-else
-	echo RANCHER_OEM_SIBLING not found
 fi
 
 # default parameters for installer boot
@@ -328,10 +337,17 @@ linux   /boot/$KERNEL_FILE $VGA_ARGS \$USER_SETTINGS $KERNEL_ARGS \$SERIAL_ARGS 
 initrd  /boot/initrd-$BURMILLAOS_VER
 
 # check installed in hard disk
-if search --set=state --label RANCHER_STATE_SIBLING; then
+if [ -z "\$state" ];then
+	search --set=state --label RANCHER_STATE_SIBLING;
+fi
+if [ -n "\$state" ] then
 	set default=1 # default: boot from hard disk
 else
 	set default=0 # default: boot from installer
+fi
+
+if [ -z "\$efi" ]; then
+	search --no-floppy --set=efi --label EFI
 fi
 
 # default timeout
@@ -339,7 +355,7 @@ set timeout=30
 
 
 if ! regexp menu "\\\$chosen";then
-	if [ \$chained == 1 ];then
+	if [ "\$chained" == 1 ];then
 		# if chainloaded, just boot up from installer
 		echo "\$cmdpath == (\$installer)/EFI/BOOT"
 		echo "chained='\$chained'"
@@ -348,7 +364,7 @@ if ! regexp menu "\\\$chosen";then
 		sleep 100000000
 	else # grub directly loaded
 		# check undergoing installation
-		if [ -n \$state ];then
+		if [ -n "\$state" ];then
 			if [ -e (\$state)/state_root/.reinstalling ]; then
 				echo (\$state)/state_root/.reinstalling found
 				boot
@@ -371,7 +387,7 @@ if ! regexp menu "\\\$chosen";then
 						set default=1
 						set timeout=5
 					else
-						if search --no-floppy --set=efi --label EFI; then
+						if [ -n "$efi" ]; then
 							echo EFI partition found
 							prefix=(\$efi)/efi/boot
 							configfile \$prefix/grub.cfg
@@ -402,9 +418,9 @@ function disp_menu {
 		linux   /boot/$KERNEL_FILE $VGA_ARGS \$USER_SETTINGS $KERNEL_ARGS rancher.autologin=ttyS\$serial_port console=ttyS\$serial_port,115200n8 panic=10 ---
 		initrd  /boot/initrd-$BURMILLAOS_VER
 	}
-	if [ -n \$state -a -z \$menu_chained ]; then
+	if [ -n "\$state" -a -z "\$menu_chained" ]; then
 		menuentry "Directly boot hard disk \$ERR_MSG1" {
-			if search --no-floppy --set=efi --label EFI; then
+			if [ -n "$efi" ]; then
 				prefix=(\$efi)/efi/boot
 				configfile \$prefix/grub.cfg
 			else
@@ -414,7 +430,7 @@ function disp_menu {
 			sleep 100000000
 		}
 		menuentry "Boot menu of hard disk \$ERR_MSG1" {
-			if search --no-floppy --set=efi --label EFI; then
+			if [ -n "$efi" ]; then
 				prev_prefix=\$prefix
 				prefix=(\$efi)/efi/boot
 				configfile \$prefix/grub.cfg
