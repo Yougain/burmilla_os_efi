@@ -1108,31 +1108,36 @@ else
 	timeout=
 fi
 
+function disp_menu {
+	menuentry "Burmilla OS \$INITRD_VER \$KERNEL_VER" {
+		linux    /\$VMLINUZ_FILE \$VGA_ARGS \$KERNEL_ARGS console=ttyS\\\$serial_port,115200n8 \$ROOT_ARGS panic=10
+		initrd   /\$INITRD_FILE
+	}
+	if [ -n \\\$installer -a -z \\\$menu_chained ]; then
+		menuentry "Directly boot installer" {
+			root=\\\$installer
+			prefix=(\\\$root)/boot
+			configfile \\\$prefix/grub/grub.cfg
+		}
+		menuentry "Display boot menu in installer" {
+			prev_root=\\\$root
+			root=\\\$installer
+			prev_prefix=\\\$prefix
+			prefix=(\\\$root)/boot
+			configfile \\\$prefix/grub/grub.cfg
+			root=\\\$prev_root
+			prefix=\\\$prev_prefix
+			disp_menu
+			reboot
+		}
+	fi
+	menuentry "Burmilla OS \$INITRD_VER \$KERNEL_VER (debug)" {
+	    linux    /\$VMLINUZ_FILE vga=ask rancher.debug=true \$KERNEL_ARGS console=ttyS\\\$serial_port \$ROOT_ARGS ---
+	    initrd   /\$INITRD_FILE
+	}
+}
 
-menuentry "Burmilla OS \$INITRD_VER \$KERNEL_VER" {
-	linux    /\$VMLINUZ_FILE \$VGA_ARGS \$KERNEL_ARGS console=ttyS\\\$serial_port,115200n8 \$ROOT_ARGS panic=10
-	initrd   /\$INITRD_FILE
-}
-if [ -n \\\$installer -a -z \\\$menu_chained ]; then
-	menuentry "Directly boot installer" {
-		root=\\\$installer
-		prefix=(\\\$root)/boot
-		configfile \\\$prefix/grub/grub.cfg
-	}
-	menuentry "Display boot menu in installer" {
-		prev_root=\\\$root
-		root=\\\$installer
-		prev_prefix=\\\$prefix
-		prefix=(\\\$root)/boot
-		configfile \\\$prefix/grub/grub.cfg
-		root=\\\$prev_root
-		prefix=\\\$prev_prefix
-	}
-fi
-menuentry "Burmilla OS \$INITRD_VER \$KERNEL_VER (debug)" {
-    linux    /\$VMLINUZ_FILE vga=ask rancher.debug=true \$KERNEL_ARGS console=ttyS\\\$serial_port \$ROOT_ARGS ---
-    initrd   /\$INITRD_FILE
-}
+disp_menu
 
 END
 

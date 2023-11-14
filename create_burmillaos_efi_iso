@@ -397,44 +397,51 @@ loadfont unicode
 set menu_color_normal=white/black
 set menu_color_highlight=black/light-gray
 
-menuentry "Install Burmilla $BURMILLAOS_VER \$ERR_MSG0" {
-	linux   /boot/$KERNEL_FILE $VGA_ARGS \$USER_SETTINGS $KERNEL_ARGS rancher.autologin=ttyS\$serial_port console=ttyS\$serial_port,115200n8 panic=10 ---
-	initrd  /boot/initrd-$BURMILLAOS_VER
-}
-if [ -n \$state -a -z \$menu_chained ]; then
-	menuentry "Directly boot hard disk \$ERR_MSG1" {
-		if search --no-floppy --set=efi --label EFI; then
-			prefix=(\$efi)/efi/boot
-			configfile \$prefix/grub.cfg
-		else
-			echo "Cannot find EFI partition of target hard disk for booting."
-		fi
-		echo "Cannot continue.... Please reset."
-		sleep 100000000
+function disp_menu {
+	menuentry "Install Burmilla $BURMILLAOS_VER \$ERR_MSG0" {
+		linux   /boot/$KERNEL_FILE $VGA_ARGS \$USER_SETTINGS $KERNEL_ARGS rancher.autologin=ttyS\$serial_port console=ttyS\$serial_port,115200n8 panic=10 ---
+		initrd  /boot/initrd-$BURMILLAOS_VER
 	}
-	menuentry "Boot menu of hard disk \$ERR_MSG1" {
-		if search --no-floppy --set=efi --label EFI; then
-			prev_prefix=\$prefix
-			prefix=(\$efi)/efi/boot
-			configfile \$prefix/grub.cfg
-			prefix=\$prev_prefix
-		else
-			echo "Cannot find EFI partition of target hard disk for booting."
-		fi
+	if [ -n \$state -a -z \$menu_chained ]; then
+		menuentry "Directly boot hard disk \$ERR_MSG1" {
+			if search --no-floppy --set=efi --label EFI; then
+				prefix=(\$efi)/efi/boot
+				configfile \$prefix/grub.cfg
+			else
+				echo "Cannot find EFI partition of target hard disk for booting."
+			fi
+			echo "Cannot continue.... Please reset."
+			sleep 100000000
+		}
+		menuentry "Boot menu of hard disk \$ERR_MSG1" {
+			if search --no-floppy --set=efi --label EFI; then
+				prev_prefix=\$prefix
+				prefix=(\$efi)/efi/boot
+				configfile \$prefix/grub.cfg
+				prefix=\$prev_prefix
+				disp_menu
+				reboot
+			else
+				echo "Cannot find EFI partition of target hard disk for booting."
+			fi
+		}
+	else
+		default=0
+	fi
+	menuentry 'BIOS/UEFI Firmware Settings' {
+	    fwsetup
 	}
-else
-	default=0
-fi
-menuentry 'BIOS/UEFI Firmware Settings' {
-    fwsetup
+	menuentry 'Test memory' {
+	    linux16 /boot/memtest86+.bin
+	}
+	menuentry "Install Burmilla $BURMILLAOS_VER (debug)" {
+	    linux   /boot/$KERNEL_FILE vga=ask rancher.debug=true \$USER_SETTINGS $KERNEL_ARGS rancher.autologin=ttyS\$serial_port console=ttyS\$serial_port,115200n8 ---
+	    initrd  /boot/initrd-$BURMILLAOS_VER
+	}
 }
-menuentry 'Test memory' {
-    linux16 /boot/memtest86+.bin
-}
-menuentry "Install Burmilla $BURMILLAOS_VER (debug)" {
-    linux   /boot/$KERNEL_FILE vga=ask rancher.debug=true \$USER_SETTINGS $KERNEL_ARGS rancher.autologin=ttyS\$serial_port console=ttyS\$serial_port,115200n8 ---
-    initrd  /boot/initrd-$BURMILLAOS_VER
-}
+
+disp_menu
+
 END
 
 sudo cp -f "$T"/grub.cfg $PD/boot/grub/grub.cfg
