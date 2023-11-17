@@ -1,7 +1,21 @@
-diff -Naurb os-org/pkg/init/fsmount/fsmount.go os/pkg/init/fsmount/fsmount.go
---- os-org/pkg/init/fsmount/fsmount.go	2023-10-04 06:41:57.904371670 +0900
-+++ os/pkg/init/fsmount/fsmount.go	2023-10-03 18:34:09.252432843 +0900
-@@ -22,7 +22,7 @@
+diff -Naur os/pkg/init/fsmount/fsmount.go os.patched/pkg/init/fsmount/fsmount.go
+--- os/pkg/init/fsmount/fsmount.go	2023-11-17 14:32:19.409687529 +0900
++++ os.patched/pkg/init/fsmount/fsmount.go	2023-11-17 23:11:53.542464794 +0900
+@@ -1,9 +1,13 @@
+ package fsmount
+ 
+ import (
++	"bufio"
++	"bytes"
+ 	"fmt"
+ 	"strings"
+ 	"syscall"
++	"os"
++	"os/exec"
+ 
+ 	"github.com/burmilla/os/config"
+ 	"github.com/burmilla/os/config/cmdline"
+@@ -22,7 +26,7 @@
  )
  
  func MountOem(cfg *config.CloudConfig) (*config.CloudConfig, error) {
@@ -10,7 +24,7 @@ diff -Naurb os-org/pkg/init/fsmount/fsmount.go os/pkg/init/fsmount/fsmount.go
  		log.Debugf("Not mounting OEM: %v", err)
  	} else {
  		log.Infof("Mounted OEM: %s", cfg.Rancher.State.OemDev)
-@@ -45,7 +45,7 @@
+@@ -45,7 +49,7 @@
  		}
  	}
  
@@ -19,16 +33,61 @@ diff -Naurb os-org/pkg/init/fsmount/fsmount.go os/pkg/init/fsmount/fsmount.go
  		log.Debugf("Not mounting BOOT: %v", err)
  	} else {
  		log.Infof("Mounted BOOT: %s", cfg.Rancher.State.BootDev)
-@@ -54,7 +54,7 @@
+@@ -54,7 +58,37 @@
  	return cfg, nil
  }
  
 -func mountConfigured(display, dev, fsType, target string) error {
++func blkidMatchStr(matchStr string) (deviceName, deviceType string, err error) {
++	cmd := exec.Command("/sbin/blkid")
++	cmd.Stderr = os.Stderr
++	out, err := cmd.Output()
++	if err != nil {
++		fmt.Println("exec /sbin/blkid, failed.")
++		fmt.Println(err)
++		return
++	}
++	r := bytes.NewReader(out)
++	s := bufio.NewScanner(r)
++	for s.Scan() {
++		line := s.Text()
++		if !strings.Contains(line, matchStr) {
++			continue
++		}
++		d := strings.Split(line, ":")
++		deviceName = d[0]
++
++		s1 := strings.Split(line, `TYPE="`)
++		s2 := strings.Split(s1[1], `"`)
++		deviceType = s2[0]
++		return
++	}
++	fmt.Println("extract output from /sbin/blkid, failed.")
++	fmt.Println(string(out))
++	return
++}
++
++
 +func mountConfigured(display, dev, fsType, target, option string) error {
  	var err error
  
  	if dev == "" {
-@@ -74,12 +74,12 @@
+@@ -63,7 +97,13 @@
+ 
+ 	dev = util.ResolveDevice(dev)
+ 	if dev == "" {
+-		return fmt.Errorf("Could not resolve device %q", dev)
++		d, _, err := blkidMatchStr(dev)
++		if err != nil {
++			return fmt.Errorf("Could not resolve device %q", dev)
++		}
++		if d == "" {
++			return fmt.Errorf("Could not resolve device %q", dev)
++		}
+ 	}
+ 	if fsType == "auto" {
+ 		fsType, err = util.GetFsType(dev)
+@@ -74,12 +114,12 @@
  	}
  
  	log.Debugf("FsType has been set to %s", fsType)
@@ -44,9 +103,9 @@ diff -Naurb os-org/pkg/init/fsmount/fsmount.go os/pkg/init/fsmount/fsmount.go
  }
  
  func tryMountState(cfg *config.CloudConfig) error {
-diff -Naurb os-org/config/types.go os/config/types.go
---- os-org/config/types.go	2023-10-04 06:41:57.898371761 +0900
-+++ os/config/types.go	2023-10-03 18:21:48.474202123 +0900
+diff -Naur os/config/types.go os.patched/config/types.go
+--- os/config/types.go	2023-11-17 14:32:19.394687792 +0900
++++ os.patched/config/types.go	2023-11-17 23:01:31.863279855 +0900
 @@ -210,6 +210,7 @@
  type StateConfig struct {
  	Directory  string   `yaml:"directory,omitempty"`
@@ -67,9 +126,9 @@ diff -Naurb os-org/config/types.go os/config/types.go
  }
  
 diff -Naur os/scripts/version os.patched/scripts/version
---- os/scripts/version	2023-11-12 20:51:19.589540387 +0900
-+++ os.patched/scripts/version	2023-11-12 21:17:48.992900670 +0900
-@@ -1,15 +1,15 @@
+--- os/scripts/version	2023-11-17 14:32:19.427687212 +0900
++++ os.patched/scripts/version	2023-11-17 23:59:30.648734315 +0900
+@@ -1,18 +1,26 @@
  #!/bin/bash
  
 -if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
@@ -82,10 +141,26 @@ diff -Naur os/scripts/version os.patched/scripts/version
  COMMIT=$(git rev-parse --short HEAD)
  GIT_TAG=$(git tag -l --contains HEAD | head -n 1)
  
- if [ -z "$VERSION" ]; then
-     if [[ -z "$DIRTY" && -n "$GIT_TAG" ]]; then
+-if [ -z "$VERSION" ]; then
+-    if [[ -z "$DIRTY" && -n "$GIT_TAG" ]]; then
 -        VERSION=$GIT_TAG
-+        VERSION=$GIT_TAG-btrfs
-     else
-         VERSION="${COMMIT}${DIRTY}"
-     fi
+-    else
+-        VERSION="${COMMIT}${DIRTY}"
+-    fi
++#if [ -z "$VERSION" ]; then
++#    if [[ -z "$DIRTY" && -n "$GIT_TAG" ]]; then
++#        VERSION=$GIT_TAG-btrfs-0.9
++#    else
++#        VERSION="${COMMIT}${DIRTY}"
++#    fi
++#fi
++
++if [ ! -e ../.git/packed-refs ]; then
++	VERSION=`cat /tmp/version.patched`
++else
++	TTAG=`tail -1 ../.git/packed-refs`
++	VERSION=${TTAG##*/}-btrfs-__PVER__
++	echo -n $VERSION > /tmp/version.patched
+ fi
+ 
+ INITRD=initrd-${VERSION}

@@ -26,9 +26,11 @@ fi
 
 git-force-clone https://github.com/burmilla/os.git ~/os
 cd ~/os
-patch -p1 < ~/burmilla_os_efi/mountOpt.patch
+~/burmilla_os_efi/
+PVER=`cat ~/burmilla_os_efi/.git/COMMIT_EDITMSG`
+sed "s/__PVER__/$PVER/" ~/burmilla_os_efi/mountOpt.patch > ~/burmilla_os_efi/mountOpt.patch.$PVER
+patch -p1 < ~/burmilla_os_efi/mountOpt.patch.$PVER
 sudo make
-cd ~/
 mkdir -p ~/burmilla_os_iso
 OS_V=`grep -o -e 'VERSION=.*' os/build/initrd/usr/share/ros/os-release`
 OS_VER=${OS_V#VERSION=*}
