@@ -30,7 +30,6 @@ cd ~/os
 PVER=`cat ~/burmilla_os_efi/commit_editmsg`
 sed "s/__PVER__/$PVER/" ~/burmilla_os_efi/mountOpt.patch > ~/burmilla_os_efi/mountOpt.patch.$PVER
 patch -p1 < ~/burmilla_os_efi/mountOpt.patch.$PVER
-exit 1
 sudo make
 mkdir -p ~/burmilla_os_iso
 OS_V=`grep -o -e 'VERSION=.*' os/build/initrd/usr/share/ros/os-release`
