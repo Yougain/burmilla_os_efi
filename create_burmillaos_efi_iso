@@ -121,7 +121,7 @@ function WG(){
 			outOpt=1
 		fi
 	done
-	if [ -z "$outFile" ];then
+	if [ -z "$outFile" ]; then
 		for ag in $@;do
 			if [ -n "`echo $ag|grep -o '^(http|https|ftp)://'`" ];then
 				outFile=${ag##*/}
@@ -280,7 +280,7 @@ fi
 
 if [ -z "\$installer" ];then
 	echo "Cannot find disk label 'RANCHEROS'. Stop all."
-	echo "Please do not modify label of installer disk."
+	echo "Please do not modify label of this installer disk."
 	sleep 3000000
 fi
 
@@ -313,35 +313,97 @@ else
 	set chained=1  # chained from grub booted by hard disk
 fi
 
-# get preserved parameters for installer boot
-if [ -z "\$oem" ];then
-	echo finding oem device ...
-	search --set=oem --label RANCHER_OEM_SIBLING;
-	if [ -n "\$oem" ];then
-		echo oem device found (\$oem).
-	else
-		echo oem device is missing.
-	fi
-fi
-if [ -n "\$oem" ];then
-	if [ -z "\$ev_f" ];then
-		set ev_f=(\$oem)/oem_root/opt/rancher/conf/grub/grub_env_for_installer
-		if [ -e \$ev_f ]; then
-			echo \$ev_f found
-			source \$ev_f
-			echo \$ev_f loaded
-		else
-			echo \$ev_f not found
-			set ev_f=(\$oem)/oem_root/var/lib/yougain/burmilla/grub_env_for_installer
-			if [ -e \$ev_f ]; then
-				echo \$ev_f found
-				source \$ev_f
+
+function preserve_oem_user_settings {
+	if [ -z "\$u0" ];then u0=\$USER_SETTINGS; return; fi;
+	if [ "\$u0" == "\$USER_SETTINGS" ]; then return; fi
+	if [ -z "\$u1" ];then u1=\$USER_SETTINGS; return; fi;
+	if [ "\$u1" == "\$USER_SETTINGS" ]; then return; fi
+	if [ -z "\$u2" ];then u2=\$USER_SETTINGS; return; fi;
+	if [ "\$u2" == "\$USER_SETTINGS" ]; then return; fi
+	if [ -z "\$u3" ];then u3=\$USER_SETTINGS; return; fi;
+	if [ "\$u3" == "\$USER_SETTINGS" ]; then return; fi
+	if [ -z "\$u4" ];then u4=\$USER_SETTINGS; return; fi;
+	if [ "\$u4" == "\$USER_SETTINGS" ]; then return; fi
+	if [ -z "\$u5" ];then u5=\$USER_SETTINGS; return; fi;
+	if [ "\$u5" == "\$USER_SETTINGS" ]; then return; fi
+	if [ -z "\$u6" ];then u6=\$USER_SETTINGS; return; fi;
+	if [ "\$u6" == "\$USER_SETTINGS" ]; then return; fi
+	if [ -z "\$u7" ];then u7=\$USER_SETTINGS; return; fi;
+	if [ "\$u7" == "\$USER_SETTINGS" ]; then return; fi
+	if [ -z "\$u8" ];then u8=\$USER_SETTINGS; return; fi;
+	if [ "\$u8" == "\$USER_SETTINGS" ]; then return; fi
+	if [ -z "\$u9" ];then u9=\$USER_SETTINGS; return; fi;
+	if [ "\$u9" == "\$USER_SETTINGS" ]; then return; fi
+	if [ -z "\$u10" ];then u10=\$USER_SETTINGS; return; fi;
+	if [ "\$u10" == "\$USER_SETTINGS" ]; then return; fi
+	if [ -z "\$u11" ];then u11=\$USER_SETTINGS; return; fi;
+	if [ "\$u11" == "\$USER_SETTINGS" ]; then return; fi
+	if [ -z "\$u12" ];then u12=\$USER_SETTINGS; return; fi;
+	if [ "\$u12" == "\$USER_SETTINGS" ]; then return; fi
+	if [ -z "\$u13" ];then u13=\$USER_SETTINGS; return; fi;
+	if [ "\$u13" == "\$USER_SETTINGS" ]; then return; fi
+	if [ -z "\$u14" ];then u14=\$USER_SETTINGS; return; fi;
+	if [ "\$u14" == "\$USER_SETTINGS" ]; then return; fi
+	if [ -z "\$u15" ];then u15=\$USER_SETTINGS; return; fi;
+	if [ "\$u15" == "\$USER_SETTINGS" ]; then return; fi
+	if [ -z "\$u16" ];then u16=\$USER_SETTINGS; return; fi;
+	if [ "\$u16" == "\$USER_SETTINGS" ]; then return; fi
+	if [ -z "\$u17" ];then u17=\$USER_SETTINGS; return; fi;
+	if [ "\$u17" == "\$USER_SETTINGS" ]; then return; fi
+	if [ -z "\$u18" ];then u18=\$USER_SETTINGS; return; fi;
+	if [ "\$u18" == "\$USER_SETTINGS" ]; then return; fi
+	if [ -z "\$u19" ];then u19=\$USER_SETTINGS; return; fi;
+	if [ "\$u19" == "\$USER_SETTINGS" ]; then return; fi
+}
+
+
+function search_oem_user_settings {
+	for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19; do
+		u=(hd\$i,gpt7)/oem_root/opt/rancher/conf/grub/grub_env_for_installer
+		if [ -r \$u ];then
+			source \$u
+			preserve_oem_user_settings
+		fi
+	done
+	USER_SETTINGS=
+}
+
+
+function search_efi_user_settings_during_installation {
+	for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19; do
+		u=(hd\$i,gpt2)/.grub_env_for_installing
+		if [ -r \$u ];then
+			source \$u
+			INSTALLING=\$i
+			break
+		fi
+	done
+}
+
+
+function search_efi {
+	for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19; do
+		u=(hd\$i,gpt2)/efi/boot/grub.cfg # not case sensitive
+		if [ -e \$u ];then
+			if [ -z "\$EFI_LIST" ];then
+				EFI_LIST="\$i"
 			else
-				echo \$ev_f not found
+				EFI_LIST="\$EFI_LIST \$i"
 			fi
 		fi
-	fi
+	done
+}
+
+
+search_efi_user_settings_during_installation
+if [ -z "\$USER_SETTINGS" ];then
+	search_oem_user_settings
 fi
+
+
+search_efi
+
 
 # default parameters for installer boot
 function boot_default_kernel {
@@ -352,31 +414,12 @@ function boot_default_kernel {
 	boot
 }
 
-# check installed in hard disk
-if [ -z "\$state" ];then
-	echo finding state device ...
-	search --set=state --label RANCHER_STATE_SIBLING;
-	if [ -n "\$state" ];then
-		echo state device found (\$state).
-	else
-		echo state device missing.
-	fi
-fi
-if [ -n "\$state" ]; then
+if [ -n "\$EFI_LIST" ]; then
 	set default=1 # default: boot from hard disk
 else
 	set default=0 # default: boot from installer
 fi
 
-if [ -z "\$efi" ]; then
-	echo finding efi partition ...
-	search --no-floppy --set=efi --label EFI
-	if [ -n "\$efi" ];then
-		echo efi device found (\$efi).
-	else
-		echo efi device missing.
-	fi
-fi
 
 # default timeout
 set timeout=30
@@ -392,44 +435,36 @@ if ! regexp menu "\$chosen";then
 		sleep 100000000
 	else # grub directly loaded
 		# check undergoing installation
-		if [ -n "\$state" ];then
-			if [ -e (\$state)/state_root/.reinstalling ]; then
-				echo (\$state)/state_root/.reinstalling found
-				boot_default_kernel
-			else
-				echo (\$state)/state_root/.reinstalling not found
-				if [ -e (\$state)/state_root/var/lib/rancher/conf/cloud-config.yml ]; then 
-					echo (\$state)/state_root/var/lib/rancher/conf/cloud-config.yml found
-					if [ -e (\$state)/state_root/home ]; then
-						# 3rd phase of installation because /state_root/var/lib/rancher/conf is not a symbolick link
-						boot_default_kernel
-					else
-						set timeout=
-						set default=0
-						ERR_MSG0=" (Somthing wrong: both '/home' and '/var/lib/rancher/conf/cloud-config.yml' exists during installation)"
-					fi
+		if [ -e "\$INSTALLING" ]; then
+			echo installing flag found
+			state=hd\$INSTALLING,gpt5
+			efi=hd\$INSTALLING,gpt2
+			if [ -e (\$state)/state_root/var/lib/rancher/conf/cloud-config.yml ]; then 
+				echo (\$state)/state_root/var/lib/rancher/conf/cloud-config.yml found
+				if [ -e (\$state)/state_root/home ]; then
+					# 3rd phase of installation because /state_root/var/lib/rancher/conf is not a symbolick link
+					boot_default_kernel
+				else
+					set timeout=
+					set default=0
+					ERR_MSG0=" (Somthing wrong: both '/home' and '/var/lib/rancher/conf/cloud-config.yml' exists during installation)"
+				fi
+			else 
+				echo (\$state)/state_root/var/lib/rancher/conf/cloud-config.yml not found
+				if [ -e (\$state)/state_root/home ]; then # has been rebooted for reinstalling
+					echo (\$state)/state_root/home found
+					boot_default_kernel
 				else # 2nd phase of installation : boot by target disk
-					echo (\$state)/state_root/var/lib/rancher/conf/cloud-config.yml not found
-					if [ -e (\$state)/state_root/home ]; then
-						echo (\$state)/state_root/home found
-						# normal boot (default: hard disk)
-						set default=1
-						set timeout=5
-					else
-						if [ -n "\$efi" ]; then
-							echo EFI partition found
-							prefix=(\$efi)/efi/boot
-							configfile \$prefix/grub.cfg
-							echo "Cannot continue.... Please reset."
-							sleep 100000000
-						else
-							set timeout=
-							set default=1
-							ERR_MSG1=" (Somthing wrong: cannot find EFI partition on target hard disk for second stage of installation)"
-						fi
-					fi
+					echo (\$state)/state_root/home not found
+					prefix=(\$efi)/efi/boot
+					configfile \$prefix/grub.cfg
+					echo "Cannot continue.... Please reset."
+					sleep 100000000
 				fi
 			fi
+		fi
+		if [ -n "\$EFI_LIST" ];then
+			echo efi list found
 		fi
 	fi
 else
@@ -442,37 +477,65 @@ loadfont unicode
 set menu_color_normal=white/black
 set menu_color_highlight=black/light-gray
 
-function disp_menu {
-	menuentry "Install Burmilla $BURMILLAOS_VER \$ERR_MSG0" {
-		linux   /boot/$KERNEL_FILE $VGA_ARGS \$USER_SETTINGS $KERNEL_ARGS rancher.autologin=ttyS\$serial_port console=ttyS\$serial_port,115200n8 panic=10 ---
+
+function disp_each_setting_menu {
+	regexp --set 1:ip "address.[^ ]+" "\$@"
+	if [ -n "\$ip" ];then
+		ip=" (\$ip)"
+	else
+		ip=" (dhcp)"
+	fi
+	if regexp debug "\$karg_add"; then
+		deb=" (debug)"
+	else
+		deb=""
+	fi
+	menuentry "Install Burmilla $BURMILLAOS_VER\$ip\$deb \$ERR_MSG0" {
+		linux   /boot/$KERNEL_FILE \$karg_add \$@ $KERNEL_ARGS rancher.autologin=ttyS\$serial_port console=ttyS\$serial_port,115200n8 ---
 		initrd  /boot/initrd-$BURMILLAOS_VER
 	}
-	if [ -n "\$state" -a -z "\$menu_chained" ]; then
-		menuentry "Directly boot hard disk \$ERR_MSG1" {
-			if [ -n "\$efi" ]; then
-				prefix=(\$efi)/efi/boot
-				configfile \$prefix/grub.cfg
-			else
-				echo "Cannot find EFI partition of target hard disk for booting."
-			fi
+}
+
+
+function disp_all_setting_menu{
+	for u in "\$u0" "\$u1" "\$u2" "\$u3" "\$u4" "\$u5" "\$u6" "\$u7" "\$u8" "\$u9" "\$u10" "\$u11" "\$u12" "\$u13" "\$u14" "\$u15" "\$u16" "\$u17" "\$u18" "\$u19"; do
+		if [ -n "\$u" ]; then
+			disp_each_setting_menu \$u
+		fi
+	done
+	disp_each_setting_menu
+}
+
+
+function disp_efi_menu{
+	for i in \$EFI_LIST; do
+		efi=hd\$i,gpt2
+		menuentry "Directly boot hard disk (hd\$i) \$ERR_MSG1" {
+			prefix=(\$efi)/efi/boot
+			configfile \$prefix/grub.cfg
 			echo "Cannot continue.... Please reset."
 			sleep 100000000
 		}
-		menuentry "Boot menu of hard disk \$ERR_MSG1" {
-			if [ -n "\$efi" ]; then
-				prev_prefix=\$prefix
-				prefix=(\$efi)/efi/boot
-				configfile \$prefix/grub.cfg
-				prefix=\$prev_prefix
+		menuentry "Boot menu of hard disk (hd\$i) \$ERR_MSG1" {
+			prev_prefix=\$prefix
+			prefix=(\$efi)/efi/boot
+			configfile \$prefix/grub.cfg
+			prefix=\$prev_prefix
+			chosen=escaped
+			while true;do
+				configfile (\$installer)/boot/grub/grub.cfg
 				chosen=escaped
-				while true;do
-					configfile (\$installer)/boot/grub/grub.cfg
-					chosen=escaped
-				done
-			else
-				echo "Cannot find EFI partition of target hard disk for booting."
-			fi
+			done
 		}
+	done
+}
+
+
+function disp_menu {
+	karg_add="panic=10 $VGA_ARGS"
+	disp_all_setting_menu
+	if [ -n "\$EFI_LIST" -a -z "\$menu_chained" ]; then
+		disp_efi_menu
 	else
 		default=0
 	fi
@@ -482,10 +545,8 @@ function disp_menu {
 	menuentry 'Test memory' {
 	    linux16 /boot/memtest86+.bin
 	}
-	menuentry "Install Burmilla $BURMILLAOS_VER (debug)" {
-	    linux   /boot/$KERNEL_FILE vga=ask rancher.debug=true \$USER_SETTINGS $KERNEL_ARGS rancher.autologin=ttyS\$serial_port console=ttyS\$serial_port,115200n8 ---
-	    initrd  /boot/initrd-$BURMILLAOS_VER
-	}
+	karg_add="vga=ask rancher.debug=true"
+	disp_all_setting_menu
 }
 if [ "\$chosen" == "escaped" ]; then
 	timeout=

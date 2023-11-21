@@ -232,33 +232,35 @@ if [ -z "$INST_IP" ]; then
 					exit 1
 				fi
 			fi
-			ssh $INST_IP -p $INSTALLED_PORT -l rancher -o ConnectTimeout=3 -o ConnectionAttempts=3 <<'END'
+			efi_blkid=$(ssh $INST_IP -p $INSTALLED_PORT -l rancher -o ConnectTimeout=3 -o ConnectionAttempts=3 <<'END'
 				if sudo mount LABEL=RANCHEROS /mnt; then
-					if [ -e /state_top_lvl/state_root ];then
-						sudo touch -d @$((`date +%s` + 300)) /state_top_lvl/state_root/.reinstalling
+					efi_dev="`sudo mount|grep 'on /boot/efi type vfat'|awk '{print \$1}'`"
+					if [ -n "\$efi_dev" ];then
+						blkid "\$efi_dev"
+						sudo cp /oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer /boot/efi/.grub_env_for_installing
+						sudo touch -d @$((`date +%s` + 300)) /boot/efi/.grub_env_for_installing
 						sudo reboot
 					else
-						sudo mkdir /opt2
-						sudo mount LABEL=RANCHER_STATE_SIBLING /opt2
-						sudo touch -d @$((`date +%s` + 300)) /opt2/.reinstalling
-						sudo umount /opt2
-						sudo rmdir /opt2
-						sudo reboot
+						exit 3
 					fi
 					exit 0
 				else
 					exit 2
 				fi
-END
+END)
 			case "$?" in
 				0) # logon the target and reboot
 					;;
 				2)
 					die "Installer disk not inserted on target machine."
 					;;
+				3)
+					die "EFI partition not mounted."
 				*) # Time out. Already booted by installer ?
 					;;
 			esac
+			org_efi_uuid_with_tag=`echo "$efi_blkid"|egrep -o " UUID=\"[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]-[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]\""`
+			ORG_EFI_UUID=${org_efi_uuid_with_tag:7:9}
 		fi
 	fi
 fi
@@ -337,15 +339,6 @@ $CyanPlease enter following commands on console.
 	fi
 fi
 
-# clear reinstallation flag
-ssh_inst <<END
-	sudo mkdir -p /mntx
-	if sudo mount LABEL=RANCHER_STATE_SIBLING /mntx; then
-		sudo rm -f /mntx/.reinstalling
-		sudo umount /mntx
-	fi
-	sudo rmdir /mntx
-END
 
 # check booted from installer disk
 if [ "`ssh_inst sudo mount | grep /usr/bin/ros | awk '{print $1}'`" != "none" ]; then
@@ -405,7 +398,6 @@ GATEWAY=`ssh_inst ip route |egrep '^default via'|awk '{print $3}'|head -1`
 if [ -z "$GATEWAY" ]; then
 	die Cannot find default gateway.
 fi
-
 
 
 function extract_uc_params(){
@@ -586,6 +578,7 @@ fi
 
 
 
+
 # check ~/.ssh/config for hostname and ip address, port number
 
 function get_field2(){
@@ -739,6 +732,9 @@ fi
 
 ##################
 
+USER_SETTINGS_FOR_GRUB_SOURCE="USER_SETTINGS='rancher.network.interfaces.$NET_DEV.address=$IP/$NETMASK rancher.network.interfaces.$NET_DEV.gateway=$GATEWAY rancher.network.dns.nameservers=$DNS_SETTINGS_YQ'"
+USER_SETTINGS_FOR_GRUB_SOURCE_FOR_INSTALLING="USER_SETTINGS='rancher.network.interfaces.$NET_DEV.address=$INST_IP/$NETMASK rancher.network.interfaces.$NET_DEV.gateway=$GATEWAY rancher.network.dns.nameservers=$DNS_SETTINGS_YQ'"
+
 
 TARGET_DEV1="$TARGET_DEV"1
 TARGET_DEV2="$TARGET_DEV"2
@@ -755,8 +751,8 @@ fi
 
 
 ssh_inst sudo apt-get -y update
-if ! ssh_inst sudo apt-get -y install fdisk; then
-	die cannot install fdisk
+if ! ssh_inst sudo apt-get -y install fdisk util-linux; then
+	die cannot install fdisk, util-linux
 fi
 
 
@@ -844,7 +840,7 @@ function info(){
 }
 
 
-apt-get update; apt-get install -y gdisk lvm2 dosfstools btrfs-progs parted
+apt-get update; apt-get install -y gdisk lvm2 dosfstools btrfs-progs parted util-linux cpio gzip fdisk
 dd if=/dev/zero of=$TARGET_DEV bs=1G count=1
 partprobe
 gdisk $TARGET_DEV <<EOF
@@ -945,9 +941,9 @@ cp -r /mnt/installer/EFI /mnt/efipart
 mount $TARGET_DEV4 /opt
 mkfs.btrfs -L RANCHER_STATE_SIBLING -f $TARGET_DEV5
 partprobe
-STATE_UUID=\`sudo ls -l /dev/disk/by-uuid | grep "${TARGET_DEV5##*/}" | awk '{print \$9}'\`
-if [ -z "\$STATE_UUID" ];then
-	die cannot detect uuid of state device, $TARGET_DEV5.
+STATE_UUID_SUB=\`/sbin/blkid $TARGET_DEV5 | awk '{print \$4}'\`
+if [ -z "\$STATE_UUID_SUB" ];then
+	die cannot detect sub uuid of state device, $TARGET_DEV5.
 fi
 mkdir /mnt2
 mount $TARGET_DEV5 /mnt2
@@ -958,8 +954,8 @@ cp -a /opt/* /mnt2/state_root
 umount /opt
 mkfs.btrfs -L RANCHER_BOOT_SIBLING -f $TARGET_DEV4
 partprobe
-BOOT_UUID=\`sudo ls -l /dev/disk/by-uuid | grep ${TARGET_DEV4##*/} | awk '{print \$9}'\`
-if [ -z "\$BOOT_UUID" ];then
+BOOT_UUID_SUB=\`/sbin/blkid $TARGET_DEV4 | awk '{print \$4}'\`
+if [ -z "\$BOOT_UUID_SUB" ];then
 	die cannot detect uuid of boot device, $TARGET_DEV4.
 fi
 
@@ -967,8 +963,8 @@ fi
 if [ ! -e /dev/disk/by-label/RANCHER_OEM_SIBLING -o -n "$INITIALIZE_OEM" ]; then
 	mkfs.btrfs -L RANCHER_OEM_SIBLING -f $TARGET_DEV7
 	partprobe
-	OEM_UUID=\`sudo ls -l /dev/disk/by-uuid | grep "${TARGET_DEV7##*/}" | awk '{print \$9}'\`
-	if [ -z "\$OEM_UUID" ];then
+	OEM_UUID_SUB=\`/sbin/blkid $TARGET_DEV7| awk '{print \$4}'\`
+	if [ -z "\$OEM_UUID_SUB" ];then
 		die cannot detect uuid of state device, $TARGET_DEV7.
 	fi
 	mkdir -p /opt2
@@ -981,9 +977,10 @@ if [ ! -e /dev/disk/by-label/RANCHER_OEM_SIBLING -o -n "$INITIALIZE_OEM" ]; then
 	chmod +x /opt2/oem_root/opt/rancher/conf/grub/grub_env_for_installer
 	umount /opt2
 else
-	OEM_UUID=\`sudo ls -l /dev/disk/by-uuid | grep "${TARGET_DEV7##*/}" | awk '{print \$9}'\`
+	OEM_UUID_SUB=\`/sbin/blkid $TARGET_DEV7| awk '{print \$4}'\`
 fi
-EFI_UUID=\`sudo ls -l /dev/disk/by-uuid | grep "${TARGET_DEV2##*/}" | awk '{print \$9}'\`
+EFI_UUID=\`/sbin/blkid $TARGET_DEV2| awk '{print \$3}'\`
+EFI_UUID_ARG=\${EFI_UUID:6:9}
 
 # move all files from $TARGET_DEV4/boot (initial state drive) to $TARGET_DEV2 (boot drive).
 mount $TARGET_DEV4 /opt
@@ -1010,6 +1007,20 @@ fi
 INITRD_VER=\${INITRD_FILE#*-}
 KERNEL_VER=\${VMLINUZ_FILE#*-}
 
+tmpd=`pwd`
+mkdir /opt/initrd
+cd /opt/initrd
+zcat /opt/INITRD_FILE | cpio -idmv
+cp /usr/sbin/blkid ./bin
+mkdir ./lib64
+mkdir -p ./usr/lib/x86_64-linux-gnu
+cp /lib64/ld-linux-x86-64.so.2 ./lib64
+cp /lib/x86_64-linux-gnu/libc.so.6 ./usr/lib/x86_64-linux-gnu
+cp /usr/lib/x86_64-linux-gnu/libblkid.so.1 ./usr/lib/x86_64-linux-gnu
+find | cpio -o -H newc  | gzip -c > ../$INITRD_FILE-mod
+cd $tmpd
+
+
 GLOBAL_APPEND=\`cat /opt/global.cfg | sed "s/ rancher\.state\.dev=[^ ]*//g" | sed "s/ console=ttyS[^ ]*//g" | sed "s/ rancher.autologin=ttyS[^ ]*//g"\`
 GLOBAL_APPEND_ARGS=\${GLOBAL_APPEND#APPEND *}
 
@@ -1018,7 +1029,7 @@ VGA_SIZE=1024x768
 VGA_MODE=775
 VGA_ARGS="i915.force_probe vga=\$VGA_MODE video=\$VGA_SIZE"
 echo APPEND \$VGA_ARGS \$KERNEL_ARGS > /opt/global.cfg
-ROOT_ARGS="rancher.state.boot_dev=UUID=\\\$boot_uuid rancher.state.oem_dev=UUID=\\\$oem_uuid rancher.state.dev=UUID=\\\$state_uuid root=UUID=\\\$state_uuid"
+ROOT_ARGS="rancher.state.boot_dev=\$BOOT_UUID_SUB rancher.state.oem_dev=\$OEM_UUID_SUB rancher.state.dev=\$STATE_UUID_SUB efi=\$EFI_UUID"
 
 cat - > /mnt/efipart/EFI/BOOT/grub.cfg <<END
 
@@ -1028,33 +1039,19 @@ set default=0
 set gfxmode=\$VGA_SIZE
 set gfxpayload=keep
 
-set boot_uuid=\$BOOT_UUID
-set state_uuid=\$STATE_UUID
-set oem_uuid=\$OEM_UUID
-set efi_uuid=\$EFI_UUID
 
-if ! search --no-floppy --fs-uuid --set=boot \\\$boot_uuid; then
+if ! search --no-floppy --fs-uuid --set=efi \$EFI_UUID_ARG; then
+	echo "Sorry, no installation found or corrupted. Please reinstall by installer."
+	sleep 3000000
+fi
+if ! regexp --set 1:this_hd (.*),(.*) \\\$efi ;then
 	echo "Sorry, no installation found or corrupted. Please reinstall by installer."
 	sleep 3000000
 fi
 
-if ! search --no-floppy --fs-uuid --set=state \\\$state_uuid; then
-	echo "Sorry, no installation found or corrupted. Please reinstall by installer."
-	sleep 3000000
-fi
-
-
-if ! search --no-floppy --fs-uuid --set=oem \\\$oem_uuid; then
-	echo "Sorry, no installation found or corrupted. Please reinstall by installer."
-	sleep 3000000
-fi
-
-
-if ! search --no-floppy --fs-uuid --set=efi \\\$efi_uuid; then
-	echo "Sorry, no installation found or corrupted. Please reinstall by installer."
-	sleep 3000000
-fi
-
+boot=\\\$this_hd,gpt4
+state=\\\$this_hd,gpt5
+oem=\\\$this_hd,gpt7
 
 root=\\\$boot
 
@@ -1081,13 +1078,14 @@ fi
 
 function boot_default_kernel {
 	linux    /\$VMLINUZ_FILE \$VGA_ARGS \$KERNEL_ARGS \\\$console \$ROOT_ARGS
-	initrd   /\$INITRD_FILE
+	initrd   /\$INITRD_FILE-mod
 	boot
 }
 
 
 search --set=installer --label RANCHEROS
 search --set=ros_efi --label ROS_EFI # installer's boot efi
+
 
 
 if ! regexp menu "\\\$chosen";then
@@ -1098,7 +1096,7 @@ if ! regexp menu "\\\$chosen";then
 
 
 	if [ -n "\\\$installer" ]; then
-		if [ -e (\\\$state)/state_root/.reinstalling ]; then # starting reinstration
+		if [ -e (\\\$efi)/.grub_env_for_installing ]; then # starting reinstration
 			root=\\\$installer
 			prefix=(\\\$root)/boot
 			configfile \\\$prefix/grub/grub.cfg
@@ -1120,10 +1118,56 @@ else
 	timeout=
 fi
 
+
+function search_efi {
+	for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19; do
+		u=(hd\\\$i,gpt2)/efi/boot/grub.cfg
+		if [ -e \\\$u ];then
+			if [ -z "\\\$EFI_LIST" ];then
+				EFI_LIST="\\\$i"
+			else
+				EFI_LIST="\\\$EFI_LIST \\\$i"
+			fi
+		fi
+	done
+}
+
+
+function disp_efi_menu{
+	for i in \\\$EFI_LIST; do
+		ex_efi=hd\\\$i,gpt2
+		if [ "\\\$ex_efi" == "\\\efi" ];then
+			this_disk=" [hd\\\$i]"
+		else
+			menuentry "Directly boot hard disk (hd\\\$i)" {
+				prefix=(\\\$ex_efi)/efi/boot
+				configfile \\\$prefix/grub.cfg
+				echo "Cannot continue.... Please reset."
+				sleep 100000000
+			}
+			menuentry "Boot menu of hard disk (hd\\\$i)" {
+				prev_prefix=\\\$prefix
+				prefix=(\\\$ex_efi)/efi/boot
+				configfile \\\$prefix/grub.cfg
+				prefix=\\\$prev_prefix
+				chosen=escaped
+				while true;do
+					configfile (\\\$efi)/efi/boot/grub.cfg
+					chosen=escaped
+				done
+			}
+		fi
+	done
+}
+
+
+search_efi
+
+
 function disp_menu {
-	menuentry "Burmilla OS \$INITRD_VER \$KERNEL_VER" {
+	menuentry "Burmilla OS \$INITRD_VER \$KERNEL_VER\\\$this_disk" {
 		linux    /\$VMLINUZ_FILE \$VGA_ARGS \$KERNEL_ARGS \\\$console \$ROOT_ARGS panic=10
-		initrd   /\$INITRD_FILE
+		initrd   /\$INITRD_FILE-mod
 	}
 	if [ -n "\\\$installer" -a -z "\\\$menu_chained" ]; then
 		menuentry "Directly boot installer" {
@@ -1150,9 +1194,10 @@ function disp_menu {
 			fi
 		}
 	fi
-	menuentry "Burmilla OS \$INITRD_VER \$KERNEL_VER (debug)" {
-	    linux    /\$VMLINUZ_FILE vga=ask rancher.debug=true \$KERNEL_ARGS console=ttyS\\\$serial_port \$ROOT_ARGS ---
-	    initrd   /\$INITRD_FILE
+	disp_efi_menu
+	menuentry "Burmilla OS \$INITRD_VER \$KERNEL_VER (debug)\\\$this_disk" {
+	    linux    /\$VMLINUZ_FILE vga=ask rancher.debug=true \$KERNEL_ARGS \\\$console \$ROOT_ARGS ---
+	    initrd   /\$INITRD_FILE-mod
 	}
 }
 
@@ -1163,6 +1208,7 @@ disp_menu
 
 END
 
+echo -n "$USER_SETTINGS_FOR_GRUB_SOURCE_FOR_INSTALLING" > /mnt/efipart/.grub_env_for_installing
 echo -e $green"rebooting by target disk ...."
 
 reboot
@@ -1205,7 +1251,6 @@ if [ "`ssh_inst cat /proc/cmdline | grep -o rancher.state.dev=`" = "rancher.stat
 	ssh_inst sudo rm /var/lib/rancher/conf/cloud-config.d/user_config.yml
 	green Switch to boot by installer
 	ssh_inst sudo reboot
-	INST_IP=$IP
 	wait_sshd_start
 else
 	die target disk not found
@@ -1245,43 +1290,6 @@ if [ ! -x /usr/bin/yq ];then
 	exit 1
 fi
 
-OS_CONFIG_FILE=\`find /mnt3 -name 'os-config.yml'\`
-if [ -z "\$OS_CONFIG_FILE" ];then
-	echo -e $Red"Cannot find 'os-config.yml'"$Plain
-	exit 1
-fi
-OS_CONFIG_FILE1=\`find /mnt3 -name 'os-config.yml'|head -1\`
-if [ "\$OS_CONFIG_FILE1" != "\$OS_CONFIG_FILE" ];then
-	echo -e $Red"Multiple 'os-config.yml' files found (\$OS_CONFIG_FILE)"$Plain
-	exit 1
-fi
-
-#addConsoleVolume(){
-#	local i=0
-#	while [ 1 ]; do
-#		k="\`yq e '.rancher.services.console.volumes.['\$i']' \$OS_CONFIG_FILE\`"
-#		echo \$k
-#		case "\$k" in
-#			"\$1")
-#				break
-#				;;
-#			"null" )
-#				echo null
-#				echo yq e -i '.rancher.services.console.volumes.['\$i']|="'"\$1"'"' \$OS_CONFIG_FILE
-#				yq e -i '.rancher.services.console.volumes.['\$i']|="'"\$1"'"' \$OS_CONFIG_FILE
-#				break
-#				;;
-#		esac
-#		i=\$(( i + 1 ))
-#		if [ "$i" == "1000" ];then
-#			break
-#		fi
-#	done
-#}
-#
-#addConsoleVolume "/root:/usr/share/ros/oem/root"
-#addConsoleVolume "/etc/ssh:/usr/share/ros/oem/etc/ssh"
-
 mount -t btrfs -odegraded,subvol=/oem_root $TARGET_DEV7 /opt2
 mkdir -p /opt2/var/lib/rancher/conf/cloud-config.d
 if [ -z "$USER_CONFIG" -o ! -e "$UF" ]; then
@@ -1308,14 +1316,15 @@ $DNS_SETTINGS
         TZ: $TZL
 runcmd:
 - mkdir -p /state_top_lvl
-- mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`readlink /dev/root|egrep -o "[0-9a-f-]+"\\\` | egrep -o "sd.")5 -odegraded,subvol=/ /state_top_lvl
+- mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-f-]+"|egrep -o "[0-9a-f-]+" \\\`| egrep -o "sd.")5 -odegraded,subvol=/ /state_top_lvl
 - mkdir -p /oem_top_lvl
-- mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`readlink /dev/root|egrep -o "[0-9a-f-]+"\\\` | egrep -o "sd.")7 -odegraded,subvol=/ /oem_top_lvl
+- mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-f-]+"|egrep -o "[0-9a-f-]+" \\\`| egrep -o "sd.")7 -odegraded,subvol=/ /oem_top_lvl
 - mkdir -p /boot
-- mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`readlink /dev/root|egrep -o "[0-9a-f-]+"\\\` | egrep -o "sd.")4 /boot
+- mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-f-]+"|egrep -o "[0-9a-f-]+" \\\`| egrep -o "sd.")4 /boot -odegraded
 - mkdir -p /boot/efi
-- mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`readlink /dev/root|egrep -o "[0-9a-f-]+"\\\` | egrep -o "sd.")2 /boot/efi
-- swapon /dev/\\\$(readlink /dev/disk/by-uuid/\\\`readlink /dev/root|egrep -o "[0-9a-f-]+"\\\` | egrep -o "sd.")3
+- mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-f-]+"|egrep -o "[0-9a-f-]+" \\\`| egrep -o "sd.")2 /boot/efi
+- rm -f /boot/efi/.grub_env_for_installing
+- swapon /dev/\\\$(readlink /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-f-]+"|egrep -o "[0-9a-f-]+" \\\`| egrep -o "sd.")3
 - btrfs quota enable /state_top_lvl
 - btrfs quota enable /state_top_lvl/state_root
 - btrfs quota enable /oem_top_lvl
@@ -1409,7 +1418,6 @@ cp -avn \$ssh_dir /opt2/etc
 if [ -n "\$NEW_SSHD_CONF" ];then
 	sed -i 's/#Port 22/Port $PORT/' /opt2/etc/ssh/sshd_config
 	sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /opt2/etc/ssh/sshd_config
-	echo "PubkeyAcceptedKeyTypes=+ssh-dss" >>  /opt2/etc/ssh/sshd_config
 fi
 echo rm -rf \$ssh_dir
 rm -rf \$ssh_dir
@@ -1454,7 +1462,6 @@ if [ ! -e /opt2/opt/rancher/bin/start.sh ];then
 	mkdir -p /opt2/opt/rancher/bin
 	cat - > /opt2/opt/rancher/bin/start.sh <<START_UP
 #!/bin/bash
-rm -f /state_top_lvl/state_root/.reinstalling
 mount --bind /usr/share/ros/oem/etc/ssh /etc/ssh
 mount --bind /usr/share/ros/oem/root /root
 if [  ! -e /bin/env ];then
@@ -1469,16 +1476,100 @@ fi
 if [ ! -e /etc/profile.d/timezone.sh ]; then
 	echo export TZ=$TZL > /etc/profile.d/timezone.sh
 fi
+die(){
+	echo \\\$@ >&2
+	exit 1
+}
+# get network parameters from target server booted by installer
+NET_DEV=\\\`ip route show|grep default|awk '{print \\\$5}'|head -1\\\`
+if [ -z "\\\$NET_DEV" ]; then
+	die Cannot find net device for default route.
+fi
+DS=\\\`cat /etc/resolv.conf| sed -e 's/[ \t]*#.*//' | grep "nameserver" | sed -e 's/^[ \t]*//' | awk '{print \\\$2}'\\\`
+DNS_SETTINGS=\\\`echo "\\\$DS" | sed -e 's/^/      - /'\\\`
+DSX=""
+DSX2=""
+for i in \\\$DS; do
+	if [ -z "\\\$DSX" ]; then
+		DSX='"'\\\$i'"'
+		DSX2='\"'\\\$i'\"'
+	else
+		DSX="\\\$DSX",'"'\\\$i'"'
+		DSX2="\\\$DSX2",'\"'\\\$i'\"'
+	fi
+done
+DNS_SETTINGS_YQ="[\\\$DSX]"
+DNS_SETTINGS_YQ2="[\\\$DSX2]"
+if [ -z "\\\$DNS_SETTINGS" ]; then
+	die Cannot find DNS setting.
+fi
+
+NETMASK=\\\`ip address show dev $NET_DEV | grep 'inet ' | grep global | awk '{print \\\$2}'| sed -e 's/.*\///'|head -1\\\`
+IP=\\\`ip address show dev $NET_DEV | grep 'inet ' | grep global | awk '{print \\\$2}'| sed -e 's/\/.*//'|head -1\\\`
+if [ -z "\\\$NETMASK" ]; then
+	die Cannot find net mask.
+else
+	for i in 8 16 24; do
+		if [ "\\\$NETMASK" = "\\\$i" ]; then
+			netmask_ok=1
+		fi
+	done
+	if [ -z "\\\$netmask_ok" ];then
+		die Unsupported netmask, \\\$NETMASK
+	fi
+fi
+GATEWAY=\\\`ip route |egrep '^default via'|awk '{print \\\$3}'|head -1\\\`
+if [ -z "\\\$GATEWAY" ]; then
+	die Cannot find default gateway.
+fi
+
+chain_ren(){
+	if [ -e "\\\$1.\\\$((\\\$2 + 1))" ];then
+		chain_ren \\\$1 \\\$((\\\$2 + 1))
+	fi
+	mv "\\\$1.\\\$2", "\\\$1.\\\$((\\\$2 + 1))"
+}
+
+USER_SETTINGS_FOR_GRUB_SOURCE="USER_SETTINGS='rancher.network.interfaces.\\\$NET_DEV.address=\\\$IP/\\\$NETMASK rancher.network.interfaces.\\\$NET_DEV.gateway=\\\$GATEWAY rancher.network.dns.nameservers=\\\$DNS_SETTINGS_YQ'"
+mkdir -p /oem_top_lvl/oem_root/opt/rancher/conf/grub
+if [ "\\\$USER_SETTINGS_FOR_GRUB_SOURCE" != "\\\`cat /oem_root/opt/rancher/conf/grub/grub_env_for_installer\\\`" ]; then
+	if [ -e /oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer.1 ]; then
+		chain_ren /oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer 1
+	fi
+	if [ -e /oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer ]; then
+		mv /oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer{,.1}
+	fi
+	echo -n "\\\$USER_SETTINGS_FOR_GRUB_SOURCE" > /oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer
+	chmod +x /oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer
+fi
+
 START_UP
 	chmod 0755 /opt2/opt/rancher/bin/start.sh
 fi
 
+chain_ren(){
+	if [ -e "$1.$(($2 + 1))" ];then
+		chain_ren $1 $(($2 + 1))
+	fi
+	mv "$1.$2", "$1.$(($2 + 1))"
+}
+
 # preserve user setting for grub
-if [ ! -e /opt2/opt/rancher/conf/grub ];then
-	mkdir -p /opt2/opt/rancher/conf/grub
-	echo -n "USER_SETTINGS='rancher.network.interfaces.$NET_DEV.address=$IP/$NETMASK rancher.network.interfaces.$NET_DEV.gateway=$GATEWAY rancher.network.dns.nameservers=$DNS_SETTINGS_YQ'" > /opt2/opt/rancher/conf/grub/grub_env_for_installer
+mkdir -p /opt2/opt/rancher/conf/grub
+if [ "$USER_SETTINGS_FOR_GRUB_SOURCE" != "`cat /oem_root/opt/rancher/conf/grub/grub_env_for_installer`" ]; then
+	if [ -e /opt2/opt/rancher/conf/grub/grub_env_for_installer.1 ]; then
+		chain_ren /opt2/opt/rancher/conf/grub/grub_env_for_installer 1
+	fi
+	if [ -e /opt2/opt/rancher/conf/grub/grub_env_for_installer ]; then
+		mv /opt2/opt/rancher/conf/grub/grub_env_for_installer{,.1}
+	fi
+	echo -n "$USER_SETTINGS_FOR_GRUB_SOURCE" > /opt2/opt/rancher/conf/grub/grub_env_for_installer
 	chmod +x /opt2/opt/rancher/conf/grub/grub_env_for_installer
 fi
+
+mkdir -p /mnt2
+mount $TARGET_DEV2  /mnt2
+rm -f /mnt2/.grub_env_for_installing
 
 reboot
 
