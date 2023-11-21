@@ -247,7 +247,8 @@ if [ -z "$INST_IP" ]; then
 				else
 					exit 2
 				fi
-END)
+END
+			)
 			case "$?" in
 				0) # logon the target and reboot
 					;;
