@@ -125,6 +125,9 @@ while (( "$#" )); do
 	if [ "$1" = "--init-oem" ];then
 		INITIALIZE_OEM=1
 	fi
+	if [ "$1" = "--overwrite-oem" ];then
+		INITIALIZE_OEM=1
+	fi
 	if [ -n "`echo $1| egrep '^[0-9]+$'`" ];then
 		PORT=$1
 	fi
@@ -1332,15 +1335,15 @@ $DNS_SETTINGS
         TZ: $TZL
 runcmd:
 - mkdir -p /state_top_lvl
-- mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-f-]+"|egrep -o "[0-9a-f-]+" \\\`| egrep -o "sd.")5 -odegraded,subvol=/ /state_top_lvl
+- mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+\\\$" \\\`| egrep -o "sd.")5 -odegraded,subvol=/ /state_top_lvl
 - mkdir -p /oem_top_lvl
-- mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-f-]+"|egrep -o "[0-9a-f-]+" \\\`| egrep -o "sd.")7 -odegraded,subvol=/ /oem_top_lvl
+- mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+\\\$" \\\`| egrep -o "sd.")7 -odegraded,subvol=/ /oem_top_lvl
 - mkdir -p /boot
-- mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-f-]+"|egrep -o "[0-9a-f-]+" \\\`| egrep -o "sd.")4 /boot -odegraded
+- mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+\\\$" \\\`| egrep -o "sd.")4 /boot -odegraded
 - mkdir -p /boot/efi
-- mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-f-]+"|egrep -o "[0-9a-f-]+" \\\`| egrep -o "sd.")2 /boot/efi
+- mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+\\\$" \\\`| egrep -o "sd.")2 /boot/efi
 - rm -f /boot/efi/.grub_env_for_installing
-- swapon /dev/\\\$(readlink /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-f-]+"|egrep -o "[0-9a-f-]+" \\\`| egrep -o "sd.")3
+- swapon /dev/\\\$(readlink /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+\\\$" \\\`| egrep -o "sd.")3
 - btrfs quota enable /state_top_lvl
 - btrfs quota enable /state_top_lvl/state_root
 - btrfs quota enable /oem_top_lvl
