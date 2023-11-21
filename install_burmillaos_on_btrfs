@@ -1548,7 +1548,7 @@ chain_ren(){
 
 USER_SETTINGS_FOR_GRUB_SOURCE="USER_SETTINGS='rancher.network.interfaces.\\\$NET_DEV.address=\\\$IP/\\\$NETMASK rancher.network.interfaces.\\\$NET_DEV.gateway=\\\$GATEWAY rancher.network.dns.nameservers=\\\$DNS_SETTINGS_YQ'"
 mkdir -p /oem_top_lvl/oem_root/opt/rancher/conf/grub
-if [ "\\\$USER_SETTINGS_FOR_GRUB_SOURCE" != "\\\`cat /oem_root/opt/rancher/conf/grub/grub_env_for_installer\\\`" ]; then
+if [ "\\\$USER_SETTINGS_FOR_GRUB_SOURCE" != "\\\`cat /oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer\\\`" ]; then
 	if [ -e /oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer.1 ]; then
 		chain_ren /oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer 1
 	fi
