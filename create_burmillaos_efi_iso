@@ -315,55 +315,61 @@ fi
 
 
 function preserve_oem_user_settings {
-	if [ -z "\$u0" ];then u0=\$USER_SETTINGS; return; fi;
+	if [ -z "\$u0" ];then u0="\$USER_SETTINGS"; return; fi;
 	if [ "\$u0" == "\$USER_SETTINGS" ]; then return; fi
-	if [ -z "\$u1" ];then u1=\$USER_SETTINGS; return; fi;
+	if [ -z "\$u1" ];then u1="\$USER_SETTINGS"; return; fi;
 	if [ "\$u1" == "\$USER_SETTINGS" ]; then return; fi
-	if [ -z "\$u2" ];then u2=\$USER_SETTINGS; return; fi;
+	if [ -z "\$u2" ];then u2="\$USER_SETTINGS"; return; fi;
 	if [ "\$u2" == "\$USER_SETTINGS" ]; then return; fi
-	if [ -z "\$u3" ];then u3=\$USER_SETTINGS; return; fi;
+	if [ -z "\$u3" ];then u3="\$USER_SETTINGS"; return; fi;
 	if [ "\$u3" == "\$USER_SETTINGS" ]; then return; fi
-	if [ -z "\$u4" ];then u4=\$USER_SETTINGS; return; fi;
+	if [ -z "\$u4" ];then u4="\$USER_SETTINGS"; return; fi;
 	if [ "\$u4" == "\$USER_SETTINGS" ]; then return; fi
-	if [ -z "\$u5" ];then u5=\$USER_SETTINGS; return; fi;
+	if [ -z "\$u5" ];then u5="\$USER_SETTINGS"; return; fi;
 	if [ "\$u5" == "\$USER_SETTINGS" ]; then return; fi
-	if [ -z "\$u6" ];then u6=\$USER_SETTINGS; return; fi;
+	if [ -z "\$u6" ];then u6="\$USER_SETTINGS"; return; fi;
 	if [ "\$u6" == "\$USER_SETTINGS" ]; then return; fi
-	if [ -z "\$u7" ];then u7=\$USER_SETTINGS; return; fi;
+	if [ -z "\$u7" ];then u7="\$USER_SETTINGS"; return; fi;
 	if [ "\$u7" == "\$USER_SETTINGS" ]; then return; fi
-	if [ -z "\$u8" ];then u8=\$USER_SETTINGS; return; fi;
+	if [ -z "\$u8" ];then u8="\$USER_SETTINGS"; return; fi;
 	if [ "\$u8" == "\$USER_SETTINGS" ]; then return; fi
-	if [ -z "\$u9" ];then u9=\$USER_SETTINGS; return; fi;
+	if [ -z "\$u9" ];then u9="\$USER_SETTINGS"; return; fi;
 	if [ "\$u9" == "\$USER_SETTINGS" ]; then return; fi
-	if [ -z "\$u10" ];then u10=\$USER_SETTINGS; return; fi;
+	if [ -z "\$u10" ];then u10="\$USER_SETTINGS"; return; fi;
 	if [ "\$u10" == "\$USER_SETTINGS" ]; then return; fi
-	if [ -z "\$u11" ];then u11=\$USER_SETTINGS; return; fi;
+	if [ -z "\$u11" ];then u11="\$USER_SETTINGS"; return; fi;
 	if [ "\$u11" == "\$USER_SETTINGS" ]; then return; fi
-	if [ -z "\$u12" ];then u12=\$USER_SETTINGS; return; fi;
+	if [ -z "\$u12" ];then u12="\$USER_SETTINGS"; return; fi;
 	if [ "\$u12" == "\$USER_SETTINGS" ]; then return; fi
-	if [ -z "\$u13" ];then u13=\$USER_SETTINGS; return; fi;
+	if [ -z "\$u13" ];then u13="\$USER_SETTINGS"; return; fi;
 	if [ "\$u13" == "\$USER_SETTINGS" ]; then return; fi
-	if [ -z "\$u14" ];then u14=\$USER_SETTINGS; return; fi;
+	if [ -z "\$u14" ];then u14="\$USER_SETTINGS"; return; fi;
 	if [ "\$u14" == "\$USER_SETTINGS" ]; then return; fi
-	if [ -z "\$u15" ];then u15=\$USER_SETTINGS; return; fi;
+	if [ -z "\$u15" ];then u15="\$USER_SETTINGS"; return; fi;
 	if [ "\$u15" == "\$USER_SETTINGS" ]; then return; fi
-	if [ -z "\$u16" ];then u16=\$USER_SETTINGS; return; fi;
+	if [ -z "\$u16" ];then u16="\$USER_SETTINGS"; return; fi;
 	if [ "\$u16" == "\$USER_SETTINGS" ]; then return; fi
-	if [ -z "\$u17" ];then u17=\$USER_SETTINGS; return; fi;
+	if [ -z "\$u17" ];then u17="\$USER_SETTINGS"; return; fi;
 	if [ "\$u17" == "\$USER_SETTINGS" ]; then return; fi
-	if [ -z "\$u18" ];then u18=\$USER_SETTINGS; return; fi;
+	if [ -z "\$u18" ];then u18="\$USER_SETTINGS"; return; fi;
 	if [ "\$u18" == "\$USER_SETTINGS" ]; then return; fi
-	if [ -z "\$u19" ];then u19=\$USER_SETTINGS; return; fi;
+	if [ -z "\$u19" ];then u19="\$USER_SETTINGS"; return; fi;
 	if [ "\$u19" == "\$USER_SETTINGS" ]; then return; fi
 }
 
 
 function search_oem_user_settings {
+	echo in search_oem_user_settings
 	for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19; do
 		u=(hd\$i,gpt7)/oem_root/opt/rancher/conf/grub/grub_env_for_installer
+		echo u(\$i)=\$u
 		if [ -r \$u ];then
+			echo readable
 			source \$u
+			echo USER_SETTINGS="\$USER_SETTINGS"
 			preserve_oem_user_settings
+		else
+			echo not readable
 		fi
 	done
 	USER_SETTINGS=
@@ -498,8 +504,11 @@ function disp_each_setting_menu {
 
 
 function disp_all_setting_menu{
+	echo disp_all_setting_menu
 	for u in "\$u0" "\$u1" "\$u2" "\$u3" "\$u4" "\$u5" "\$u6" "\$u7" "\$u8" "\$u9" "\$u10" "\$u11" "\$u12" "\$u13" "\$u14" "\$u15" "\$u16" "\$u17" "\$u18" "\$u19"; do
+		echo u="\"\$u\""
 		if [ -n "\$u" ]; then
+			echo has content
 			disp_each_setting_menu \$u
 		fi
 	done
