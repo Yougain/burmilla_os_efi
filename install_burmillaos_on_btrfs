@@ -950,6 +950,7 @@ mount $INST_DRIVE /installing/mnt/installer
 cp -r /installing/mnt/installer/EFI /installing/mnt/efipart
 
 # move all files from $TARGET_DEV4 (initial state drive) to $TARGET_DEV5 (state drive) first
+mkdir -p /installing/opt
 mount $TARGET_DEV4 /installing/opt
 mkfs.btrfs -L RANCHER_STATE_SIBLING -f $TARGET_DEV5
 partprobe
@@ -996,7 +997,6 @@ EFI_UUID=\`/sbin/blkid $TARGET_DEV2| awk '{print \$4}'\`
 EFI_UUID_ARG=\${EFI_UUID:6:9}
 echo EFI_UUID=\$EFI_UUID
 echo EFI_UUID_ARG=\$EFI_UUID_ARG
-exit 1
 
 # move all files from $TARGET_DEV4/boot (initial state drive) to $TARGET_DEV2 (boot drive).
 mount $TARGET_DEV4 /installing/opt
@@ -1026,16 +1026,16 @@ KERNEL_VER=\${VMLINUZ_FILE#*-}
 tmpd=`pwd`
 mkdir -p /installing/opt/initrd
 cd /installing/opt/initrd
-zcat /installing/opt/$INITRD_FILE | cpio -idmv
-cp /usr/sbin/blkid ./bin
+zcat /installing/opt/\$INITRD_FILE | cpio -idmv
+cp /sbin/blkid ./bin
 mkdir ./lib64
 mkdir -p ./usr/lib/x86_64-linux-gnu
 cp /lib64/ld-linux-x86-64.so.2 ./lib64
 cp /lib/x86_64-linux-gnu/libc.so.6 ./usr/lib/x86_64-linux-gnu
 cp /usr/lib/x86_64-linux-gnu/libblkid.so.1 ./usr/lib/x86_64-linux-gnu
-find | cpio -o -H newc  | gzip -c > ../$INITRD_FILE-mod
+find
+find | cpio -o -H newc  | gzip -c > ../\$INITRD_FILE-mod
 cd $tmpd
-
 
 GLOBAL_APPEND=\`cat /installing/opt/global.cfg | sed "s/ rancher\.state\.dev=[^ ]*//g" | sed "s/ console=ttyS[^ ]*//g" | sed "s/ rancher.autologin=ttyS[^ ]*//g"\`
 GLOBAL_APPEND_ARGS=\${GLOBAL_APPEND#APPEND *}
