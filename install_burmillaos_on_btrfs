@@ -1036,7 +1036,6 @@ mkdir -p ./usr/lib/x86_64-linux-gnu
 cp /lib64/ld-linux-x86-64.so.2 ./lib64
 cp /lib/x86_64-linux-gnu/libc.so.6 ./usr/lib/x86_64-linux-gnu
 cp /usr/lib/x86_64-linux-gnu/libblkid.so.1 ./usr/lib/x86_64-linux-gnu
-find
 find | cpio -o -H newc  | gzip -c > ../\$INITRD_FILE-mod
 cd $tmpd
 
@@ -1435,7 +1434,7 @@ ssh_dir=\${ssh_file%/*}
 if [ ! -e /installing/opt2/etc/ssh/sshd_config ];then
 	NEW_SSHD_CONF=1
 fi
-cp -avn \$ssh_dir /installing/opt2/etc
+cp -an \$ssh_dir /installing/opt2/etc
 if [ -n "\$NEW_SSHD_CONF" ];then
 	sed -i 's/#Port 22/Port $PORT/' /installing/opt2/etc/ssh/sshd_config
 	sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /installing/opt2/etc/ssh/sshd_config
@@ -1468,7 +1467,7 @@ for d in \`find /installing/mnt3 -name zoneinfo\`; do
 			prv=\${found%/*}
 			dstd=\${prv#*/diff}
 			mkdir -p /installing/opt2/\$dstd
-			cp -av \$found /installing/opt2/\$dstd
+			cp -a \$found /installing/opt2/\$dstd
 			mv \$etc_timezone \$etc_timezone.org
 			ln -sf /usr/share/ros/oem/etc/timezone \$etc_timezone
 			ln -sf ..\$dstd/\$fn /installing/opt2/etc/timezone
