@@ -765,8 +765,8 @@ if [ -z "$USER_CONFIG" ]; then
 fi
 
 
-ssh_inst sudo apt-get -y update
-if ! ssh_inst sudo apt-get -y install fdisk util-linux; then
+ssh_inst sudo apt-get -qq -y update
+if ! ssh_inst sudo apt-get -qq -y install fdisk util-linux; then
 	die cannot install fdisk, util-linux
 fi
 
@@ -855,7 +855,7 @@ function info(){
 }
 
 
-apt-get update; apt-get install -y gdisk lvm2 dosfstools btrfs-progs parted util-linux cpio gzip fdisk
+apt-get -qq update; apt-get -qq install -y gdisk lvm2 dosfstools btrfs-progs parted util-linux cpio gzip fdisk
 dd if=/dev/zero of=$TARGET_DEV bs=1G count=1
 partprobe
 gdisk $TARGET_DEV <<EOF
@@ -1448,8 +1448,8 @@ ln -sf /usr/share/ros/oem/etc/ssh \$ssh_dir
 #time zone
 etc_timezone=\`find /installing/mnt3 -name "timezone"| awk '{print \$1}'\`
 
-apt-get update
-apt-get -y install binutils
+apt-get -qq update
+apt-get -qq -y install binutils
 
 echo PORT=$PORT
 echo TZ=$TZ
@@ -1568,16 +1568,10 @@ START_UP
 	chmod 0755 /installing/opt2/opt/rancher/bin/start.sh
 fi
 
-chain_ren(){
-	if [ -e "$1.$(($2 + 1))" ];then
-		chain_ren $1 $(($2 + 1))
-	fi
-	mv "$1.$2", "$1.$(($2 + 1))"
-}
 
 # preserve user setting for grub
 mkdir -p /installing/opt2/opt/rancher/conf/grub
-if [ "$USER_SETTINGS_FOR_GRUB_SOURCE" != "`cat /oem_root/opt/rancher/conf/grub/grub_env_for_installer`" ]; then
+if [ "$USER_SETTINGS_FOR_GRUB_SOURCE" != "`cat /oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer`" ]; then
 	if [ -e /installing/opt2/opt/rancher/conf/grub/grub_env_for_installer.1 ]; then
 		chain_ren /installing/opt2/opt/rancher/conf/grub/grub_env_for_installer 1
 	fi
