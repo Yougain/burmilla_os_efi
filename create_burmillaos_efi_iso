@@ -363,14 +363,12 @@ function search_oem_user_settings {
 	echo in search_oem_user_settings
 	for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19; do
 		u=(hd\$i,gpt7)/oem_root/opt/rancher/conf/grub/grub_env_for_installer
-		echo u(\$i)=\$u
 		if [ -e \$u ];then
+			echo u(\$i)=\$u
 			echo readable
 			source \$u
 			echo USER_SETTINGS="\$USER_SETTINGS"
 			preserve_oem_user_settings
-		else
-			echo not readable
 		fi
 	done
 	USER_SETTINGS=
@@ -486,7 +484,7 @@ set menu_color_highlight=black/light-gray
 
 
 function disp_each_setting_menu {
-	regexp --set 1:tmp_ip "address.[^ ]+" "\$1"
+	regexp --set 1:tmp_ip "address=([^ ]+)" "\$1"
 	if [ -n "\$tmp_ip" ];then
 		ip=" (\$tmp_ip)"
 	else
@@ -507,9 +505,9 @@ function disp_each_setting_menu {
 function disp_all_setting_menu{
 	echo disp_all_setting_menu
 	for u in "\$u0" "\$u1" "\$u2" "\$u3" "\$u4" "\$u5" "\$u6" "\$u7" "\$u8" "\$u9" "\$u10" "\$u11" "\$u12" "\$u13" "\$u14" "\$u15" "\$u16" "\$u17" "\$u18" "\$u19"; do
-		echo u="\"\$u\""
 		if [ -n "\$u" ]; then
 			echo has content
+			echo u="\"\$u\""
 			disp_each_setting_menu "\$u"
 		fi
 	done
