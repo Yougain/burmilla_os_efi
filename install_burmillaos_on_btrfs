@@ -108,9 +108,13 @@ function die(){
 	if [ -n "$ERRMSG" ];then
 		echo -en $ERRMSG
 	fi
-	sudo umount `sudo mount | grep /installing | awk '{print $3}'`
-	sudo rmdir /installing/*
-	sudo rmdir /installing
+	UMT=`ssh_inst sudo bash -c mount|grep /installing|awk '{print $3}'`
+	echo unmounting "$UMT"
+	if [ -n "$UMT" ];then
+		ssh_inst sudo umount $UMT
+	fi
+	ssh_inst sudo rmdir /installing/*
+	ssh_inst sudo rmdir /installing
 	exit 1
 }
 
@@ -529,7 +533,7 @@ if [ -n "$IP" ]; then
 		done
 		if [ -z "$UC_IP" ];then
 			if [ -n "$FORCE" ];then
-				warn "Overwrite ip address with new one, $Cyan'$IP'$Yellow over current ip, $Cyan'$UC_IPS'$Yellow defined in user_config.yml"
+				warning "Overwrite ip address with new one, $Cyan'$IP'$Yellow over current ip, $Cyan'$UC_IPS'$Yellow defined in user_config.yml"
 			else
 				die "Command line specified ip address, $Cyan'$IP'$Red is different from current ip, $Cyan'$UC_IPS'$Red defined in user_config.yml"
 			fi
