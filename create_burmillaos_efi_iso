@@ -487,7 +487,7 @@ set menu_color_highlight=black/light-gray
 function disp_each_setting_menu {
 	regexp --set 1:tmp_ip "address.[^ ]+" "\$1"
 	if [ -n "\$tmp_ip" ];then
-		ip=" (\$ip)"
+		ip=" (\$tmp_ip)"
 	else
 		ip=" (dhcp)"
 	fi
