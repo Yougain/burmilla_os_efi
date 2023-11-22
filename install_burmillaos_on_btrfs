@@ -1547,7 +1547,7 @@ chain_ren(){
 	if [ -e "\\\$1.\\\$((\\\$2 + 1))" ];then
 		chain_ren \\\$1 \\\$((\\\$2 + 1))
 	fi
-	mv "\\\$1.\\\$2", "\\\$1.\\\$((\\\$2 + 1))"
+	mv "\\\$1.\\\$2" "\\\$1.\\\$((\\\$2 + 1))"
 }
 
 USER_SETTINGS_FOR_GRUB_SOURCE="USER_SETTINGS='rancher.network.interfaces.\\\$NET_DEV.address=\\\$IP/\\\$NETMASK rancher.network.interfaces.\\\$NET_DEV.gateway=\\\$GATEWAY rancher.network.dns.nameservers=\\\$DNS_SETTINGS_YQ'"
@@ -1568,9 +1568,17 @@ START_UP
 fi
 
 
+chain_ren(){
+	if [ -e "\$1.\$((\$2 + 1))" ];then
+		chain_ren \$1 \$((\$2 + 1))
+	fi
+	mv "\$1.\$2" "\$1.\$((\$2 + 1))"
+}
+
+
 # preserve user setting for grub
 mkdir -p /installing/opt2/opt/rancher/conf/grub
-if [ "$USER_SETTINGS_FOR_GRUB_SOURCE" != "`cat /oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer`" ]; then
+if [ "$USER_SETTINGS_FOR_GRUB_SOURCE" != "`cat /installing/opt2/opt/rancher/conf/grub/grub_env_for_installer`" ]; then
 	if [ -e /installing/opt2/opt/rancher/conf/grub/grub_env_for_installer.1 ]; then
 		chain_ren /installing/opt2/opt/rancher/conf/grub/grub_env_for_installer 1
 	fi
