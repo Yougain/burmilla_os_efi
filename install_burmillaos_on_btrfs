@@ -1144,10 +1144,14 @@ function search_efi {
 	for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19; do
 		u=(hd\\\$i,gpt2)/efi/boot/grub.cfg
 		if [ -e \\\$u ];then
-			if [ -z "\\\$EFI_LIST" ];then
-				EFI_LIST="\\\$i"
+			if [ "hd\\\$i,gpt2" != "\\\$efi" ];then
+				if [ -z "\\\$EFI_LIST" ];then
+					EFI_LIST="\\\$i"
+				else
+					EFI_LIST="\\\$EFI_LIST \\\$i"
+				fi
 			else
-				EFI_LIST="\\\$EFI_LIST \\\$i"
+				this_disk=" [hd\\\$i]"
 			fi
 		fi
 	done
@@ -1157,27 +1161,23 @@ function search_efi {
 function disp_efi_menu{
 	for i in \\\$EFI_LIST; do
 		ex_efi=hd\\\$i,gpt2
-		if [ "\\\$ex_efi" == "\\\efi" ];then
-			this_disk=" [hd\\\$i]"
-		else
-			eval "menuentry \"Directly boot hard disk (hd\\\$i)\" {
-				prefix=(\\\$ex_efi)/efi/boot
-				configfile \\\$prefix/grub.cfg
-				echo Cannot continue.... Please reset.
-				sleep 100000000
-			}"
-			eval "menuentry \"Boot menu of hard disk (hd\\\$i)\" {
-				prev_prefix=\\\$prefix
-				prefix=(\\\$ex_efi)/efi/boot
-				configfile \\\$prefix/grub.cfg
-				prefix=\\\$prev_prefix
+		eval "menuentry \"Directly boot hard disk (hd\\\$i)\" {
+			prefix=(\\\$ex_efi)/efi/boot
+			configfile \\\$prefix/grub.cfg
+			echo Cannot continue.... Please reset.
+			sleep 100000000
+		}"
+		eval "menuentry \"Boot menu of hard disk (hd\\\$i)\" {
+			prev_prefix=\\\\\$prefix
+			prefix=(\\\$ex_efi)/efi/boot
+			configfile \\\$prefix/grub.cfg
+			prefix=\\\\\$prev_prefix
+			chosen=escaped
+			while true;do
+				configfile (\\\$efi)/efi/boot/grub.cfg
 				chosen=escaped
-				while true;do
-					configfile (\\\$efi)/efi/boot/grub.cfg
-					chosen=escaped
-				done
-			}"
-		fi
+			done
+		}"
 	done
 }
 
@@ -1197,13 +1197,13 @@ function disp_menu {
 			configfile \\\$prefix/grub/grub.cfg
 		}"
 		eval "menuentry \"Display boot menu in installer\" {
-			prev_root=\\\$root
+			prev_root=\\\\\$root
 			root=\\\$installer
-			prev_prefix=\\\$prefix
+			prev_prefix=\\\\\$prefix
 			prefix=(\\\$root)/boot
 			configfile \\\$prefix/grub/grub.cfg
-			root=\\\$prev_root
-			prefix=\\\$prev_prefix
+			root=\\\\\$prev_root
+			prefix=\\\\\$prev_prefix
 			if [ -n "\\\$efi" ];then
 				chosen=escaped
 				while true; do
