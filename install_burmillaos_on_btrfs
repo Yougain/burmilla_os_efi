@@ -108,6 +108,9 @@ function die(){
 	if [ -n "$ERRMSG" ];then
 		echo -en $ERRMSG
 	fi
+	sudo umount `sudo mount | grep /installing | awk '{print $3}'`
+	sudo rmdir /installing/*
+	sudo rmdir /installing
 	exit 1
 }
 
@@ -335,9 +338,8 @@ wait_sshd_start
 
 
 if ssh_inst ls /installing;then
-	info "reboot to clear termnated installing"
-	ssh_inst sudo reboot
-	wait_sshd_start
+	info "Clear terminated installing."
+	die "Please restart this command."
 fi
 
 
