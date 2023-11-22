@@ -1077,6 +1077,8 @@ root=\\\$boot
 
 insmod /grub/x86_64-efi/terminfo.mod
 insmod /grub/x86_64-efi/serial.mod
+insmod /grub/x86_64-efi/eval.mod
+
 if serial --unit=0 --speed=115200 --word=8 --parity=no --stop=1; then
 	set serial_port=0
 else
@@ -1158,13 +1160,13 @@ function disp_efi_menu{
 		if [ "\\\$ex_efi" == "\\\efi" ];then
 			this_disk=" [hd\\\$i]"
 		else
-			menuentry "Directly boot hard disk (hd\\\$i)" {
+			eval "menuentry \"Directly boot hard disk (hd\\\$i)\" {
 				prefix=(\\\$ex_efi)/efi/boot
 				configfile \\\$prefix/grub.cfg
-				echo "Cannot continue.... Please reset."
+				echo Cannot continue.... Please reset.
 				sleep 100000000
-			}
-			menuentry "Boot menu of hard disk (hd\\\$i)" {
+			}"
+			eval "menuentry \"Boot menu of hard disk (hd\\\$i)\" {
 				prev_prefix=\\\$prefix
 				prefix=(\\\$ex_efi)/efi/boot
 				configfile \\\$prefix/grub.cfg
@@ -1174,7 +1176,7 @@ function disp_efi_menu{
 					configfile (\\\$efi)/efi/boot/grub.cfg
 					chosen=escaped
 				done
-			}
+			}"
 		fi
 	done
 }
@@ -1184,17 +1186,17 @@ search_efi
 
 
 function disp_menu {
-	menuentry "Burmilla OS \$INITRD_VER \$KERNEL_VER\\\$this_disk" {
+	eval "menuentry \"Burmilla OS \$INITRD_VER \$KERNEL_VER\\\$this_disk\" {
 		linux    /\$VMLINUZ_FILE \$VGA_ARGS \$KERNEL_ARGS \\\$console \$ROOT_ARGS panic=10
 		initrd   /\$INITRD_FILE-mod
-	}
+	}"
 	if [ -n "\\\$installer" -a -z "\\\$menu_chained" ]; then
-		menuentry "Directly boot installer" {
+		eval "menuentry \"Directly boot installer\" {
 			root=\\\$installer
 			prefix=(\\\$root)/boot
 			configfile \\\$prefix/grub/grub.cfg
-		}
-		menuentry "Display boot menu in installer" {
+		}"
+		eval "menuentry \"Display boot menu in installer\" {
 			prev_root=\\\$root
 			root=\\\$installer
 			prev_prefix=\\\$prefix
@@ -1211,13 +1213,13 @@ function disp_menu {
 			else
 				reboot
 			fi
-		}
+		}"
 	fi
 	disp_efi_menu
-	menuentry "Burmilla OS \$INITRD_VER \$KERNEL_VER (debug)\\\$this_disk" {
+	eval "menuentry \"Burmilla OS \$INITRD_VER \$KERNEL_VER (debug)\\\$this_disk\" {
 	    linux    /\$VMLINUZ_FILE vga=ask rancher.debug=true \$KERNEL_ARGS \\\$console \$ROOT_ARGS ---
 	    initrd   /\$INITRD_FILE-mod
-	}
+	}"
 }
 
 if [ "\\\$chosen" == "escaped" ]; then

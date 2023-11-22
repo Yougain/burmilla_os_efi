@@ -519,15 +519,15 @@ function disp_efi_menu{
 		efi=hd\$i,gpt2
 		eval "menuentry \"Directly boot hard disk (hd\$i) \$ERR_MSG1\" {
 			prefix=(\$efi)/efi/boot
-			configfile \$prefix/grub.cfg
+			configfile (\$efi)/efi/boot/grub.cfg
 			echo Cannot continue.... Please reset.
 			sleep 100000000
 		}"
 		eval "menuentry \"Boot menu of hard disk (hd\$i) \$ERR_MSG1\" {
-			prev_prefix=\$prefix
+			prev_prefix=\\\$prefix
 			prefix=(\$efi)/efi/boot
-			configfile \$prefix/grub.cfg
-			prefix=\$prev_prefix
+			configfile (\$efi)/efi/boot/grub.cfg
+			prefix=\\\$prev_prefix
 			chosen=escaped
 			while true;do
 				configfile (\$installer)/boot/grub/grub.cfg
