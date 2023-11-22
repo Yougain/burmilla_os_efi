@@ -441,7 +441,7 @@ if ! regexp menu "\$chosen";then
 		sleep 100000000
 	else # grub directly loaded
 		# check undergoing installation
-		if [ -e "\$INSTALLING" ]; then
+		if [ -n "\$INSTALLING" ]; then
 			echo installing flag found
 			state=hd\$INSTALLING,gpt5
 			efi=hd\$INSTALLING,gpt2
