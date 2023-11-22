@@ -285,6 +285,7 @@ if [ -z "\$installer" ];then
 fi
 
 root=\$installer,msdos1
+insmod /boot/grub/x86_64-efi/eval.mod
 
 if [ -z "\$serial_port" ];then
 	insmod /boot/grub/x86_64-efi/terminfo.mod
