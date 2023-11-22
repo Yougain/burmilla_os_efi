@@ -485,8 +485,8 @@ set menu_color_highlight=black/light-gray
 
 
 function disp_each_setting_menu {
-	regexp --set 1:ip "address.[^ ]+" "\$@"
-	if [ -n "\$ip" ];then
+	regexp --set 1:tmp_ip "address.[^ ]+" "\$1"
+	if [ -n "\$tmp_ip" ];then
 		ip=" (\$ip)"
 	else
 		ip=" (dhcp)"
@@ -496,10 +496,10 @@ function disp_each_setting_menu {
 	else
 		deb=""
 	fi
-	menuentry "Install Burmilla $BURMILLAOS_VER\$ip\$deb \$ERR_MSG0" {
-		linux   /boot/$KERNEL_FILE \$karg_add \$@ $KERNEL_ARGS rancher.autologin=ttyS\$serial_port console=ttyS\$serial_port,115200n8 ---
+	eval "menuentry \"Install Burmilla $BURMILLAOS_VER\$ip\$deb \$ERR_MSG0\" {
+		linux   /boot/$KERNEL_FILE \$karg_add \$1 $KERNEL_ARGS rancher.autologin=ttyS\$serial_port console=ttyS\$serial_port,115200n8 ---
 		initrd  /boot/initrd-$BURMILLAOS_VER
-	}
+	}"
 }
 
 
@@ -509,7 +509,7 @@ function disp_all_setting_menu{
 		echo u="\"\$u\""
 		if [ -n "\$u" ]; then
 			echo has content
-			disp_each_setting_menu \$u
+			disp_each_setting_menu "\$u"
 		fi
 	done
 	disp_each_setting_menu
