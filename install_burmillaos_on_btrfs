@@ -240,7 +240,7 @@ if [ -z "$INST_IP" ]; then
 				if sudo mount LABEL=RANCHEROS /installing/mnt_rancheros; then
 					efi_dev="`sudo mount|grep 'on /boot/efi type vfat'|awk '{print \$1}'`"
 					if [ -n "\$efi_dev" ];then
-						blkid "\$efi_dev"
+						sudo blkid "\$efi_dev"
 						sudo cp /oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer /boot/efi/.grub_env_for_installing
 						sudo touch -d @$((`date +%s` + 300)) /boot/efi/.grub_env_for_installing
 						sudo reboot
