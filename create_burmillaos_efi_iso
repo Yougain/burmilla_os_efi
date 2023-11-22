@@ -484,8 +484,7 @@ set menu_color_highlight=black/light-gray
 
 
 function disp_each_setting_menu {
-	regexp --set 1:tmp_ip "address=([^ ]+)" "\$1"
-	if [ -n "\$tmp_ip" ];then
+	if regexp --set 1:tmp_ip "address=([^ ]+)" "\$1"; then
 		ip=" (\$tmp_ip)"
 	else
 		ip=" (dhcp)"
@@ -518,13 +517,13 @@ function disp_all_setting_menu{
 function disp_efi_menu{
 	for i in \$EFI_LIST; do
 		efi=hd\$i,gpt2
-		menuentry "Directly boot hard disk (hd\$i) \$ERR_MSG1" {
+		eval "menuentry \"Directly boot hard disk (hd\$i) \$ERR_MSG1\" {
 			prefix=(\$efi)/efi/boot
 			configfile \$prefix/grub.cfg
-			echo "Cannot continue.... Please reset."
+			echo Cannot continue.... Please reset.
 			sleep 100000000
-		}
-		menuentry "Boot menu of hard disk (hd\$i) \$ERR_MSG1" {
+		}"
+		eval "menuentry \"Boot menu of hard disk (hd\$i) \$ERR_MSG1\" {
 			prev_prefix=\$prefix
 			prefix=(\$efi)/efi/boot
 			configfile \$prefix/grub.cfg
@@ -534,7 +533,7 @@ function disp_efi_menu{
 				configfile (\$installer)/boot/grub/grub.cfg
 				chosen=escaped
 			done
-		}
+		}"
 	done
 }
 
