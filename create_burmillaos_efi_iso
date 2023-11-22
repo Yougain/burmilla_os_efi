@@ -371,6 +371,16 @@ function search_oem_user_settings {
 			preserve_oem_user_settings
 		fi
 	done
+	for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+		if [ "\$setting_num" == "nxt" ];then
+			setting_num=\$i
+			break
+		fi
+		eval "echo eval \"\\\$u\$i\""
+		if eval "[ -z \"\\\$u\$i\"]";then
+			setting_num=nxt
+		fi
+	done
 	USER_SETTINGS=
 }
 
@@ -419,15 +429,14 @@ function boot_default_kernel {
 	boot
 }
 
+# default timeout
+set timeout=30
+
 if [ -n "\$EFI_LIST" ]; then
-	set default=1 # default: boot from hard disk
+	set default=$setting_num # default: boot from hard disk
 else
 	set default=0 # default: boot from installer
 fi
-
-
-# default timeout
-set timeout=30
 
 
 if ! regexp menu "\$chosen";then
