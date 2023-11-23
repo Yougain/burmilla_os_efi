@@ -1623,9 +1623,8 @@ if [ "\\\$USER_SETTINGS_FOR_GRUB_SOURCE" != "\\\`cat /oem_top_lvl/oem_root/opt/r
 	chmod +x /oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer
 fi
 
-
-/sbin/blkid | grep LABEL=\\\"EFI\\\" | awk '{print substr(\\\$1, 1, length(\\\$1) - 1)}' | while read efi do;
-	mkdir -p /mnt_efi_test
+mkdir -p /mnt_efi_test
+/sbin/blkid | grep LABEL=\\\"EFI\\\" | awk '{print substr(\\\$1, 1, length(\\\$1) - 1)}' | while read efi; do
 	mount \\\$efi /mnt_efi_test
 	rm -f /mnt_efi_test/.last_booted
 	umount /mnt_efi_test
