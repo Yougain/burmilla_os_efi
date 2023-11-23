@@ -153,12 +153,22 @@ rmdir /efi2
 
 # select raid mode and start balancing
 function bstart(){
+	btrfs filesystem show $uuid
 	local uuid=`blkid $1 | awk '{print $3}' | egrep -o "UUID=[0-9a-fA-F\"-]*" | egrep -o "[0-9a-fA-F-]*"`
 	local dnum=`btrfs filesystem show $uuid | egrep -o "Total devices [0-9]*" | awk '{print $3}'`
 	case "$dnum" in
-		"2" ) btrfs balance start -mconvert=raid1 -dconvert=raid1 $2 ;;
-		"3" ) btrfs balance start -mconvert=raid1c3 -dconvert=raid1c3 $2 ;;
-		"4" ) btrfs balance start -mconvert=raid1c4 -dconvert=raid1c4 $2 ;;
+		"2" )
+			echo btrfs balance start -mconvert=raid1 -dconvert=raid1 $2
+			btrfs balance start -mconvert=raid1 -dconvert=raid1 $2
+			;;
+		"3" )
+			echo btrfs balance start -mconvert=raid1c3 -dconvert=raid1c3 $2
+			btrfs balance start -mconvert=raid1c3 -dconvert=raid1c3 $2
+			;;
+		"4" )
+			echo btrfs balance start -mconvert=raid1c4 -dconvert=raid1c4 $2
+			btrfs balance start -mconvert=raid1c4 -dconvert=raid1c4 $2
+			;;
 	esac
 }
 
