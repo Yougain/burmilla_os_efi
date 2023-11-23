@@ -497,6 +497,12 @@ else
 fi
 
 
+if ! ssh_inst ls $TARGET_DEV;then
+	A_DISKS=`ssh_inst bash -c 'readlink -f /dev/disk/by-id/*'|sort|uniq|egrep -v '[0-9]+$'`
+	info "Available disks are $A_DISKS."
+	die "$TARGET_DEV not found."
+fi
+
 function reachable(){
 	local mask=$2
 	local gateway=$3
@@ -1174,16 +1180,24 @@ fi
 
 function search_efi {
 	for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19; do
-		u=(hd\\\$i,gpt2)/efi/boot/grub.cfg
+		g=(hd\\\$i,gpt2)/efi/boot/grub.cfg
+		l=(hd\\\$i,gpt2)/.last_booted
 		if [ -e \\\$u ];then
-			if [ "hd\\\$i,gpt2" != "\\\$efi" ];then
-				if [ -z "\\\$EFI_LIST" ];then
-					EFI_LIST="\\\$i"
-				else
-					EFI_LIST="\\\$EFI_LIST \\\$i"
+			if [ "hd\\\$i,gpt2" == "\\\$efi" ];then
+				this_disk=" [hd\\\$i]"
+				if [ -e \\\$l ];then
+					this_disk="\\\$this_disk : Last booted"
 				fi
 			else
-				this_disk=" [hd\\\$i]"
+				if [ -e \\\$l ];then
+					last_booted="\\\$i"
+				else
+					if [ -z "\\\$EFI_LIST" ];then
+						EFI_LIST="\\\$i"
+					else
+						EFI_LIST="\\\$EFI_LIST \\\$i"
+					fi
+				fi
 			fi
 		fi
 	done
@@ -1191,15 +1205,15 @@ function search_efi {
 
 
 function disp_efi_menu{
-	for i in \\\$EFI_LIST; do
+	for i in \\\$1; do
 		ex_efi=hd\\\$i,gpt2
-		eval "menuentry \"Directly boot hard disk (hd\\\$i)\" {
+		eval "menuentry \"Directly boot hard disk (hd\\\$i)\\\$2\" {
 			prefix=(\\\$ex_efi)/efi/boot
 			configfile \\\$prefix/grub.cfg
 			echo Cannot continue.... Please reset.
 			sleep 100000000
 		}"
-		eval "menuentry \"Boot menu of hard disk (hd\\\$i)\" {
+		eval "menuentry \"Boot menu of hard disk (hd\\\$i)\\\$2\" {
 			prev_prefix=\\\\\$prefix
 			prefix=(\\\$ex_efi)/efi/boot
 			configfile \\\$prefix/grub.cfg
@@ -1222,6 +1236,10 @@ function disp_menu {
 		linux    /\$VMLINUZ_FILE \$VGA_ARGS \$KERNEL_ARGS \\\$console \$ROOT_ARGS panic=10
 		initrd   /\$INITRD_FILE-mod
 	}"
+	if [ -n "\\\$last_booted" ];then
+		set default=1
+		disp_efi_menu "\\\$last_booted" " : Last booted"
+	fi
 	if [ -n "\\\$installer" -a -z "\\\$menu_chained" ]; then
 		eval "menuentry \"Directly boot installer\" {
 			root=\\\$installer
@@ -1247,7 +1265,7 @@ function disp_menu {
 			fi
 		}"
 	fi
-	disp_efi_menu
+	disp_efi_menu "\\\$EFI_LIST"
 	eval "menuentry \"Burmilla OS \$INITRD_VER \$KERNEL_VER (debug)\\\$this_disk\" {
 	    linux    /\$VMLINUZ_FILE vga=ask rancher.debug=true \$KERNEL_ARGS \\\$console \$ROOT_ARGS ---
 	    initrd   /\$INITRD_FILE-mod
@@ -1369,15 +1387,15 @@ $DNS_SETTINGS
         TZ: $TZL
 runcmd:
 - mkdir -p /state_top_lvl
-- mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+\\\$" \\\`| egrep -o "sd.")5 -odegraded,subvol=/ /state_top_lvl
+- mount /dev/\\\$(readlink -f /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+\\\$"\\\`|awk 'match(\\\$1,/[0-9]+\\\$/){print substr(\\\$1,0,length(\\\$1)-RLENGTH);}'|awk 'match(\\\$1,/^\\\\/dev\\\\//){print substr(\\\$1,6,length(\\\$1)-5);}')5 -odegraded,subvol=/ /state_top_lvl
 - mkdir -p /oem_top_lvl
-- mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+\\\$" \\\`| egrep -o "sd.")7 -odegraded,subvol=/ /oem_top_lvl
+- mount /dev/\\\$(readlink -f /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+\\\$"\\\`|awk 'match(\\\$1,/[0-9]+\\\$/){print substr(\\\$1,0,length(\\\$1)-RLENGTH);}'|awk 'match(\\\$1,/^\\\\/dev\\\\//){print substr(\\\$1,6,length(\\\$1)-5);}')7 -odegraded,subvol=/ /oem_top_lvl
 - mkdir -p /boot
-- mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+\\\$" \\\`| egrep -o "sd.")4 /boot -odegraded
+- mount /dev/\\\$(readlink -f /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+\\\$"\\\`|awk 'match(\\\$1,/[0-9]+\\\$/){print substr(\\\$1,0,length(\\\$1)-RLENGTH);}'|awk 'match(\\\$1,/^\\\\/dev\\\\//){print substr(\\\$1,6,length(\\\$1)-5);}')4 /boot -odegraded
 - mkdir -p /boot/efi
-- mount /dev/\\\$(readlink /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+\\\$" \\\`| egrep -o "sd.")2 /boot/efi
+- mount /dev/\\\$(readlink -f /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+\\\$"\\\`|awk 'match(\\\$1,/[0-9]+\\\$/){print substr(\\\$1,0,length(\\\$1)-RLENGTH);}'|awk 'match(\\\$1,/^\\\\/dev\\\\//){print substr(\\\$1,6,length(\\\$1)-5);}')2 /boot/efi
 - rm -f /boot/efi/.grub_env_for_installing
-- swapon /dev/\\\$(readlink /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+\\\$" \\\`| egrep -o "sd.")3
+- swapon /dev/\\\$(readlink -f /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+\\\$"\\\`|awk 'match(\\\$1,/[0-9]+\\\$/){print substr(\\\$1,0,length(\\\$1)-RLENGTH);}'|awk 'match(\\\$1,/^\\\\/dev\\\\//){print substr(\\\$1,6,length(\\\$1)-5);}')3
 - btrfs quota enable /state_top_lvl
 - btrfs quota enable /state_top_lvl/state_root
 - btrfs quota enable /oem_top_lvl
@@ -1604,6 +1622,18 @@ if [ "\\\$USER_SETTINGS_FOR_GRUB_SOURCE" != "\\\`cat /oem_top_lvl/oem_root/opt/r
 	echo -n "\\\$USER_SETTINGS_FOR_GRUB_SOURCE" > /oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer
 	chmod +x /oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer
 fi
+
+
+/sbin/blkid | grep LABEL=\\\"EFI\\\" | awk '{print substr(\\\$1, 1, length(\\\$1) - 1)}' | while read efi do;
+	mkdir -p /mnt_efi_test
+	mount \\\$efi /mnt_efi_test
+	rm -f /mnt_efi_test/.last_booted
+	umount /mnt_efi_test
+done
+mount /dev/\\\$(readlink -f /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+\\\$"\\\`|awk 'match(\\\$1,/[0-9]+\\\$/){print substr(\\\$1,0,length(\\\$1)-RLENGTH);}'|awk 'match(\\\$1,/^\\\\/dev\\\\//){print substr(\\\$1,6,length(\\\$1)-5);}')2 /mnt_efi_test
+touch /mnt_efi_test/.last_booted
+umount /mnt_efi_test
+rmdir /mnt_efi_test
 
 START_UP
 	chmod 0755 /installing/opt2/opt/rancher/bin/start.sh

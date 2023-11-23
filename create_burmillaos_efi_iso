@@ -400,11 +400,16 @@ function search_efi_user_settings_during_installation {
 function search_efi {
 	for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19; do
 		u=(hd\$i,gpt2)/efi/boot/grub.cfg # not case sensitive
+		l=(hd\$i,gpt2)/.last_booted
 		if [ -e \$u ];then
-			if [ -z "\$EFI_LIST" ];then
-				EFI_LIST="\$i"
+			if [ -e \$l ];then
+				last_booted="\$i"
 			else
-				EFI_LIST="\$EFI_LIST \$i"
+				if [ -z "\$EFI_LIST" ];then
+					EFI_LIST="\$i"
+				else
+					EFI_LIST="\$EFI_LIST \$i"
+				fi
 			fi
 		fi
 	done
@@ -431,7 +436,7 @@ function boot_default_kernel {
 
 # default timeout
 
-if [ -n "\$EFI_LIST" ]; then
+if [ -n "\$EFI_LIST" -o "\$last_booted" ]; then
 	set timeout=5
 	set default=\$setting_num # default: boot from hard disk
 else
@@ -504,7 +509,7 @@ function disp_each_setting_menu {
 	else
 		deb=""
 	fi
-	eval "menuentry \"Install Burmilla $BURMILLAOS_VER\$ip\$deb \$ERR_MSG0\" {
+	eval "menuentry \"Install/Rescue Burmilla $BURMILLAOS_VER\$ip\$deb \$ERR_MSG0\" {
 		linux   /boot/$KERNEL_FILE \$karg_add \$1 $KERNEL_ARGS rancher.autologin=ttyS\$serial_port console=ttyS\$serial_port,115200n8 ---
 		initrd  /boot/initrd-$BURMILLAOS_VER
 	}"
@@ -524,26 +529,34 @@ function disp_all_setting_menu{
 }
 
 
-function disp_efi_menu{
-	for i in \$EFI_LIST; do
-		efi=hd\$i,gpt2
-		eval "menuentry \"Directly boot hard disk (hd\$i) \$ERR_MSG1\" {
-			prefix=(\$efi)/efi/boot
-			configfile (\$efi)/efi/boot/grub.cfg
-			echo Cannot continue.... Please reset.
-			sleep 100000000
-		}"
-		eval "menuentry \"Boot menu of hard disk (hd\$i) \$ERR_MSG1\" {
-			prev_prefix=\\\$prefix
-			prefix=(\$efi)/efi/boot
-			configfile (\$efi)/efi/boot/grub.cfg
-			prefix=\\\$prev_prefix
+function disp_each_efi_menu{
+	efi=hd\$1,gpt2
+	eval "menuentry \"Directly boot hard disk (hd\$i)\$2 \$ERR_MSG1\" {
+		prefix=(\$efi)/efi/boot
+		configfile (\$efi)/efi/boot/grub.cfg
+		echo Cannot continue.... Please reset.
+		sleep 100000000
+	}"
+	eval "menuentry \"Boot menu of hard disk (hd\$i)\$2 \$ERR_MSG1\" {
+		prev_prefix=\\\$prefix
+		prefix=(\$efi)/efi/boot
+		configfile (\$efi)/efi/boot/grub.cfg
+		prefix=\\\$prev_prefix
+		chosen=escaped
+		while true;do
+			configfile (\$installer)/boot/grub/grub.cfg
 			chosen=escaped
-			while true;do
-				configfile (\$installer)/boot/grub/grub.cfg
-				chosen=escaped
-			done
-		}"
+		done
+	}"
+}
+
+
+function disp_efi_menu{
+	if [ -n "\$last_booted" ];then
+		disp_each_efi_menu \$last_booted " : Last booted"
+	fi
+	for i in \$EFI_LIST; do
+		disp_each_efi_menu \$i
 	done
 }
 
@@ -551,8 +564,12 @@ function disp_efi_menu{
 function disp_menu {
 	karg_add="panic=10 $VGA_ARGS"
 	disp_all_setting_menu
-	if [ -n "\$EFI_LIST" -a -z "\$menu_chained" ]; then
-		disp_efi_menu
+	if [ -n "\$EFI_LIST" -o -n "\$last_booted" ];then
+	 	if [ -z "\$menu_chained" ]; then
+			disp_efi_menu
+		else
+			default=0
+		fi
 	else
 		default=0
 	fi
@@ -563,7 +580,7 @@ function disp_menu {
 	    linux16 /boot/memtest86+.bin
 	}
 	karg_add="vga=ask rancher.debug=true"
-	disp_all_setting_menu
+	disp_all_setting_menu # for debug
 }
 if [ "\$chosen" == "escaped" ]; then
 	timeout=
@@ -589,26 +606,6 @@ search --no-floppy --set=root --label RANCHEROS
 configfile /boot/grub/grub.cfg
 END
 
-if [ -x /sbin/grub2-mkimage ];then
-	GMK=grub2-mkimage
-else
-	GMK=grub-mkimage
-fi
-
-#if ! sudo $GMK \
-#	-c "$T"/early-config.cfg \
-#    -C xz \
-#    -p '' \
-#    -O x86_64-efi \
-#    -o $BOOT_IMG_DATA/efi/boot/bootx64.efi \
-#    boot linux search normal configfile \
-#    part_gpt btrfs ext2 fat iso9660 loopback \
- #   test keystatus gfxmenu regexp probe \
- #   efi_gop efi_uga all_video gfxterm font \
- #   echo read ls cat png jpeg halt reboot; then
- #   	echo "ERROR: 'grub-mkimage' failed."
- #   	exit 1
-#fi
 
 sudo cp -av $UD/EFI/boot/*  $BOOT_IMG_DATA/efi/boot
 sudo cp -av $PD/boot/grub/grub.cfg $BOOT_IMG_DATA/efi/boot

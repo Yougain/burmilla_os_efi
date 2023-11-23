@@ -33,8 +33,9 @@ if [ ! -e "$1" ];then
 fi
 
 TARGET_DISK=$1
-HOME_DEV=`mount | grep /home | awk '{print \$1}'` # should be OEM disk  (symlinked)
-BOOT_DISK=${HOME_DEV:0:8}
+BOOT_DEV_NAME=`mount | awk 'match(\$1,/[0-9]+\$/){print substr(\$1,0,length(\$1)-RLENGTH);}'|awk 'match(\$1,/^\/dev\//){print substr(\$1,6,length(\$1)-5);}'` # should be OEM disk  (symlinked)
+
+BOOT_DISK=/dev/$BOOT_DEV_NAME
 if [ "${BOOT_DISK:0:7}" != "/dev/sd" ]; then
 	echo "device of '/home' is not a /dev/sd? device."
 	exit 1
@@ -131,6 +132,25 @@ btrfs device add "$TARGET_DISK"4 /boot
 btrfs device add "$TARGET_DISK"5 /state_top_lvl
 btrfs device add "$TARGET_DISK"7 /oem_top_lvl
 
+partprobe
+EFI_UUID=`/sbin/blkid "$TARGET_DISK"2 | awk '{print $4}'`
+EFI_UUID_ARG=${EFI_UUID:6:9}
+OEM_UUID_SUB=`/sbin/blkid "$TARGET_DISK"7 | awk '{print $4}'`
+BOOT_UUID_SUB=`/sbin/blkid "$TARGET_DISK"4 | awk '{print $4}'`
+STATE_UUID_SUB=`/sbin/blkid "$TARGET_DISK"5 | awk '{print $4}'`
+
+mkdir -p /efi2
+mount "$TARGET_DISK"2 /efi2
+
+sed -i "s/rancher\.state\.boot_dev=[^ \t\n]*/rancher.state.boot_dev=$BOOT_UUID_SUB/g" /efi2/EFI/boot/grub.cfg
+sed -i "s/rancher\.state\.oem_dev=[^ \t\n]*/rancher.state.oem_dev=$OEM_UUID_SUB/g" /efi2/EFI/boot/grub.cfg
+sed -i "s/rancher\.state\.dev=[^ \t\n]*/rancher.state.dev=$STATE_UUID_SUB/g" /efi2/EFI/boot/grub.cfg
+sed -i "s/--set=efi [0-9A-Fa-f-]*/--set=efi $EFI_UUID_ARG/g" /efi2/EFI/boot/grub.cfg
+sed -i "s/efi=UUID=[0-9A-Fa-f-\"]*/efi=UUID=$EFI_UUID_ARG/g" /efi2/EFI/boot/grub.cfg
+
+umount "$TARGET_DISK"2
+rmdir /efi2
+
 # select raid mode and start balancing
 function bstart(){
 	local dnum=`btrfs filesystem filesystem show $1 | egrep -o "Total devices [0-9]*" | awk '{print $3}'`
@@ -142,10 +162,10 @@ function bstart(){
 }
 
 for uuid in `ls /dev/disk/by-uuid`; do
-	case "`readlink /dev/disk$uuid`" in
-		"$BOOT_DISK"4 ) bstart $uuid ;;
-		"$BOOT_DISK"5 ) bstart $uuid ;;
-		"$BOOT_DISK"7 ) bstart $uuid ;;
+	case "`readlink /dev/disk/by-uuid/$uuid`" in
+		../../"$BOOT_DEV_NAME"4 ) bstart $uuid ;;
+		../../"$BOOT_DEV_NAME"5 ) bstart $uuid ;;
+		../../"$BOOT_DEV_NAME"7 ) bstart $uuid ;;
 	esac
 done
 
