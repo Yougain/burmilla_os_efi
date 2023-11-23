@@ -460,7 +460,7 @@ END
 ssh_inst sudo mkdir -p /installing/mnt3
 ssh_inst sudo umount /installing/mnt3 2> /dev/null
 for DRV in `ssh_inst sudo ls /dev | egrep ".*7$" | grep -v tty | grep -v loop`; do
-	if ssh_inst sudo mount -t btrfs -odegraded,subvol=/oem_root /dev/$DRV /installing/mnt3; then
+	if ssh_inst sudo mount -t btrfs -odegraded,rw,subvol=/oem_root /dev/$DRV /installing/mnt3; then
 		PARAMS="`extract_uc_params`"
 		eval "$PARAMS"
 		ssh_inst sudo umount /installing/mnt3
@@ -1081,7 +1081,7 @@ cd $tmpd
 GLOBAL_APPEND=\`cat /installing/opt/global.cfg | sed "s/ rancher\.state\.dev=[^ ]*//g" | sed "s/ console=ttyS[^ ]*//g" | sed "s/ rancher.autologin=ttyS[^ ]*//g"\`
 GLOBAL_APPEND_ARGS=\${GLOBAL_APPEND#APPEND *}
 
-KERNEL_ARGS="rancher.state.boot_mountopt=degraded rancher.state.oem_mountopt=degraded,subvol=/oem_root rancher.state.mountopt=degraded,subvol=/state_root rancher.password=rancher \$GLOBAL_APPEND_ARGS rw rootflags=degraded,subvol=/state_root"
+KERNEL_ARGS="rancher.state.boot_mountopt=degraded,rw rancher.state.oem_mountopt=degraded,rw,subvol=/oem_root rancher.state.mountopt=degraded,rw,subvol=/state_root rancher.password=rancher \$GLOBAL_APPEND_ARGS rw rootflags=degraded,rw,subvol=/state_root"
 VGA_SIZE=1024x768
 VGA_MODE=775
 VGA_ARGS="i915.force_probe vga=\$VGA_MODE video=\$VGA_SIZE"
@@ -1332,7 +1332,7 @@ fi
 install_ssh_key
 
 ssh_inst sudo mkdir -p /installing/mnt3 /installing/opt2
-ssh_inst sudo mount $TARGET_DEV5 /installing/mnt3 -odegraded
+ssh_inst sudo mount $TARGET_DEV5 /installing/mnt3 -odegraded,rw
 if [ -z "`ssh_inst ls -ld /installing/mnt3/home`" ];then
 	die "Please boot from installed hard disk only ONCE."
 fi
@@ -1361,7 +1361,7 @@ if [ ! -x /usr/bin/yq ];then
 	exit 1
 fi
 
-mount -t btrfs -odegraded,subvol=/oem_root $TARGET_DEV7 /installing/opt2
+mount -t btrfs -odegraded,rw,subvol=/oem_root $TARGET_DEV7 /installing/opt2
 mkdir -p /installing/opt2/var/lib/rancher/conf/cloud-config.d
 if [ -z "$USER_CONFIG" -o ! -e "$UF" ]; then
 	echo -n "
@@ -1387,11 +1387,11 @@ $DNS_SETTINGS
         TZ: $TZL
 runcmd:
 - mkdir -p /state_top_lvl
-- mount /dev/\\\$(readlink -f /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+\\\$"\\\`|awk 'match(\\\$1,/[0-9]+\\\$/){print substr(\\\$1,0,length(\\\$1)-RLENGTH);}'|awk 'match(\\\$1,/^\\\\/dev\\\\//){print substr(\\\$1,6,length(\\\$1)-5);}')5 -odegraded,subvol=/ /state_top_lvl
+- mount /dev/\\\$(readlink -f /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+\\\$"\\\`|awk 'match(\\\$1,/[0-9]+\\\$/){print substr(\\\$1,0,length(\\\$1)-RLENGTH);}'|awk 'match(\\\$1,/^\\\\/dev\\\\//){print substr(\\\$1,6,length(\\\$1)-5);}')5 -odegraded,rw,subvol=/ /state_top_lvl
 - mkdir -p /oem_top_lvl
-- mount /dev/\\\$(readlink -f /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+\\\$"\\\`|awk 'match(\\\$1,/[0-9]+\\\$/){print substr(\\\$1,0,length(\\\$1)-RLENGTH);}'|awk 'match(\\\$1,/^\\\\/dev\\\\//){print substr(\\\$1,6,length(\\\$1)-5);}')7 -odegraded,subvol=/ /oem_top_lvl
+- mount /dev/\\\$(readlink -f /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+\\\$"\\\`|awk 'match(\\\$1,/[0-9]+\\\$/){print substr(\\\$1,0,length(\\\$1)-RLENGTH);}'|awk 'match(\\\$1,/^\\\\/dev\\\\//){print substr(\\\$1,6,length(\\\$1)-5);}')7 -odegraded,rw,subvol=/ /oem_top_lvl
 - mkdir -p /boot
-- mount /dev/\\\$(readlink -f /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+\\\$"\\\`|awk 'match(\\\$1,/[0-9]+\\\$/){print substr(\\\$1,0,length(\\\$1)-RLENGTH);}'|awk 'match(\\\$1,/^\\\\/dev\\\\//){print substr(\\\$1,6,length(\\\$1)-5);}')4 /boot -odegraded
+- mount /dev/\\\$(readlink -f /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+\\\$"\\\`|awk 'match(\\\$1,/[0-9]+\\\$/){print substr(\\\$1,0,length(\\\$1)-RLENGTH);}'|awk 'match(\\\$1,/^\\\\/dev\\\\//){print substr(\\\$1,6,length(\\\$1)-5);}')4 /boot -odegraded,rw
 - mkdir -p /boot/efi
 - mount /dev/\\\$(readlink -f /dev/disk/by-uuid/\\\`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+\\\$"\\\`|awk 'match(\\\$1,/[0-9]+\\\$/){print substr(\\\$1,0,length(\\\$1)-RLENGTH);}'|awk 'match(\\\$1,/^\\\\/dev\\\\//){print substr(\\\$1,6,length(\\\$1)-5);}')2 /boot/efi
 - rm -f /boot/efi/.grub_env_for_installing
