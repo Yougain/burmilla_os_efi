@@ -147,7 +147,7 @@ sed -i "s/rancher\.state\.oem_dev=[^ \t\n]*/rancher.state.oem_dev=$OEM_UUID_SUB/
 sed -i "s/rancher\.state\.dev=[^ \t\n]*/rancher.state.dev=$STATE_UUID_SUB/g" /efi2/EFI/boot/grub.cfg
 sed -i "s/--set=efi [0-9A-Fa-f-]*/--set=efi $EFI_UUID_ARG/g" /efi2/EFI/boot/grub.cfg
 sed -i "s/efi=UUID=[0-9A-Fa-f\"-]*/efi=UUID=\"$EFI_UUID_ARG\"/g" /efi2/EFI/boot/grub.cfg
-        -
+
 umount "$TARGET_DISK"2
 rmdir /efi2
 
