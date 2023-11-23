@@ -153,7 +153,8 @@ rmdir /efi2
 
 # select raid mode and start balancing
 function bstart(){
-	local dnum=`btrfs filesystem show $1 | egrep -o "Total devices [0-9]*" | awk '{print $3}'`
+	local uuid=`blkid $1 | awk '{print $3}' | egrep -o "UUID=[0-9a-fA-F\"-]*" | egrep -o "[0-9a-fA-F-]*"`
+	local dnum=`btrfs filesystem show $uuid | egrep -o "Total devices [0-9]*" | awk '{print $3}'`
 	case "$dnum" in
 		"2" ) btrfs balance start -mconvert=raid1 -dconvert=raid1 $2 ;;
 		"3" ) btrfs balance start -mconvert=raid1c3 -dconvert=raid1c3 $2 ;;
@@ -161,11 +162,8 @@ function bstart(){
 	esac
 }
 
-for uuid in `ls /dev/disk/by-uuid`; do
-	case "`readlink /dev/disk/by-uuid/$uuid`" in
-		../../"$BOOT_DEV_NAME"4 ) bstart $uuid ;;
-		../../"$BOOT_DEV_NAME"5 ) bstart $uuid ;;
-		../../"$BOOT_DEV_NAME"7 ) bstart $uuid ;;
-	esac
-done
+bstart "$TARGET_DISK"4 /boot
+bstart "$TARGET_DISK"5 /state_top_lvl
+bstart "$TARGET_DISK"7 /oem_top_lvl
+
 
