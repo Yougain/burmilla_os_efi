@@ -1182,7 +1182,7 @@ function search_efi {
 	for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19; do
 		g=(hd\\\$i,gpt2)/efi/boot/grub.cfg
 		l=(hd\\\$i,gpt2)/.last_booted
-		if [ -e \\\$u ];then
+		if [ -e \\\$g ];then
 			if [ "hd\\\$i,gpt2" == "\\\$efi" ];then
 				this_disk=" [hd\\\$i]"
 				if [ -e \\\$l ];then
