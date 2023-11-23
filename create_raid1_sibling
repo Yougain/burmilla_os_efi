@@ -33,7 +33,7 @@ if [ ! -e "$1" ];then
 fi
 
 TARGET_DISK=$1
-BOOT_DEV_NAME=`mount | awk 'match(\$1,/[0-9]+\$/){print substr(\$1,0,length(\$1)-RLENGTH);}'|awk 'match(\$1,/^\/dev\//){print substr(\$1,6,length(\$1)-5);}'` # should be OEM disk  (symlinked)
+BOOT_DEV_NAME=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}') # should be OEM disk  (symlinked)
 
 BOOT_DISK=/dev/$BOOT_DEV_NAME
 if [ "${BOOT_DISK:0:7}" != "/dev/sd" ]; then
