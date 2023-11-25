@@ -1,5 +1,13 @@
 #!/bin/bash
 
+if ! ssh $1
+	err "cannot login by ssh on #{$1}"
+fi
+
+
+
+cat - > /tmp/create_raid1_sibling.firstS <<'SCRIPT_END'
+
 if [ "`id | awk '{print $1}'`" != "uid=0(root)" ];then
 	sudo $0 $@
 	exit $?
@@ -176,5 +184,15 @@ function bstart(){
 bstart "$TARGET_DISK"4 /boot
 bstart "$TARGET_DISK"5 /state_top_lvl
 bstart "$TARGET_DISK"7 /oem_top_lvl
+
+
+SCRIPT_END
+chmod +x /tmp/create_raid1_sibling.first
+scp /tmp/create_raid1_sibling.first $1:
+ssh $1 ./create_raid1_sibling.first $2
+sleep 10
+chmod +x /tmp/create_raid1_sibling.second
+scp /tmp/create_raid1_sibling.second $1:
+ssh $1 ./create_raid1_sibling.second $2
 
 

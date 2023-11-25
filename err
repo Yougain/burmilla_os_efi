@@ -1,0 +1,121 @@
+error="\033[41m\033[33mERROR    :\033[m \033[31m"
+warning="\033[43m\033[31mWARNING:\033[m \033[33m"
+info="\033[46m\033[34mINFO     :\033[m \033[36m "
+plain="\033[m"
+normal="\033[m"
+
+black="0"
+red="1"
+green="2"
+yellow="3"
+blue="4"
+purple="5"
+magenta="5"
+cyan="6"
+white="7"
+
+
+allColors="black red green yellow blue purple magenta cyan white"
+
+function capitalize(){
+	local B
+	local F
+	B=`echo -n "${1:0:1}" | tr "[:lower:]" "[:upper:]"`
+	F="${B}${1:1}"
+	shift
+	echo -n $F $@
+}
+
+function errmsg(){
+	if [ -z "$ERRMSG" ]; then
+		ERRMSG="$error`capitalize $@`$plain"
+	else
+		ERRMSG="$ERRMSG
+$error""`capitalize $@`"$plain
+	fi
+}
+
+
+alias err=errmsg
+alias error=errmsg
+
+
+function info_n(){
+	echo -ne $info`capitalize $@`$plain
+}
+function info(){
+	info_n $@"\n"
+}
+
+
+function warning_n(){
+	echo -ne "$warning""$@"
+}
+function warning(){
+	warning_n "$@""\n"
+}
+
+function warn(){
+	warning_n "$@""\n"
+}
+alias warn_n=warning_n
+
+
+for col in `echo $allColors`; do
+	eval '
+		'`capitalize $col`'="\033[3$'$col'""m"
+		'_`capitalize $col`'="\\033[3$'$col'""m"
+		function '$col'_n(){
+			echo -ne "\033[3$'$col'""m''$@''$plain"
+		}
+		function '$col'(){
+			'$col'_n $@"\n"
+		}
+		function bg'`capitalize $col`'_n(){
+			echo -ne "\033[4$'$col'""m''$@''$plain"
+		}
+		function bg'`capitalize $col`'(){
+			bg'`capitalize $col`'_n $@"\n"
+		}
+	'
+	for bgCol in $allColors; do
+		eval '
+			function '$col'Bg'`capitalize $bgCol`'_n(){
+				echo -ne "\033[3$'$col'""m\033[4$'$bgCol'""m''$@''$plain"
+			}
+			function '$col'Bg'`capitalize $bgCol`'(){
+				'$col'Bg'`capitalize $bgCol`'_n $@
+			}
+		'
+	done
+done
+
+
+function exit_if_err(){
+	if [ -n "$1" ]; then
+		errmsg $@
+	fi
+	if [ -n "$ERRMSG" ];then
+		echo -en $ERRMSG
+		exit 1
+	fi
+}
+
+function die(){
+	if [ -n "$1" ]; then
+		errmsg $@
+	fi
+	if [ -n "$ERRMSG" ];then
+		echo -en $ERRMSG
+	fi
+	UMT=`ssh_inst sudo bash -c mount|grep /installing|awk '{print $3}'`
+	echo unmounting "$UMT"
+	if [ -n "$UMT" ];then
+		ssh_inst sudo umount $UMT
+	fi
+	ssh_inst sudo rmdir /installing/*
+	ssh_inst sudo rmdir /installing
+	exit 1
+}
+
+
