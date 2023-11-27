@@ -118,8 +118,10 @@ function test_ssh(){
 	fi
 	ssh -v -o "ConnectTimeout=5" $1 echo -n > /tmp/test_ssh 2>&1 
 	if [ "$?" = "0" ];then
+		local SSH_CON_LINE=`egrep -o 'debug1: Connecting to .* port [0-9]+' /tmp/test_ssh`
+		SSH_PORT=`echo $SSH_CON_LINE| egrep -o '[0-9]+$'`
+		SSH_HOST_IP=`echo $SSH_CON_LINE| egrep -o '\[[0-9/A-Fa-f\.:]+\]'| egrep -o [0-9/A-Fa-f\.:]+`
 		SSH_HOST=$1
-		SSH_PORT=`egrep -o 'debug1: Connecting to .* port [0-9]+' /tmp/test_ssh| egrep -o '[0-9]+$'`
 		if [ -n "$SSH_PORT" ];then
 			return 0
 		fi
@@ -137,7 +139,7 @@ function wait_sshd_start(){
 	for i in $(seq 1 120); do
 		sleep 1
 		blue_n "."
-		SSH_CON_=`echo | nc $SSH_HOST $SSH_PORT 2>&1`
+		SSH_CON_=`echo | nc $SSH_HOST_IP $SSH_PORT 2>&1`
 		if [ "${SSH_CON_:0:3}" = "SSH" ];then
 			cyanBgBlue connected
 			return
@@ -194,22 +196,23 @@ function ssh_sudo(){
 
 function ssh_reboot(){
 	ssh_do <<'END'
-		local efi_dev=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')2
+		efi_dev=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')2
 		if [ -z "$efi_dev" ]; then die "boot efi device not found."; fi
 		sudo mkdir -p /tmp/efi_dev
-		sudo mount $efi_dev /tmp/efi_dev
-		sudo touch $efi_dev /tmp/efi_dev/.reboot
+		sudo mount /dev/$efi_dev /tmp/efi_dev
+		sudo touch /tmp/efi_dev/.reboot
 		sudo reboot
 END
 	wait_sshd_start
+	echo try ssh connect
 	ssh_do <<'END'
-		local efi_dev=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')2
+		efi_dev=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')2
 		if [ -z "$efi_dev" ]; then die "boot efi device not found."; fi
 		sudo mkdir -p /tmp/efi_dev
-		sudo mount $efi_dev /tmp/efi_dev
+		sudo mount /dev/$efi_dev /tmp/efi_dev
 		sudo rm /tmp/efi_dev/.reboot
 		sudo umount /tmp/efi_dev
-		sudo rmdir /tmp/efi_dev
+		sudo rm -rf /tmp/efi_dev
 END
 }
 

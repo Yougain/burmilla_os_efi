@@ -24,9 +24,12 @@
 #	die "cannot login by ssh on #{$1}"
 #fi
 
-
 SCRIPT_PATH=$(dirname "$(realpath -s "$0")")
 . $SCRIPT_PATH/err
+
+test_ssh $1
+ssh_reboot
+exit 1
 
 if [ "$#" != 2 ]; then
 	info "Usage: $0 SERVER_NAME DISK_DEVICE(ex. /dev/sda)"
@@ -34,7 +37,7 @@ if [ "$#" != 2 ]; then
 fi
 
 
-if ! test_ssh $1
+if ! test_ssh $1; then
 	die "cannot connect to $1."
 fi
 
@@ -53,19 +56,19 @@ fi
 
 
 
-if [ "$A1" = "" ];then
+if [ "$A2" = "" ];then
 	die "Argument missing."
 fi
 
 
-if [ "${A1:0:7}" != "/dev/sd" -o "${1:8}" != "" ];then
-	die "cannot use device, $1."
+if [ "${A2:0:7}" != "/dev/sd" -o "${1:8}" != "" ];then
+	die "cannot use device, $A2."
 fi
-if [ ! -e "$A1" ];then
-	echo "$A1 is not existing."
+if [ ! -e "$A2" ];then
+	echo "$A2 is not existing."
 fi
 
-TARGET_DISK=$A1
+TARGET_DISK=$A2
 BOOT_DEV_NAME=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}') # should be OEM disk  (symlinked)
 
 BOOT_DISK=/dev/$BOOT_DEV_NAME
@@ -88,7 +91,7 @@ EOF`"
 }
 
 BOOT_DISK_S_LINE=`sectors $BOOT_DISK`
-TARGET_DISK_S_LINE=`sectors $1`
+TARGET_DISK_S_LINE=`sectors $A2`
 BOOT_DISK_SSIZE=`echo $BOOT_DISK_S_LINE|awk '{print $1}'`
 TARGET_DISK_SSIZE=`echo $TARGET_DISK_S_LINE|awk '{print $1}'`
 BOOT_DISK_SZ=`echo $BOOT_DISK_S_LINE|awk '{print $3 " " $4}'`
