@@ -490,8 +490,8 @@ if ! regexp menu "\$chosen";then
 		fi
 		if [ -n "\$REBOOTING" ]; then
 			echo rebooting flag found
-			state=hd\$INSTALLING,gpt5
-			efi=hd\$INSTALLING,gpt2
+			state=hd\$REBOOTING,gpt5
+			efi=hd\$REBOOTING,gpt2
 			echo (\$state)/state_root/home not found
 			prefix=(\$efi)/efi/boot
 			configfile \$prefix/grub.cfg
