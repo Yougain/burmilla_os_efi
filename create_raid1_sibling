@@ -151,7 +151,7 @@ SCRIPT_END
 
 ssh_reboot
 
-ssh_do <<'SCRIPT_END'
+ssh_sudo <<'SCRIPT_END'
 
 # copy boot partition to new disk (optional)
 # mkdir -p /tmp/{src,dst}

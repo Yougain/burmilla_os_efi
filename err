@@ -112,7 +112,7 @@ function die(){
 }
 
 
-function test_ssh(){
+function ssh_param(){
 	if [ $# = "0" ];then
 		die "ssh server argument missing."
 	fi
@@ -132,7 +132,7 @@ function test_ssh(){
 
 function wait_sshd_start(){
 	if [ -z "$SSH_PORT" -o -z "$SSH_HOST" ];then
-		die "missing ssh paramters. Please execute 'test_ssh' first."
+		die "missing ssh paramter variables. Please execute 'ssh_param SERVER_NAME' first."
 	fi
 	local SSH_CON_
 	info_n connecting SSH...
@@ -166,6 +166,7 @@ function transfer_arguments(){
 
 transfer_arguments A
 
+SCRIPT_ID=`rand 100000000`
 
 function ssh_do(){
 	local sudoing
@@ -174,11 +175,31 @@ function ssh_do(){
 		shift
 	fi
 	if [ -z "$SSH_PORT" -o -z "$SSH_HOST" ];then
-		die "missing ssh paramters. Please execute 'test_ssh' first."
+		die "missing ssh paramter variables. Please execute 'ssh_param SERVER_NAME' first."
 	fi
 	if [ "$#" = "0" ];then
-		RD=`rand 100000000`
-		(echo "set|awk '!/^(BASHOPTS|BASH_VERSINFO|EUID|PPID|SHELLOPTS|UID)=/ {print \$0}' > /tmp/err.$RD";echo "$TRANSFER_ARGUMENTS";set|awk '!/^(BASHOPTS|BASH_VERSINFO|EUID|PPID|SHELLOPTS|UID)=/ {print $0}' ;echo "source /tmp/err.$RD;rm /tmp/err.$RD";cat -; echo; echo "exit 0") | ssh -x $SSH_HOST $sudoing bash
+		local set_env_lines="set | awk '!/^(BASHOPTS|BASH_VERSINFO|EUID|PPID|SHELLOPTS|UID)=/ {print \$0}'"
+		(
+			# preserve host environment
+			echo "$set_env_lines > /tmp/err.$SCRIPT_ID";
+			echo "
+				# set client environment
+				if [ ! -e /tmp/err.cont.$SCRIPT_ID ];then # missing previous host environment 
+					# set client command line argument
+					$TRANSFER_ARGUMENTS
+					`$set_env_lines`
+				else # found previous host environment 
+					source /tmp/err.cont.$SCRIPT_ID; 
+					#rm /tmp/err.cont.$SCRIPT_ID;
+				fi
+			";
+			# restore host environment
+			echo "source /tmp/err.$SCRIPT_ID; rm /tmp/err.$SCRIPT_ID";
+			# execute script from standard input
+			cat -; 
+			# preserve environment after script execution
+			echo "$set_env_lines > /tmp/err.cont.$SCRIPT_ID;exit 0"
+		) | ssh -x $SSH_HOST $sudoing bash
 		if [ "$?" = "1" ];then
 			exit 1
 		fi
@@ -195,24 +216,24 @@ function ssh_sudo(){
 
 
 function ssh_reboot(){
-	ssh_do <<'END'
+	ssh_sudo <<'END'
 		efi_dev=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')2
 		if [ -z "$efi_dev" ]; then die "boot efi device not found."; fi
-		sudo mkdir -p /tmp/efi_dev
-		sudo mount /dev/$efi_dev /tmp/efi_dev
-		sudo touch /tmp/efi_dev/.reboot
-		sudo reboot
+		mkdir -p /tmp/efi_dev
+		mount /dev/$efi_dev /tmp/efi_dev
+		touch /tmp/efi_dev/.reboot
+		reboot
 END
 	wait_sshd_start
 	echo try ssh connect
-	ssh_do <<'END'
+	ssh_sudo <<'END'
 		efi_dev=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')2
 		if [ -z "$efi_dev" ]; then die "boot efi device not found."; fi
-		sudo mkdir -p /tmp/efi_dev
-		sudo mount /dev/$efi_dev /tmp/efi_dev
-		sudo rm /tmp/efi_dev/.reboot
-		sudo umount /tmp/efi_dev
-		sudo rm -rf /tmp/efi_dev
+		mkdir -p /tmp/efi_dev
+		mount /dev/$efi_dev /tmp/efi_dev
+		rm /tmp/efi_dev/.reboot
+		umount /tmp/efi_dev
+		rm -rf /tmp/efi_dev
 END
 }
 
