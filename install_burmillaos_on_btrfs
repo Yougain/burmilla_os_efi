@@ -1155,7 +1155,7 @@ if ! regexp menu "\\\$chosen";then
 
 
 	if [ -n "\\\$installer" ]; then
-		if [ -e (\\\$efi)/.grub_env_for_installing ]; then # starting reinstration
+		if [ -e (\\\$efi)/.grub_env_for_installing -o -e (\\\$efi)/.reboot ]; then # starting reinstration
 			root=\\\$installer
 			prefix=(\\\$root)/boot
 			configfile \\\$prefix/grub/grub.cfg

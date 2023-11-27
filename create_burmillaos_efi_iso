@@ -393,6 +393,11 @@ function search_efi_user_settings_during_installation {
 			INSTALLING=\$i
 			break
 		fi
+		u=(hd\$i,gpt2)/.reboot
+		if [ -e \$u ];then
+			REBOOTING=\$i
+			break
+		fi
 	done
 }
 
@@ -482,6 +487,9 @@ if ! regexp menu "\$chosen";then
 					sleep 100000000
 				fi
 			fi
+		fi
+		if [ -n "\$REBOOTING" ]; then
+			echo rebooting flag found
 		fi
 		if [ -n "\$EFI_LIST" ];then
 			echo efi list found

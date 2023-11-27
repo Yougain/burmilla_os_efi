@@ -108,14 +108,110 @@ function die(){
 	if [ -n "$ERRMSG" ];then
 		echo -en $ERRMSG
 	fi
-	UMT=`ssh_inst sudo bash -c mount|grep /installing|awk '{print $3}'`
-	echo unmounting "$UMT"
-	if [ -n "$UMT" ];then
-		ssh_inst sudo umount $UMT
-	fi
-	ssh_inst sudo rmdir /installing/*
-	ssh_inst sudo rmdir /installing
 	exit 1
 }
+
+
+function test_ssh(){
+	if [ $# = "0" ];then
+		die "ssh server argument missing."
+	fi
+	ssh -v -o "ConnectTimeout=5" $1 echo -n > /tmp/test_ssh 2>&1 
+	if [ "$?" = "0" ];then
+		SSH_HOST=$1
+		SSH_PORT=`egrep -o 'debug1: Connecting to .* port [0-9]+' /tmp/test_ssh| egrep -o '[0-9]+$'`
+		if [ -n "$SSH_PORT" ];then
+			return 0
+		fi
+	fi
+	return 1
+}
+
+
+function wait_sshd_start(){
+	if [ -z "$SSH_PORT" -o -z "$SSH_HOST" ];then
+		die "missing ssh paramters. Please execute 'test_ssh' first."
+	fi
+	local SSH_CON_
+	info_n connecting SSH...
+	for i in $(seq 1 120); do
+		sleep 1
+		blue_n "."
+		SSH_CON_=`echo | nc $SSH_HOST $SSH_PORT 2>&1`
+		if [ "${SSH_CON_:0:3}" = "SSH" ];then
+			cyanBgBlue connected
+			return
+		fi
+	done
+	echo
+	die Tried 120 times. Still cannot connect SSH port "($SSH_PORT)". Exited.
+}
+
+
+THIS_FILE="$(realpath -s "$0")"
+
+
+function transfer_arguments(){
+	local i
+	local j=-1
+	while IFS= read -r -d $'\0' i; do
+	    if [ $j != "-1" ];then
+	    	TRANSFER_ARGUMENTS="$TRANSFER_ARGUMENTS$1$j='$i'"$'\n'
+	    fi
+	    j=$(( j + 1 ))
+	done < <(cat /proc/$$/cmdline)
+}
+
+transfer_arguments A
+
+
+function ssh_do(){
+	local sudoing
+	if [ "$1" = "sudo" ];then
+		sudoing=sudo
+		shift
+	fi
+	if [ -z "$SSH_PORT" -o -z "$SSH_HOST" ];then
+		die "missing ssh paramters. Please execute 'test_ssh' first."
+	fi
+	if [ "$#" = "0" ];then
+		RD=`rand 100000000`
+		(echo "set|awk '!/^(BASHOPTS|BASH_VERSINFO|EUID|PPID|SHELLOPTS|UID)=/ {print \$0}' > /tmp/err.$RD";echo "$TRANSFER_ARGUMENTS";set|awk '!/^(BASHOPTS|BASH_VERSINFO|EUID|PPID|SHELLOPTS|UID)=/ {print $0}' ;echo "source /tmp/err.$RD;rm /tmp/err.$RD";cat -; echo; echo "exit 0") | ssh -x $SSH_HOST $sudoing bash
+		if [ "$?" = "1" ];then
+			exit 1
+		fi
+	else
+		ssh $SSH_HOST $sudoing $@
+	fi
+}
+
+function ssh_sudo(){
+	ssh_do sudo $@
+}
+
+
+
+
+function ssh_reboot(){
+	ssh_do <<'END'
+		local efi_dev=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')2
+		if [ -z "$efi_dev" ]; then die "boot efi device not found."; fi
+		sudo mkdir -p /tmp/efi_dev
+		sudo mount $efi_dev /tmp/efi_dev
+		sudo touch $efi_dev /tmp/efi_dev/.reboot
+		sudo reboot
+END
+	wait_sshd_start
+	ssh_do <<'END'
+		local efi_dev=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')2
+		if [ -z "$efi_dev" ]; then die "boot efi device not found."; fi
+		sudo mkdir -p /tmp/efi_dev
+		sudo mount $efi_dev /tmp/efi_dev
+		sudo rm /tmp/efi_dev/.reboot
+		sudo umount /tmp/efi_dev
+		sudo rmdir /tmp/efi_dev
+END
+}
+
 
 

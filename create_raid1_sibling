@@ -1,17 +1,45 @@
 #!/bin/bash
 
-if ! ssh $1
-	err "cannot login by ssh on #{$1}"
+#if ! autoload err; then
+#	if ! sudo cp ./err /usr/local/share/zsh/site-functions; then
+#		echo "ERROR: Cannot find module, 'err'"
+#		exit 1
+#	else
+#		if ! autoload err; then
+#			echo "ERROR: Cannot find module, 'err'"
+#			exit 1
+#		fi
+#	fi
+#fi
+#
+#
+#cat /usr/local/share/zsh/site-functions |ssh "$1" /bin/bash <<END
+#	if [ ! -e /usr/local/share/zsh/site-functions ]; then
+#		sudo cat - > /usr/local/share/zsh/site-functions
+#	else
+#		sudo cat - > /dev/null
+#	fi
+#END
+#if [ "$?" != "0" ];then
+#	die "cannot login by ssh on #{$1}"
+#fi
+
+
+SCRIPT_PATH=$(dirname "$(realpath -s "$0")")
+. $SCRIPT_PATH/err
+
+if [ "$#" != 2 ]; then
+	info "Usage: $0 SERVER_NAME DISK_DEVICE(ex. /dev/sda)"
+	die "Too less or too much arguments."
 fi
 
 
-
-cat - > /tmp/create_raid1_sibling.firstS <<'SCRIPT_END'
-
-if [ "`id | awk '{print $1}'`" != "uid=0(root)" ];then
-	sudo $0 $@
-	exit $?
+if ! test_ssh $1
+	die "cannot connect to $1."
 fi
+
+
+ssh_sudo <<'SCRIPT_END'
 
 if [ ! -x "`which gdisk`" ]; then
 	apt-get install -y gdisk
@@ -25,22 +53,19 @@ fi
 
 
 
-if [ "$1" = "" ];then
-	echo "Error: Argument missing."
-	exit 1
+if [ "$A1" = "" ];then
+	die "Argument missing."
 fi
 
 
-if [ "${1:0:7}" != "/dev/sd" -o "${1:8}" != "" ];then
-	echo "cannot use device, $1."
-	exit 1
+if [ "${A1:0:7}" != "/dev/sd" -o "${1:8}" != "" ];then
+	die "cannot use device, $1."
 fi
-if [ ! -e "$1" ];then
-	echo "$1 is not existing."
-	exit 1
+if [ ! -e "$A1" ];then
+	echo "$A1 is not existing."
 fi
 
-TARGET_DISK=$1
+TARGET_DISK=$A1
 BOOT_DEV_NAME=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}') # should be OEM disk  (symlinked)
 
 BOOT_DISK=/dev/$BOOT_DEV_NAME
@@ -121,7 +146,12 @@ fi
 dd if=/dev/zero of="$TARGET_DISK"4 bs=100M count=1
 dd if=/dev/zero of="$TARGET_DISK"5 bs=100M count=1
 dd if=/dev/zero of="$TARGET_DISK"7 bs=100M count=1
-partprobe
+
+SCRIPT_END
+
+ssh_reboot
+
+ssh_do <<'SCRIPT_END'
 
 # copy boot partition to new disk (optional)
 # mkdir -p /tmp/{src,dst}
@@ -187,12 +217,6 @@ bstart "$TARGET_DISK"7 /oem_top_lvl
 
 
 SCRIPT_END
-chmod +x /tmp/create_raid1_sibling.first
-scp /tmp/create_raid1_sibling.first $1:
-ssh $1 ./create_raid1_sibling.first $2
-sleep 10
-chmod +x /tmp/create_raid1_sibling.second
-scp /tmp/create_raid1_sibling.second $1:
-ssh $1 ./create_raid1_sibling.second $2
+
 
 
