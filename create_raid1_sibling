@@ -27,9 +27,6 @@
 SCRIPT_PATH=$(dirname "$(realpath -s "$0")")
 . $SCRIPT_PATH/err
 
-test_ssh $1
-ssh_reboot
-exit 1
 
 if [ "$#" != 2 ]; then
 	info "Usage: $0 SERVER_NAME DISK_DEVICE(ex. /dev/sda)"
