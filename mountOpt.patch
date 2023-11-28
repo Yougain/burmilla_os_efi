@@ -1,7 +1,7 @@
-diff -Naur os/pkg/init/fsmount/fsmount.go os.patched/pkg/init/fsmount/fsmount.go
---- os/pkg/init/fsmount/fsmount.go	2023-11-17 14:32:19.409687529 +0900
-+++ os.patched/pkg/init/fsmount/fsmount.go	2023-11-17 23:11:53.542464794 +0900
-@@ -1,9 +1,13 @@
+diff -Naur os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
+--- os.prev/pkg/init/fsmount/fsmount.go	2023-11-28 19:46:24.176064000 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2023-11-28 20:47:25.886064000 +0900
+@@ -1,9 +1,14 @@
  package fsmount
  
  import (
@@ -12,10 +12,11 @@ diff -Naur os/pkg/init/fsmount/fsmount.go os.patched/pkg/init/fsmount/fsmount.go
  	"syscall"
 +	"os"
 +	"os/exec"
++	"time"
  
  	"github.com/burmilla/os/config"
  	"github.com/burmilla/os/config/cmdline"
-@@ -22,7 +26,7 @@
+@@ -22,7 +27,7 @@
  )
  
  func MountOem(cfg *config.CloudConfig) (*config.CloudConfig, error) {
@@ -24,7 +25,7 @@ diff -Naur os/pkg/init/fsmount/fsmount.go os.patched/pkg/init/fsmount/fsmount.go
  		log.Debugf("Not mounting OEM: %v", err)
  	} else {
  		log.Infof("Mounted OEM: %s", cfg.Rancher.State.OemDev)
-@@ -45,7 +49,7 @@
+@@ -45,7 +50,7 @@
  		}
  	}
  
@@ -33,17 +34,17 @@ diff -Naur os/pkg/init/fsmount/fsmount.go os.patched/pkg/init/fsmount/fsmount.go
  		log.Debugf("Not mounting BOOT: %v", err)
  	} else {
  		log.Infof("Mounted BOOT: %s", cfg.Rancher.State.BootDev)
-@@ -54,7 +58,37 @@
+@@ -54,7 +59,37 @@
  	return cfg, nil
  }
  
 -func mountConfigured(display, dev, fsType, target string) error {
 +func blkidMatchStr(matchStr string) (deviceName, deviceType string, err error) {
-+	cmd := exec.Command("/sbin/blkid")
++	cmd := exec.Command("/sbin/blkid2")
 +	cmd.Stderr = os.Stderr
 +	out, err := cmd.Output()
 +	if err != nil {
-+		fmt.Println("exec /sbin/blkid, failed.")
++		fmt.Println("exec /sbin/blkid2, failed.")
 +		fmt.Println(err)
 +		return
 +	}
@@ -62,7 +63,7 @@ diff -Naur os/pkg/init/fsmount/fsmount.go os.patched/pkg/init/fsmount/fsmount.go
 +		deviceType = s2[0]
 +		return
 +	}
-+	fmt.Println("extract output from /sbin/blkid, failed.")
++	fmt.Println("extract output from /sbin/blkid2, failed.")
 +	fmt.Println(string(out))
 +	return
 +}
@@ -72,7 +73,7 @@ diff -Naur os/pkg/init/fsmount/fsmount.go os.patched/pkg/init/fsmount/fsmount.go
  	var err error
  
  	if dev == "" {
-@@ -63,7 +97,13 @@
+@@ -63,7 +98,13 @@
  
  	dev = util.ResolveDevice(dev)
  	if dev == "" {
@@ -87,14 +88,51 @@ diff -Naur os/pkg/init/fsmount/fsmount.go os.patched/pkg/init/fsmount/fsmount.go
  	}
  	if fsType == "auto" {
  		fsType, err = util.GetFsType(dev)
-@@ -74,12 +114,12 @@
+@@ -74,12 +115,49 @@
  	}
  
  	log.Debugf("FsType has been set to %s", fsType)
 -	log.Infof("Mounting %s device %s to %s", display, dev, target)
 -	return util.Mount(dev, target, fsType, "")
 +	log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, option)
-+	return util.Mount(dev, target, fsType, option)
++	if fsType == "btrfs" {
++		opts := strings.Split(option, ",")
++		nodg := ""
++		fst := true
++		rw := false
++		for _, s := range opts {
++			if s == "rw {
++				rw = true
++			}
++			if s != "degraded" {
++				if fst {
++					nodg = s
++				} else {
++					nodg += "," + s
++				}
++				fst = false
++			}
++		}
++		dg := "degraded"
++		if !rw {
++			dg += ",rw"
++		}
++		if nodg != "" {
++			dg += "," + nodg
++		}
++		for i := 0; i < 5; i++ {
++			if err2 := util.Mount(dev, target, fsType, nodg) ; err2 != nil {
++				if i == 4 {
++					return util.Mount(dev, target, fsType, dg)
++				}
++				time.Sleep(2 * time.Second)
++			} else {
++				return nil
++			}
++		}
++	} else {
++		return util.Mount(dev, target, fsType, option)
++	}
  }
  
  func mountState(cfg *config.CloudConfig) error {
@@ -103,9 +141,9 @@ diff -Naur os/pkg/init/fsmount/fsmount.go os.patched/pkg/init/fsmount/fsmount.go
  }
  
  func tryMountState(cfg *config.CloudConfig) error {
-diff -Naur os/config/types.go os.patched/config/types.go
---- os/config/types.go	2023-11-17 14:32:19.394687792 +0900
-+++ os.patched/config/types.go	2023-11-17 23:01:31.863279855 +0900
+diff -Naur os.prev/config/types.go os.new/config/types.go
+--- os.prev/config/types.go	2023-11-28 19:46:24.166064000 +0900
++++ os.new/config/types.go	2023-11-28 19:48:15.766064000 +0900
 @@ -210,6 +210,7 @@
  type StateConfig struct {
  	Directory  string   `yaml:"directory,omitempty"`
@@ -125,9 +163,9 @@ diff -Naur os/config/types.go os.patched/config/types.go
  	BootDev    string   `yaml:"boot_dev,omitempty"`
  }
  
-diff -Naur os/scripts/version os.patched/scripts/version
---- os/scripts/version	2023-11-17 14:32:19.427687212 +0900
-+++ os.patched/scripts/version	2023-11-17 23:59:30.648734315 +0900
+diff -Naur os.prev/scripts/version os.new/scripts/version
+--- os.prev/scripts/version	2023-11-28 19:46:24.196064000 +0900
++++ os.new/scripts/version	2023-11-28 19:48:15.766064000 +0900
 @@ -1,18 +1,26 @@
  #!/bin/bash
  
