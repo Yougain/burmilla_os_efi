@@ -190,7 +190,7 @@ function ssh_do(){
 					`$set_env_lines`
 				else # found previous host environment 
 					source /tmp/err.cont.$SCRIPT_ID; 
-					#rm /tmp/err.cont.$SCRIPT_ID;
+					rm /tmp/err.cont.$SCRIPT_ID;
 				fi
 			";
 			# restore host environment
