@@ -1,6 +1,6 @@
 diff -Naur os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2023-11-28 19:46:24.176064000 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2023-11-28 20:47:25.886064000 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2023-11-28 21:22:40.476064000 +0900
 @@ -1,9 +1,14 @@
  package fsmount
  
@@ -63,7 +63,7 @@ diff -Naur os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.g
 +		deviceType = s2[0]
 +		return
 +	}
-+	fmt.Println("extract output from /sbin/blkid2, failed.")
++	fmt.Println("extract output from /sbin/blkid, failed.")
 +	fmt.Println(string(out))
 +	return
 +}
@@ -88,7 +88,7 @@ diff -Naur os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.g
  	}
  	if fsType == "auto" {
  		fsType, err = util.GetFsType(dev)
-@@ -74,12 +115,49 @@
+@@ -74,12 +115,47 @@
  	}
  
  	log.Debugf("FsType has been set to %s", fsType)
@@ -114,7 +114,7 @@ diff -Naur os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.g
 +			}
 +		}
 +		dg := "degraded"
-+		if rw == 0 {
++		if rw == 1 {
 +			dg += ",rw"
 +		}
 +		if nodg != "" {
@@ -122,14 +122,12 @@ diff -Naur os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.g
 +		}
 +		for i := 0; i < 5; i++ {
 +			if err2 := util.Mount(dev, target, fsType, nodg) ; err2 != nil {
-+				if i == 4 {
-+					return util.Mount(dev, target, fsType, dg)
-+				}
 +				time.Sleep(2 * time.Second)
 +			} else {
 +				return nil
 +			}
 +		}
++		return util.Mount(dev, target, fsType, dg)
 +	} else {
 +		return util.Mount(dev, target, fsType, option)
 +	}
@@ -141,28 +139,6 @@ diff -Naur os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.g
  }
  
  func tryMountState(cfg *config.CloudConfig) error {
-diff -Naur os.prev/config/types.go os.new/config/types.go
---- os.prev/config/types.go	2023-11-28 19:46:24.166064000 +0900
-+++ os.new/config/types.go	2023-11-28 19:48:15.766064000 +0900
-@@ -210,6 +210,7 @@
- type StateConfig struct {
- 	Directory  string   `yaml:"directory,omitempty"`
- 	FsType     string   `yaml:"fstype,omitempty"`
-+	MountOpt     string   `yaml:"mountopt,omitempty"`
- 	Dev        string   `yaml:"dev,omitempty"`
- 	Wait       bool     `yaml:"wait,omitempty"`
- 	Required   bool     `yaml:"required,omitempty"`
-@@ -220,8 +221,10 @@
- 	Rngd       bool     `yaml:"rngd,omitempty"`
- 	Script     string   `yaml:"script,omitempty"`
- 	OemFsType  string   `yaml:"oem_fstype,omitempty"`
-+	OemMountOpt  string   `yaml:"oem_mountopt,omitempty"`
- 	OemDev     string   `yaml:"oem_dev,omitempty"`
- 	BootFsType string   `yaml:"boot_fstype,omitempty"`
-+	BootMountOpt string   `yaml:"boot_mountopt,omitempty"`
- 	BootDev    string   `yaml:"boot_dev,omitempty"`
- }
- 
 diff -Naur os.prev/scripts/version os.new/scripts/version
 --- os.prev/scripts/version	2023-11-28 19:46:24.196064000 +0900
 +++ os.new/scripts/version	2023-11-28 19:48:15.766064000 +0900
@@ -202,3 +178,25 @@ diff -Naur os.prev/scripts/version os.new/scripts/version
  fi
  
  INITRD=initrd-${VERSION}
+diff -Naur os.prev/config/types.go os.new/config/types.go
+--- os.prev/config/types.go	2023-11-28 19:46:24.166064000 +0900
++++ os.new/config/types.go	2023-11-28 19:48:15.766064000 +0900
+@@ -210,6 +210,7 @@
+ type StateConfig struct {
+ 	Directory  string   `yaml:"directory,omitempty"`
+ 	FsType     string   `yaml:"fstype,omitempty"`
++	MountOpt     string   `yaml:"mountopt,omitempty"`
+ 	Dev        string   `yaml:"dev,omitempty"`
+ 	Wait       bool     `yaml:"wait,omitempty"`
+ 	Required   bool     `yaml:"required,omitempty"`
+@@ -220,8 +221,10 @@
+ 	Rngd       bool     `yaml:"rngd,omitempty"`
+ 	Script     string   `yaml:"script,omitempty"`
+ 	OemFsType  string   `yaml:"oem_fstype,omitempty"`
++	OemMountOpt  string   `yaml:"oem_mountopt,omitempty"`
+ 	OemDev     string   `yaml:"oem_dev,omitempty"`
+ 	BootFsType string   `yaml:"boot_fstype,omitempty"`
++	BootMountOpt string   `yaml:"boot_mountopt,omitempty"`
+ 	BootDev    string   `yaml:"boot_dev,omitempty"`
+ }
+ 
