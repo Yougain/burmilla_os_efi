@@ -22,7 +22,7 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2023-11-28 19:46:24.176064000 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2023-12-01 07:33:46.324735100 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2023-12-01 07:38:44.004735100 +0900
 @@ -1,9 +1,14 @@
  package fsmount
  
@@ -64,7 +64,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +func blkid2MatchStr(matchStr string) (deviceName, deviceType string, err error) {
 +	if strings.Contains(matchStr, "=") {
 +		s0 := strings.Split(matchStr, "=")
-+		matchStr := s0[0] + `="` + s0[1] + `"`
++		matchStr = s0[0] + `="` + s0[1] + `"`
 +	}
 +	cmd := exec.Command("/sbin/blkid2")
 +	cmd.Stderr = os.Stderr
@@ -82,11 +82,11 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +			continue
 +		}
 +		d := strings.Split(line, ":")
-+		deviceName := d[0]
++		deviceName = d[0]
 +
 +		s1 := strings.Split(line, `TYPE="`)
 +		s2 := strings.Split(s1[1], `"`)
-+		deviceType := s2[0]
++		deviceType = s2[0]
 +		return
 +	}
 +	fmt.Println("extract output from /sbin/blkid2, failed.")
@@ -104,7 +104,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  	}
  
 -	dev = util.ResolveDevice(dev)
-+	dev, _, err := blkid2MatchStr(dev)
++	dev, _, err := blkid2MatchStr(dname)
  	if dev == "" {
 -		return fmt.Errorf("Could not resolve device %q", dev)
 +		dev = util.ResolveDevice(dname)
