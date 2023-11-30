@@ -22,7 +22,7 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2023-11-28 19:46:24.176064000 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2023-12-01 07:16:25.144735100 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2023-12-01 07:29:32.414735100 +0900
 @@ -1,9 +1,14 @@
  package fsmount
  
@@ -105,7 +105,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  	}
  
 -	dev = util.ResolveDevice(dev)
-+	dev, _, err := blkid2MatchStr(dev)i
++	dev, _, err := blkid2MatchStr(dev)
  	if dev == "" {
 -		return fmt.Errorf("Could not resolve device %q", dev)
 +		dev := util.ResolveDevice(dname)
