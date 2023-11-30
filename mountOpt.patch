@@ -1,6 +1,28 @@
-diff -Naur os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
+diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
+--- os.prev/config/types.go	2023-11-28 19:46:24.166064000 +0900
++++ os.new/config/types.go	2023-11-28 19:48:15.766064000 +0900
+@@ -210,6 +210,7 @@
+ type StateConfig struct {
+ 	Directory  string   `yaml:"directory,omitempty"`
+ 	FsType     string   `yaml:"fstype,omitempty"`
++	MountOpt     string   `yaml:"mountopt,omitempty"`
+ 	Dev        string   `yaml:"dev,omitempty"`
+ 	Wait       bool     `yaml:"wait,omitempty"`
+ 	Required   bool     `yaml:"required,omitempty"`
+@@ -220,8 +221,10 @@
+ 	Rngd       bool     `yaml:"rngd,omitempty"`
+ 	Script     string   `yaml:"script,omitempty"`
+ 	OemFsType  string   `yaml:"oem_fstype,omitempty"`
++	OemMountOpt  string   `yaml:"oem_mountopt,omitempty"`
+ 	OemDev     string   `yaml:"oem_dev,omitempty"`
+ 	BootFsType string   `yaml:"boot_fstype,omitempty"`
++	BootMountOpt string   `yaml:"boot_mountopt,omitempty"`
+ 	BootDev    string   `yaml:"boot_dev,omitempty"`
+ }
+ 
+diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2023-11-28 19:46:24.176064000 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2023-11-28 21:22:40.476064000 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2023-11-30 22:11:36.528558600 +0900
 @@ -1,9 +1,14 @@
  package fsmount
  
@@ -34,7 +56,7 @@ diff -Naur os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.g
  		log.Debugf("Not mounting BOOT: %v", err)
  	} else {
  		log.Infof("Mounted BOOT: %s", cfg.Rancher.State.BootDev)
-@@ -54,7 +59,37 @@
+@@ -54,17 +59,52 @@
  	return cfg, nil
  }
  
@@ -43,6 +65,7 @@ diff -Naur os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.g
 +	cmd := exec.Command("/sbin/blkid2")
 +	cmd.Stderr = os.Stderr
 +	out, err := cmd.Output()
++	deviceName := ""
 +	if err != nil {
 +		fmt.Println("exec /sbin/blkid2, failed.")
 +		fmt.Println(err)
@@ -56,11 +79,11 @@ diff -Naur os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.g
 +			continue
 +		}
 +		d := strings.Split(line, ":")
-+		deviceName = d[0]
++		deviceName := d[0]
 +
 +		s1 := strings.Split(line, `TYPE="`)
 +		s2 := strings.Split(s1[1], `"`)
-+		deviceType = s2[0]
++		deviceType := s2[0]
 +		return
 +	}
 +	fmt.Println("extract output from /sbin/blkid, failed.")
@@ -69,32 +92,33 @@ diff -Naur os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.g
 +}
 +
 +
-+func mountConfigured(display, dev, fsType, target, option string) error {
++func mountConfigured(display, dname, fsType, target, option string) error {
  	var err error
  
- 	if dev == "" {
-@@ -63,7 +98,13 @@
+-	if dev == "" {
++	if dname == "" {
+ 		return nil
+ 	}
  
- 	dev = util.ResolveDevice(dev)
+-	dev = util.ResolveDevice(dev)
++	dev, _, err := blkidMatchStr(dev)i
  	if dev == "" {
 -		return fmt.Errorf("Could not resolve device %q", dev)
-+		d, _, err := blkidMatchStr(dev)
-+		if err != nil {
-+			return fmt.Errorf("Could not resolve device %q", dev)
-+		}
-+		if d == "" {
++		dev := util.ResolveDevice(dname)
++		if dev == "" {
 +			return fmt.Errorf("Could not resolve device %q", dev)
 +		}
  	}
++
  	if fsType == "auto" {
  		fsType, err = util.GetFsType(dev)
-@@ -74,12 +115,47 @@
+ 	}
+@@ -74,12 +114,50 @@
  	}
  
  	log.Debugf("FsType has been set to %s", fsType)
 -	log.Infof("Mounting %s device %s to %s", display, dev, target)
 -	return util.Mount(dev, target, fsType, "")
-+	log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, option)
 +	if fsType == "btrfs" {
 +		opts := strings.Split(option, ",")
 +		nodg := ""
@@ -121,14 +145,18 @@ diff -Naur os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.g
 +			dg += "," + nodg
 +		}
 +		for i := 0; i < 5; i++ {
++			log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, nodg)
 +			if err2 := util.Mount(dev, target, fsType, nodg) ; err2 != nil {
++				log.Infof("Mouting %s faled", display)
 +				time.Sleep(2 * time.Second)
 +			} else {
 +				return nil
 +			}
 +		}
++		log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, dg)
 +		return util.Mount(dev, target, fsType, dg)
 +	} else {
++		log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, option)
 +		return util.Mount(dev, target, fsType, option)
 +	}
  }
@@ -139,7 +167,19 @@ diff -Naur os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.g
  }
  
  func tryMountState(cfg *config.CloudConfig) error {
-diff -Naur os.prev/scripts/version os.new/scripts/version
+diff -Naur '--exclude=.git' os.prev/pkg/sysinit/sysinit.go os.new/pkg/sysinit/sysinit.go
+--- os.prev/pkg/sysinit/sysinit.go	2023-11-28 19:46:24.186064000 +0900
++++ os.new/pkg/sysinit/sysinit.go	2023-11-30 22:05:11.578558600 +0900
+@@ -151,6 +151,8 @@
+ }
+ 
+ func RunSysInit(c *config.CloudConfig) (*config.CloudConfig, error) {
++	exec.Command("/sbin/blkid2", "stop")
++
+ 	loadServicesCache()
+ 	args := append([]string{config.SysInitBin}, os.Args[1:]...)
+ 
+diff -Naur '--exclude=.git' os.prev/scripts/version os.new/scripts/version
 --- os.prev/scripts/version	2023-11-28 19:46:24.196064000 +0900
 +++ os.new/scripts/version	2023-11-28 19:48:15.766064000 +0900
 @@ -1,18 +1,26 @@
@@ -178,25 +218,3 @@ diff -Naur os.prev/scripts/version os.new/scripts/version
  fi
  
  INITRD=initrd-${VERSION}
-diff -Naur os.prev/config/types.go os.new/config/types.go
---- os.prev/config/types.go	2023-11-28 19:46:24.166064000 +0900
-+++ os.new/config/types.go	2023-11-28 19:48:15.766064000 +0900
-@@ -210,6 +210,7 @@
- type StateConfig struct {
- 	Directory  string   `yaml:"directory,omitempty"`
- 	FsType     string   `yaml:"fstype,omitempty"`
-+	MountOpt     string   `yaml:"mountopt,omitempty"`
- 	Dev        string   `yaml:"dev,omitempty"`
- 	Wait       bool     `yaml:"wait,omitempty"`
- 	Required   bool     `yaml:"required,omitempty"`
-@@ -220,8 +221,10 @@
- 	Rngd       bool     `yaml:"rngd,omitempty"`
- 	Script     string   `yaml:"script,omitempty"`
- 	OemFsType  string   `yaml:"oem_fstype,omitempty"`
-+	OemMountOpt  string   `yaml:"oem_mountopt,omitempty"`
- 	OemDev     string   `yaml:"oem_dev,omitempty"`
- 	BootFsType string   `yaml:"boot_fstype,omitempty"`
-+	BootMountOpt string   `yaml:"boot_mountopt,omitempty"`
- 	BootDev    string   `yaml:"boot_dev,omitempty"`
- }
- 

@@ -113,13 +113,74 @@ function die(){
 
 
 function ssh_param(){
-	if [ $# = "0" ];then
-		die "ssh server argument missing."
+	local p
+	local h
+	local port
+	local host
+	local opt_start
+	while (( "$#" )); do
+		if [ "${1:0:1}" = "-" -o "$opt_start" = 1 ];then
+			opt_start=1
+			SSH_OPTS="$@"
+			break
+		else
+			h="${1%%:*}"
+			p="${1##*:}"
+			if [ "$h" = "$1" ];then # ':' is missing
+				if [ -n "`echo -n $1|egrep -o '^[0-9][0-9]*$'`" ];then
+					if [ -n "$port"];then
+						die "duplicated port"
+					else
+						port=$p
+					fi
+				else
+					if [ -n "$host"];then
+						die "duplicated host name"
+					else
+						port=$p
+					fi
+				fi
+			else
+				if [ -n "$port"];then
+					die "duplicated port"
+				else
+					port=$p
+				fi
+				if [ -n "$host"];then
+					die "duplicated host name"
+				else
+					host=$h
+				fi
+			fi
+		fi
+		shift
+	done
+	local o
+	local on
+	for o in $SSH_OPTS;do
+		if [ "$o" = "-l" ]; then
+			on=1
+		else
+			if [ -n "$on" ]; then
+				SSH_USER=$o
+				break
+			fi
+		fi
+	done
+	if [ -z "$SSH_USER" ];then
+		SSH_USER=$USER
+		if [ -z "$SSH_USER" ];then
+			die "cannot find \$USER"
+		fi
 	fi
-	ssh -v -o "ConnectTimeout=5" $1 echo -n > /tmp/test_ssh 2>&1 
+	if [ -n "$port" ];then
+		port=" -p $port"
+	fi
+	ssh $port -v -o "ConnectTimeout=5"  -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" $SSH_OPTS $host echo -n > /tmp/test_ssh 2>&1
 	if [ "$?" = "0" ];then
 		local SSH_CON_LINE=`egrep -o 'debug1: Connecting to .* port [0-9]+' /tmp/test_ssh`
 		SSH_PORT=`echo $SSH_CON_LINE| egrep -o '[0-9]+$'`
+		SSH_PORT_OPT=" -p $SSH_PORT"
 		SSH_HOST_IP=`echo $SSH_CON_LINE| egrep -o '\[[0-9/A-Fa-f\.:]+\]'| egrep -o [0-9/A-Fa-f\.:]+`
 		SSH_HOST=$1
 		if [ -n "$SSH_PORT" ];then
@@ -168,6 +229,98 @@ transfer_arguments A
 
 SCRIPT_ID=`rand 100000000`
 
+
+function col_width(){
+	if [ -z "$TAB_STOP" ];then
+		TAB_STOP=4
+	fi
+	local i=0
+	local len=${#1}
+	local pos=0
+	while [ $i -lt $len ];do
+		case "${1:$i:1}" in
+			"	")
+				pos=$((pos + TAB_STOP - pos % TAB_STOP))
+				;;
+			*)
+				pos=$((pos + 1))
+				;;
+		esac
+		i=$((i + 1))
+	done
+	echo $pos
+}
+
+function putsp(){
+	if [ -z "$TAB_STOP" ];then
+		TAB_STOP=4
+	fi
+	local w=$1
+	local t=$((w / TAB_STOP))
+	local s=$((w % TAB_STOP))
+	local i
+	for ((i = 0; i < t; i++)); do
+		echo -n "\t"
+	done
+	for ((i = 0; i < t; i++)); do
+		echo -n " "
+	done
+}
+
+function trim_indent(){
+	if [ -z "$TAB_STOP" ];then
+		TAB_STOP=4
+	fi
+	if [ "$#" = 0 ];then
+		local fc
+		local ln
+		local sp
+		PIFS="$IFS"
+		IFS=""
+		while read ln; do
+			lnx="$ln"
+			sp=${lnx%%[![:space:]]*}
+			if [ -z "$fc" ];then
+				res="${ln#$sp}"
+				if [ -n "$res" -a "${res:0:1}" != "#" ];then
+					fc=`col_width "$sp"`
+					echo "$res"
+				else
+					echo "$ln"
+				fi
+			else
+				trim_indent "$ln" "$fc"
+			fi
+		done
+		IFS="$PIFS"
+	else
+		local pos=0
+		local i=0
+		local len=${#1}
+		while [ $i -lt $len ];do
+			case "${1:$i:1}" in
+				"	")
+					pos=$((pos + TAB_STOP - pos % TAB_STOP))
+					;;
+				" ")
+					pos=$((pos + 1))
+					;;
+				*)
+					echo ${1:$i}
+					break
+					;;
+			esac
+			if [ $pos -ge $fc ];then
+				putsp $((pos - fc))
+				echo ${1:$i + 1}
+				break
+			fi
+			i=$((i + 1))
+		done 
+	fi
+}
+
+
 function ssh_do(){
 	local sudoing
 	if [ "$1" = "sudo" ];then
@@ -196,15 +349,15 @@ function ssh_do(){
 			# restore host environment
 			echo "source /tmp/err.$SCRIPT_ID; rm /tmp/err.$SCRIPT_ID";
 			# execute script from standard input
-			cat -; 
+			trim_indent
 			# preserve environment after script execution
 			echo "$set_env_lines > /tmp/err.cont.$SCRIPT_ID;exit 0"
-		) | ssh -x $SSH_HOST $sudoing bash
+		) | ssh $SSH_PORT_OPT $SSH_OPTS $SSH_HOST $sudoing bash
 		if [ "$?" = "1" ];then
 			exit 1
 		fi
 	else
-		ssh $SSH_HOST $sudoing $@
+		ssh $SSH_PORT_OPT $SSH_OPTS $SSH_HOST $sudoing $@
 	fi
 }
 
@@ -213,6 +366,58 @@ function ssh_sudo(){
 }
 
 
+function install_ssh_key(){
+	if [ -z "$KEY" ];then
+		KEY=`cat ~/.ssh/id_ed25519.pub 2>/dev/null`
+		if [ -z "$KEY" ];then
+			die Cannot find public key in ~/.ssh/id_ed25519.pub.
+		fi
+	fi
+	if [ -z "$SSH_PROMPT" ];then
+		SSH_PROMT="$ "
+	fi
+	local SET_KEY_CNT=0
+	while ! ssh_do echo -n; do
+		if [ "$SET_KEY_CNT" = "5" ]; then
+			return 1
+		fi
+		expect -c "
+		set timeout 1
+		spawn ssh $SSH_PORT_OPT -o \"PasswordAuthentication yes\"  -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" $SSH_OPTS $SSH_HOST
+		expect \"assword:\"
+		send \"$SSH_USER\n\"
+		expect \"$SSH_PROMPT\"
+		send \"mkdir ~/.ssh\n\"
+		expect \"$SSH_PROMPT\"
+		send \"chmod 700 ~/.ssh\n\"
+		expect \"$SSH_PROMPT\"
+		send \"echo $KEY >> ~/.ssh/authorized_keys\n\"
+		expect \"$SSH_PROMPT\"
+		send \"exit\"
+		"
+		sleep 1
+		SET_KEY_CNT=$(( SET_KEY_CNT + 1 ))
+	done
+	return 0
+}
+
+
+function ask_yes_no {
+	local ANS
+	while true; do
+		read ANS
+		case $ANS in
+			[Yy]*)
+				return 0
+				;;  
+			[Nn]*)
+				return 1
+				;;
+			*)
+				;;
+		esac
+	done
+}
 
 
 function ssh_reboot(){
@@ -237,5 +442,81 @@ END
 END
 }
 
+
+function write_env_file(){
+	local ln
+	local first=0
+	local envreg
+	envreg=`env_defined | while read ln; do
+		if [ "$first" = 0 ];then
+			echo -n $ln
+			first=1
+		else
+			echo -n '|'$ln
+		fi
+	done;`
+	local c=$(
+		echo -n "'"
+		trim_indent | sed 's/'"'"'/'"'"'"'"'"'"'"'"'/g' | sed -r 's/(^|[^\\])\$('$envreg')([^A-Za-z0-9_]|$)/\1'"'"'$\2'"'"'\3/g'
+		echo -n "'"
+	)
+	eval echo "$c" > $1
+}
+
+
+function write_file(){
+	trim_indent > $1
+}
+
+
+function write_grub_script(){
+	(set_env ; trim_indent) > $1
+}
+
+
+function env_var(){
+	local ln
+	declare -p |egrep '^declare -[A-Za-z-]* [A-Za-z_][A-Za-z0-9_]*'| while read ln; do
+		ln=${ln#declare -* }
+		ln=${ln%%=*}
+		tmp="`declare -p $ln 2>/dev/null`"
+		if [ "$?" = "0" ];then
+			echo $ln
+		fi
+	done|sort|uniq
+}
+
+
+__ORG_EVAR__="`env_var`"
+
+
+function get_exported(){
+	local ln
+	awk 'BEGIN{for (i in ENVIRON) {print i}}' | while read ln; do
+		if [ "$ln" != "AWKPATH" ];then
+			echo $ln
+		fi
+	done
+}
+
+
+function env_defined(){
+	echo "`env_var`
+__ORG_EVAR__
+$__ORG_EVAR__" | sort | uniq -u; get_exported | sort | uniq
+}
+
+function set_env(){
+	local ln
+	env_defined | while read ln; do
+		ln="`declare -p $ln`"
+		ln=${ln#declare -* }
+		if [[ ${ln} =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]];then
+			echo "$ln=''"
+		else
+			echo "$ln"
+		fi
+	done
+}
 
 

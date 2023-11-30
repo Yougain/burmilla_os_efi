@@ -1,28 +1,5 @@
 #!/bin/bash
 
-#if ! autoload err; then
-#	if ! sudo cp ./err /usr/local/share/zsh/site-functions; then
-#		echo "ERROR: Cannot find module, 'err'"
-#		exit 1
-#	else
-#		if ! autoload err; then
-#			echo "ERROR: Cannot find module, 'err'"
-#			exit 1
-#		fi
-#	fi
-#fi
-#
-#
-#cat /usr/local/share/zsh/site-functions |ssh "$1" /bin/bash <<END
-#	if [ ! -e /usr/local/share/zsh/site-functions ]; then
-#		sudo cat - > /usr/local/share/zsh/site-functions
-#	else
-#		sudo cat - > /dev/null
-#	fi
-#END
-#if [ "$?" != "0" ];then
-#	die "cannot login by ssh on #{$1}"
-#fi
 
 SCRIPT_PATH=$(dirname "$(realpath -s "$0")")
 . $SCRIPT_PATH/err
