@@ -465,12 +465,49 @@ function write_env_file(){
 
 
 function write_file(){
-	trim_indent > $1
+	local mod
+	if [[ $1 =~ ^0[0-9][0-9][0-9]$ ]];then
+		mod = $1
+		shift
+	fi
+	local lns="`trim_indent`"
+	while (($#));do
+		echo $lns > $1
+		if [ -n "$mod" ];then
+			chmod $mod $1
+		fi
+		shift
+	done
 }
 
 
 function write_grub_script(){
 	(set_env ; trim_indent) > $1
+}
+
+
+function write_script(){
+	local mod
+	if [[ $1 =~ ^0[0-9][0-9][0-9]$ ]]; then
+		mod = $1
+		shift
+	fi
+	local first
+	local ln
+	local lns=$(trim_indent | while read ln;do
+		echo $ln
+		if [ -z "$first" ];then
+			set_env
+			first=1
+		fi
+	done)
+	while (($#));do
+		echo $lns > $1
+		if [ -n "$mod" ];then
+			chmod $mod $1
+		fi
+		shift
+	done
 }
 
 

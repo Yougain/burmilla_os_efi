@@ -1042,7 +1042,7 @@ ssh_sudo <<'FINAL'
 
 	system-docker cp udev:/lib/udev ./lib
 	
-	write_file 0755 ./usr/bin/blkid2 /installing/state_top/state_root/usr/bin <<'END'
+	write_file 0755 ./usr/bin/blkid2 /installing/state_top/state_root/usr/bin/blkid2 <<'END'
 		#!/bin/bash
 
 		PATH=/sbin:/usr/sbin:/bin:/usr/bin
@@ -1392,7 +1392,7 @@ ssh_sudo <<'FINAL'
 	mount -t btrfs -odegraded,rw,subvol=/oem_root $TARGET_DEV7 /installing/oem_part
 	mkdir -p /installing/oem_part/var/lib/rancher/conf/cloud-config.d
 	if [ -z "$USER_CONFIG" -o ! -e "$UF" ]; then
-		write_env_file $UF << 'FEND'
+		write_env_file $UF << '	FEND'
 			hostname: $HNAME_FULL
 			date: `date`
 			rancher:
@@ -1569,7 +1569,7 @@ ssh_sudo <<'FINAL'
 	# create startup script
 	if [ ! -e /installing/oem_part/opt/rancher/bin/start.sh ];then
 		mkdir -p /installing/oem_part/opt/rancher/bin
-		write_script /installing/oem_part/opt/rancher/bin/start.sh <<'START_UP'
+		write_script 0755 /installing/oem_part/opt/rancher/bin/start.sh <<'	START_UP'
 			#!/bin/bash
 			mount --bind /usr/share/ros/oem/etc/ssh /etc/ssh
 			mount --bind /usr/share/ros/oem/root /root

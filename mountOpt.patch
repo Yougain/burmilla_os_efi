@@ -22,7 +22,7 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2023-11-28 19:46:24.176064000 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2023-11-30 22:11:36.528558600 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2023-12-01 07:16:25.144735100 +0900
 @@ -1,9 +1,14 @@
  package fsmount
  
@@ -56,12 +56,16 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  		log.Debugf("Not mounting BOOT: %v", err)
  	} else {
  		log.Infof("Mounted BOOT: %s", cfg.Rancher.State.BootDev)
-@@ -54,17 +59,52 @@
+@@ -54,17 +59,56 @@
  	return cfg, nil
  }
  
 -func mountConfigured(display, dev, fsType, target string) error {
-+func blkidMatchStr(matchStr string) (deviceName, deviceType string, err error) {
++func blkid2MatchStr(matchStr string) (deviceName, deviceType string, err error) {
++	if strings.Contains(matchStr, "=") {
++		s0 := strings.Split(matchStr, "=")
++		matchStr := s0[0] + `="` + s[1] + `"`
++	}
 +	cmd := exec.Command("/sbin/blkid2")
 +	cmd.Stderr = os.Stderr
 +	out, err := cmd.Output()
@@ -86,7 +90,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +		deviceType := s2[0]
 +		return
 +	}
-+	fmt.Println("extract output from /sbin/blkid, failed.")
++	fmt.Println("extract output from /sbin/blkid2, failed.")
 +	fmt.Println(string(out))
 +	return
 +}
@@ -101,7 +105,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  	}
  
 -	dev = util.ResolveDevice(dev)
-+	dev, _, err := blkidMatchStr(dev)i
++	dev, _, err := blkid2MatchStr(dev)i
  	if dev == "" {
 -		return fmt.Errorf("Could not resolve device %q", dev)
 +		dev := util.ResolveDevice(dname)
@@ -113,7 +117,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  	if fsType == "auto" {
  		fsType, err = util.GetFsType(dev)
  	}
-@@ -74,12 +114,50 @@
+@@ -74,12 +118,50 @@
  	}
  
  	log.Debugf("FsType has been set to %s", fsType)
