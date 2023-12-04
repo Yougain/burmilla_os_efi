@@ -1,3 +1,17 @@
+
+
+SCRIPT_TMP=/tmp/$RANDOM$RANDOM$RANDOM
+mkdir -p $SCRIPT_TMP
+
+cleanup (){
+	rm -rf $SCRIPT_TMP
+	if [ -n "$SSH_TMP" ];then
+		ssh_do $SSH_TMP_SUDO rm -rf $SCRIPT_TMP
+	fi
+}
+
+trap cleanup EXIT
+
 error="\033[41m\033[33mERROR    :\033[m \033[31m"
 warning="\033[43m\033[31mWARNING:\033[m \033[33m"
 info="\033[46m\033[34mINFO     :\033[m \033[36m "
@@ -119,34 +133,36 @@ function ssh_param(){
 	local host
 	local opt_start
 	while (( "$#" )); do
-		if [ "${1:0:1}" = "-" -o "$opt_start" = 1 ];then
-			opt_start=1
-			SSH_OPTS="$@"
-			break
+		if [ "${1:0:1}" = "-" -o -n "$SSH_OPTS" ];then
+			if [ "${1:0:1}" = "-" ]; then
+				SSH_OPTS="$SSH_OPTS $1"
+			else
+				SSH_OPTS="$SSH_OPTS \"$1\""
+			fi
 		else
 			h="${1%%:*}"
 			p="${1##*:}"
 			if [ "$h" = "$1" ];then # ':' is missing
 				if [ -n "`echo -n $1|egrep -o '^[0-9][0-9]*$'`" ];then
-					if [ -n "$port"];then
+					if [ -n "$port" ];then
 						die "duplicated port"
 					else
 						port=$p
 					fi
 				else
-					if [ -n "$host"];then
+					if [ -n "$host" ];then
 						die "duplicated host name"
 					else
-						port=$p
+						host=$h
 					fi
 				fi
 			else
-				if [ -n "$port"];then
+				if [ -n "$port" ];then
 					die "duplicated port"
 				else
 					port=$p
 				fi
-				if [ -n "$host"];then
+				if [ -n "$host" ];then
 					die "duplicated host name"
 				else
 					host=$h
@@ -176,17 +192,29 @@ function ssh_param(){
 	if [ -n "$port" ];then
 		port=" -p $port"
 	fi
-	ssh $port -v -o "ConnectTimeout=5"  -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" $SSH_OPTS $host echo -n > /tmp/test_ssh 2>&1
-	if [ "$?" = "0" ];then
-		local SSH_CON_LINE=`egrep -o 'debug1: Connecting to .* port [0-9]+' /tmp/test_ssh`
-		SSH_PORT=`echo $SSH_CON_LINE| egrep -o '[0-9]+$'`
-		SSH_PORT_OPT=" -p $SSH_PORT"
-		SSH_HOST_IP=`echo $SSH_CON_LINE| egrep -o '\[[0-9/A-Fa-f\.:]+\]'| egrep -o [0-9/A-Fa-f\.:]+`
-		SSH_HOST=$1
+	SSH_HOST=$host
+	echo ssh $SSH_OPTS $port -v -o \"ConnectTimeout=5\"  -o \"PasswordAuthentication no\" -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" $host echo -n 
+	echo ssh $SSH_OPTS $port -v -o \"ConnectTimeout=5\"  -o \"PasswordAuthentication no\" -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" $host echo -n|bash > $SCRIPT_TMP/test_ssh 2>&1
+	#if [ "$?" = "0" ];then
+		if [ -z "`egrep 'debug1: Executing proxy command:' $SCRIPT_TMP/test_ssh`" ]; then
+			local SSH_CON_LINE=`egrep -o 'debug1: Connecting to .* port [0-9]+' $SCRIPT_TMP/test_ssh`
+			SSH_PORT=`echo $SSH_CON_LINE| egrep -o '[0-9]+$'`
+			SSH_PORT_OPT=" -p $SSH_PORT"
+			SSH_HOST_IP=`echo $SSH_CON_LINE| egrep -o '\[[0-9/A-Fa-f\.:]+\]'| egrep -o [0-9/A-Fa-f\.:]+`
+		else
+			local pc=`egrep "debug1: channel_connect_stdio_fwd " $SCRIPT_TMP/test_ssh`
+			if [ -n "$pc" ];then
+				local adr=${pc#debug1: channel_connect_stdio_fwd }
+				SSH_PORT=${adr##*:}
+				SSH_HOST_IP=${adr%:*}
+				SSH_PORT_OPT=" -p $SSH_PORT"
+				SSH_PROXY=1
+			fi
+		fi
 		if [ -n "$SSH_PORT" ];then
 			return 0
 		fi
-	fi
+	#fi
 	return 1
 }
 
@@ -200,10 +228,18 @@ function wait_sshd_start(){
 	for i in $(seq 1 120); do
 		sleep 1
 		blue_n "."
-		SSH_CON_=`echo | nc $SSH_HOST_IP $SSH_PORT 2>&1`
-		if [ "${SSH_CON_:0:3}" = "SSH" ];then
-			cyanBgBlue connected
-			return
+		if [ -z "$SSH_PROXY" ];then
+			SSH_CON_=`echo | nc $SSH_HOST_IP $SSH_PORT 2>&1`
+			if [ "${SSH_CON_:0:3}" = "SSH" ];then
+				cyanBgBlue connected
+				return
+			fi
+		else
+			echo ssh $SSH_OPTS $port -v -o \"ConnectTimeout=5\"  -o \"PasswordAuthentication no\" -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" $SSH_HOST echo -n|bash > $SCRIPT_TMP/test_ssh 2>&1
+			if [ `grep 'debug1: Remote protocol version 2.0, remote software version OpenSSH' $SCRIPT_TMP/test_ssh|wc|awk '{print $1}'` = "2" ];then
+				cyanBgBlue connected
+				return
+			fi
 		fi
 	done
 	echo
@@ -227,7 +263,6 @@ function transfer_arguments(){
 
 transfer_arguments A
 
-SCRIPT_ID=`rand 100000000`
 
 
 function col_width(){
@@ -307,16 +342,18 @@ function trim_indent(){
 					;;
 				*)
 					echo ${1:$i}
-					break
+					return
 					;;
 			esac
 			if [ $pos -ge $fc ];then
 				putsp $((pos - fc))
 				echo ${1:$i + 1}
-				break
+				return
 			fi
 			i=$((i + 1))
-		done 
+		done
+		putsp $pos
+		echo
 	fi
 }
 
@@ -330,34 +367,49 @@ function ssh_do(){
 	if [ -z "$SSH_PORT" -o -z "$SSH_HOST" ];then
 		die "missing ssh paramter variables. Please execute 'ssh_param SERVER_NAME' first."
 	fi
+	SSH_TMP=1
+	if [ -z "$SSH_TMP_SUDO" ];then
+		SSH_TMP_SUDO=$sudoing
+	fi
+	CMD=`echo ssh $SSH_PORT_OPT ${SSH_OPTS} $SSH_HOST $sudoing $@`
+	#info $sudoing $@  >&2
 	if [ "$#" = "0" ];then
-		local set_env_lines="set | awk '!/^(BASHOPTS|BASH_VERSINFO|EUID|PPID|SHELLOPTS|UID)=/ {print \$0}'"
+		local set_env_lines="set | awk '!/^(BASH_ARGV|BASH_ARGC|BASH_LINENO|BASH_SOURCE|GROUPS|FUNCNAME|BASHOPTS|BASH_VERSINFO|EUID|PPID|SHELLOPTS|UID)=/ {print \$0}'"
+		local SET_ENV_LINES="`eval $set_env_lines`"
+		trim_indent > $SCRIPT_TMP/do_content
+		eval $CMD mkdir -p $SCRIPT_TMP
 		(
 			# preserve host environment
-			echo "$set_env_lines > /tmp/err.$SCRIPT_ID";
+			echo "#!/bin/bash"
+			echo "mkdir -p $SCRIPT_TMP"
+			echo "$set_env_lines > $SCRIPT_TMP/env";
 			echo "
 				# set client environment
-				if [ ! -e /tmp/err.cont.$SCRIPT_ID ];then # missing previous host environment 
+				if [ ! -e $SCRIPT_TMP/env.cont ];then # missing previous host environment 
 					# set client command line argument
 					$TRANSFER_ARGUMENTS
-					`$set_env_lines`
+					$SET_ENV_LINES
 				else # found previous host environment 
-					source /tmp/err.cont.$SCRIPT_ID; 
-					rm /tmp/err.cont.$SCRIPT_ID;
+					source $SCRIPT_TMP/env.cont; 
+					rm $SCRIPT_TMP/env.cont;
 				fi
 			";
 			# restore host environment
-			echo "source /tmp/err.$SCRIPT_ID; rm /tmp/err.$SCRIPT_ID";
+			echo "source $SCRIPT_TMP/env; rm $SCRIPT_TMP/env";
 			# execute script from standard input
-			trim_indent
+			cat $SCRIPT_TMP/do_content;
 			# preserve environment after script execution
-			echo "$set_env_lines > /tmp/err.cont.$SCRIPT_ID;exit 0"
-		) | ssh $SSH_PORT_OPT $SSH_OPTS $SSH_HOST $sudoing bash
-		if [ "$?" = "1" ];then
+			echo "$set_env_lines > $SCRIPT_TMP/env.cont;exit 0"
+		) | eval $CMD tee $SCRIPT_TMP/scr > /dev/null
+		eval $CMD chmod +x $SCRIPT_TMP/scr
+		eval $CMD $SCRIPT_TMP/scr
+		local res=$?
+		if [ "$res" = "1" ];then
 			exit 1
 		fi
 	else
-		ssh $SSH_PORT_OPT $SSH_OPTS $SSH_HOST $sudoing $@
+		#info "$SSH_PORT_OPT $SSH_OPTS $SSH_HOST $sudoing $@"
+		eval $CMD
 	fi
 }
 
@@ -383,7 +435,7 @@ function install_ssh_key(){
 		fi
 		expect -c "
 		set timeout 1
-		spawn ssh $SSH_PORT_OPT -o \"PasswordAuthentication yes\"  -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" $SSH_OPTS $SSH_HOST
+		spawn ssh $SSH_PORT_OPT -o \"PasswordAuthentication yes\"  -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" $SSH_HOST
 		expect \"assword:\"
 		send \"$SSH_USER\n\"
 		expect \"$SSH_PROMPT\"
@@ -400,6 +452,40 @@ function install_ssh_key(){
 	done
 	return 0
 }
+
+
+function  install_ssh_key(){
+	if [ -z "$KEY" ];then
+		KEY=`cat ~/.ssh/id_ed25519.pub 2>/dev/null`
+		if [ -z "$KEY" ];then
+			die Cannot find public key in ~/.ssh/id_ed25519.pub.
+		fi
+	fi
+	local SET_KEY_CNT=0
+	while ! ssh_do echo; do
+		if [ "$SET_KEY_CNT" = "5" ]; then
+			return 1
+		fi
+		expect -c "
+		set timeout 1
+		spawn ssh -p 22 -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" -l rancher $INST_IP
+		expect \"assword:\"
+		send \"rancher\n\"
+		expect \"rancher ~]$ \"
+		send \"mkdir ~/.ssh\n\"
+		expect \"rancher ~]$ \"
+		send \"chmod 700 ~/.ssh\n\"
+		expect \"rancher ~]$ \"
+		send \"echo $KEY >> ~/.ssh/authorized_keys\n\"
+		expect \"rancher ~]$ \"
+		send \"exit\"
+		"
+		sleep 1
+		SET_KEY_CNT=$(( SET_KEY_CNT + 1 ))
+	done
+	return 0
+}
+
 
 
 function ask_yes_no {
@@ -424,9 +510,9 @@ function ssh_reboot(){
 	ssh_sudo <<'END'
 		efi_dev=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')2
 		if [ -z "$efi_dev" ]; then die "boot efi device not found."; fi
-		mkdir -p /tmp/efi_dev
-		mount /dev/$efi_dev /tmp/efi_dev
-		touch /tmp/efi_dev/.reboot
+		mkdir -p $SCRIPT_TMP/efi_dev
+		mount /dev/$efi_dev $SCRIPT_TMP/efi_dev
+		touch $SCRIPT_TMP/efi_dev/.reboot
 		reboot
 END
 	wait_sshd_start
@@ -434,11 +520,11 @@ END
 	ssh_sudo <<'END'
 		efi_dev=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')2
 		if [ -z "$efi_dev" ]; then die "boot efi device not found."; fi
-		mkdir -p /tmp/efi_dev
-		mount /dev/$efi_dev /tmp/efi_dev
-		rm /tmp/efi_dev/.reboot
-		umount /tmp/efi_dev
-		rm -rf /tmp/efi_dev
+		mkdir -p $SCRIPT_TMP/efi_dev
+		mount /dev/$efi_dev $SCRIPT_TMP/efi_dev
+		rm $SCRIPT_TMP/efi_dev/.reboot
+		umount $SCRIPT_TMP/efi_dev
+		rm -rf $SCRIPT_TMP/efi_dev
 END
 }
 
@@ -467,7 +553,7 @@ function write_env_file(){
 function write_file(){
 	local mod
 	if [[ $1 =~ ^0[0-9][0-9][0-9]$ ]];then
-		mod = $1
+		mod=$1
 		shift
 	fi
 	local lns="`trim_indent`"
@@ -489,7 +575,7 @@ function write_grub_script(){
 function write_script(){
 	local mod
 	if [[ $1 =~ ^0[0-9][0-9][0-9]$ ]]; then
-		mod = $1
+		mod=$1
 		shift
 	fi
 	local first
