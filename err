@@ -10,7 +10,7 @@ cleanup (){
 	fi
 }
 
-trap cleanup EXIT
+trap cleanup EXIT INT TERM
 
 error="\033[41m\033[33mERROR    :\033[m \033[31m"
 warning="\033[43m\033[31mWARNING:\033[m \033[33m"
@@ -397,6 +397,8 @@ function ssh_do(){
 			# restore host environment
 			echo "source $SCRIPT_TMP/env; rm $SCRIPT_TMP/env";
 			# execute script from standard input
+			# set clean up
+			echo "trap cleanup EXIT INT TERM"
 			cat $SCRIPT_TMP/do_content;
 			# preserve environment after script execution
 			echo "$set_env_lines > $SCRIPT_TMP/env.cont;exit 0"
