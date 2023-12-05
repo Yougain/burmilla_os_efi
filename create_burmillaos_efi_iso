@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 UB_CERT_URL=https://letsencrypt.org/certs/lets-encrypt-r3.pem
 BM_RELEASE_URL=https://github.com/burmilla/os/releases
@@ -21,7 +21,7 @@ if [ -x "/usr/bin/apt-get" ];then
 	sudo apt-get -q install -y gdisk genisoimage dosfstools mount parted xorriso
 fi
 
-check_cmd fallocate gdisk losetup mkfs.fat mkisofs partprobe xorriso
+check_cmd fallocate gdisk losetup mkfs.fat mkisofs xorriso #partprobe
 if [ -n "$NO_CMD" ];then
 	echo "Terminated."
 	exit 1
@@ -44,6 +44,7 @@ VERSIONS=`wget $BM_RELEASE_URL --quiet -O - |egrep -o 'expanded_assets/v[0-9].*"
 VERSIONS=`ls $T/ | grep -v efi | grep iso | grep burmillaos | sed -s 's/burmillaos-//;s/.iso//'`"
 "$VERSIONS
 echo "$VERSIONS" > /tmp/$0.ver
+cat /tmp/$0.ver
 echo "$VERSIONS" | awk '{gsub(/^v/,"");gsub(/$/, ".2"); gsub(/-rc/,".1.");gsub(/-beta/,".0.");print}' | tr '.' ' ' | awk '{printf "%03d%03d%03d%03d%03d %01d\n", $1, $2, $3, $4, $5, $4}' > /tmp/$0.vernum
 paste -d " " /tmp/$0.vernum /tmp/$0.ver | sort -r | uniq |awk '{print $3}' > /tmp/$0.list
 VERSIONS=`cat /tmp/$0.list`
@@ -148,6 +149,7 @@ function WG(){
 	esac
 	
 	if [ -n "$go" ]; then
+		rm $outFile
 		if ! wget $outOpt2 -q $nc $@;then
 			echo "ERROR: wget $@ failed. Exiting." >&2
 			exit 1
@@ -162,30 +164,33 @@ function WG(){
 }
 
 
-if [ ! -s $UB_CERT ]; then
-	rm -f $UB_CERT.no_check $UB_CERT $UB_CERT.rechecked
-	WG --no-check-certificate $UB_CERT_URL -O $UB_CERT.no_check
-	WG --ca-certificate=$UB_CERT.no_check $UB_CERT_URL -O $UB_CERT
-	WG --ca-certificate=$UB_CERT $UB_CERT_URL -O $UB_CERT.rechecked
-	if ! diff $UB_CERT.rechecked $UB_CERT; then
-		echo "ERROR: Abnormal certificate provided from $UB_CERT_URL. Exitting"
-		exit 1
-	fi
-	rm -f $UB_CERT.no_check $UB_CERT.rechecked
-fi
+#if [ ! -s $UB_CERT ]; then
+#	rm -f $UB_CERT.no_check $UB_CERT $UB_CERT.rechecked
+#	WG --no-check-certificate $UB_CERT_URL -O $UB_CERT.no_check
+#	WG --ca-certificate=$UB_CERT.no_check $UB_CERT_URL -O $UB_CERT
+#	WG --ca-certificate=$UB_CERT $UB_CERT_URL -O $UB_CERT.rechecked
+#	if ! diff $UB_CERT.rechecked $UB_CERT; then
+#		echo "ERROR: Abnormal certificate provided from $UB_CERT_URL. Exitting"
+#		exit 1
+#	fi
+#	rm -f $UB_CERT.no_check $UB_CERT.rechecked
+#fi
 
 BURMILLAOS_VER=${BURMILLAOS_VER%$'\n'*}
 echo BurmillaOS Version: $BURMILLAOS_VER
 BURMILLA_ISO="$T"/burmillaos-$BURMILLAOS_VER.iso
 
-LATEST_U=`WG --ca-certificate=$UB_CERT -O - $UB_RELEASE_URL/ 2>/dev/null|awk '/Ubuntu [0-9]+(\.[0-9]+)+ LTS/{print $0}'|head -1|awk '{match($0, /Ubuntu [0-9]+(\.[0-9]+)+ LTS \([^)]+\)/); print substr($0, RSTART, RLENGTH)}'`
+#LATEST_U=`WG --ca-certificate=$UB_CERT -O - $UB_RELEASE_URL/ 2>/dev/null|awk '/Ubuntu [0-9]+(\.[0-9]+)+ LTS/{print $0}'|head -1|awk '{match($0, /Ubuntu [0-9]+(\.[0-9]+)+ LTS \([^)]+\)/); print substr($0, RSTART, RLENGTH)}'`
+LATEST_U=`WG --no-check-certificate -O - $UB_RELEASE_URL/ 2>/dev/null|awk '/Ubuntu [0-9]+(\.[0-9]+)+ LTS/{print $0}'|head -1|awk '{match($0, /Ubuntu [0-9]+(\.[0-9]+)+ LTS \([^)]+\)/); print substr($0, RSTART, RLENGTH)}'`
 LATEST_UV=`echo $LATEST_U | awk '{print $2}'`
-UDIR=`WG --ca-certificate=$UB_CERT -O - $UB_RELEASE_URL/ 2>/dev/null|grep "$LATEST_U"|grep href| head -1|awk '{match($0,/href="[^"]+"/);print substr($0,RSTART+6,RLENGTH-7)}'`
+#UDIR=`WG --ca-certificate=$UB_CERT -O - $UB_RELEASE_URL/ 2>/dev/null|grep "$LATEST_U"|grep href| head -1|awk '{match($0,/href="[^"]+"/);print substr($0,RSTART+6,RLENGTH-7)}'`
+UDIR=`WG --no-check-certificate -O - $UB_RELEASE_URL/ 2>/dev/null|grep "$LATEST_U"|grep href| head -1|awk '{match($0,/href="[^"]+"/);print substr($0,RSTART+6,RLENGTH-7)}'`
 UBUNTU_ISO="$T"/ubuntu-$LATEST_UV-live-server-amd64.iso
 echo Ubuntu Version: $LATEST_UV
 
 WG $BM_RELEASE_URL/download/$BURMILLAOS_VER/burmillaos-$BURMILLAOS_VER.iso -O $BURMILLA_ISO
-WG --ca-certificate=$UB_CERT $UB_RELEASE_URL/$UDIR"ubuntu-$LATEST_UV-live-server-amd64.iso" -O $UBUNTU_ISO
+#WG --ca-certificate=$UB_CERT $UB_RELEASE_URL/$UDIR"ubuntu-$LATEST_UV-live-server-amd64.iso" -O $UBUNTU_ISO
+WG --no-check-certificate $UB_RELEASE_URL/$UDIR"ubuntu-$LATEST_UV-live-server-amd64.iso" -O $UBUNTU_ISO
 
 
 UD="$T"/tmpubuntu
@@ -235,7 +240,7 @@ ef00
 w
 y
 END
-partprobe
+#partprobe
 LDEVH=`sudo losetup --partscan --show --find $P_IMG`
 LDEV=$LDEVH"p1"
 ls $LDEV

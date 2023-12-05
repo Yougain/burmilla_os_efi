@@ -884,7 +884,7 @@ ssh_sudo <<'FINAL'
 	INITRD_VER=${INITRD_FILE#*-}
 	KERNEL_VER=${VMLINUZ_FILE#*-}
 
-	create_init_mod
+	create_initrd_mod
 
 	GLOBAL_APPEND=`cat /installing/boot_dev/global.cfg | sed "s/ rancher.state.dev=[^ ]*//g" | sed "s/ console=ttyS[^ ]*//g" | sed "s/ rancher.autologin=ttyS[^ ]*//g"`
 	GLOBAL_APPEND_ARGS=${GLOBAL_APPEND#APPEND *}
