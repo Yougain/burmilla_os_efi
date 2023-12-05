@@ -1,0 +1,264 @@
+#!/bin/bash
+
+
+function find(){
+	/usr/bin/find $@ 2> >(egrep -v '/proc.*: Invalid argument')
+}
+
+
+function sfind(){
+	system-docker exec udev find $@ 2> >(egrep -v '/proc.*: Invalid argument')
+}
+
+
+function create_initrd_mod(){
+	tmpd=`pwd`
+	for i in `ls /installing/boot_dev/initrd`;do
+		umount /installing/boot_dev/$i
+	done
+	rm -rf /installing/boot_dev/initrd
+	mkdir -p /installing/boot_dev/initrd
+	cd /installing/boot_dev/initrd
+	zcat /installing/boot_dev/$INITRD_FILE | cpio -idmv 2> /dev/null
+
+	ln -s usr/lib lib
+	ln -s lib lib64
+
+	function cp_lib(){
+		item=$1
+		shift
+		local l=`sfind / -name $item|head -1`
+		local cmd
+		if [ -z "$l" ];then
+			l=`find / -name $item|head -1`
+			if [ -z "$l" ];then
+				die cannot find $item docker, udev nor local.
+			else
+				cmd="cp "
+			fi
+		else
+			cmd="system-docker cp udev:"
+		fi
+		local d=./usr/lib
+		for i in $@; do
+			if [ -d "$i" ];then
+				echo $cmd$l $i/$d
+				$cmd$l $i/$d
+			fi
+		done
+		if [ -L $1/$d/$item ];then
+			local f=`readlink $1/$d/$item`
+			local e=`dirname $l`
+			for i in $@; do
+				if [ -d "$i" ];then
+					echo $cmd$e/$f $i/$d
+					$cmd$e/$f $i/$d
+				fi
+			done
+		fi
+	}
+
+	function cp_lib_back(){
+		while read item; do
+			local l=`find / -name $item|head -1`
+			if [ -z "$l" ];then
+				die cannot find $item
+			fi
+			local d=/usr/lib
+			system-docker cp $l udev:$d
+			if [ -L $l ];then
+				local f=`readlink $l`
+				local e=`dirname $l`
+				system-docker cp $e/$f udev:$d
+			fi
+		done
+	}
+	
+	function check_cp_udev_out(){
+		local i="$1"
+		local item="$2"
+		local ln
+		while read ln; do
+			if [ "${ln:0:16}" = "invalid symlink " -a  "${ln##*-> }" = "\"../../bin/busybox\""  ]; then
+				ln -s busybox $i/usr/bin/$item
+			else
+				echo $ln >&2
+			fi
+		done
+	}
+	
+	function cp_bin(){
+		local libs=""
+		local i
+		local d
+		while read item; do
+			local l=`sfind / -name $item|grep bin/|head -1`
+			local cmd
+			if [ -z "$l" ];then
+				l=`find / -name $item|grep bin/|head -1`
+				if [ -z "$l" ];then
+					die cannot find $item in docker, udev nor in local.
+				else
+					cmd="cp "
+				fi
+			else
+				cmd="system-docker cp udev:"
+			fi
+			for i in $@; do
+				if [ -d "$i" ];then
+					d=$i
+					echo $cmd$l $i/usr/bin
+					$cmd$l $i/usr/bin 2> >(check_cp_udev_out "$i" "$item")
+				fi
+			done
+			if [ -n "$d" ];then
+				if [ -L $d/usr/bin/$item ];then
+					local lk=`readlink $d/usr/bin/$item`
+					if [ "${lk:0:1}" = "/" ];then # absolute
+						for i in $@; do
+							if [ -d "$i" ];then
+								echo $cmd$lk $i/$(dirname $lk)
+								mkdir -p $i/$(dirname $lk)
+								$cmd$lk $i/$(dirname $lk)
+							fi
+						done
+					else
+						for i in $@; do
+							if [ -d "$i" ];then
+								echo $cmd$(dirname $l)/$lk $i/$(dirname $l)/$lk
+								mkdir -p $i/$(dirname $l)/$(dirname $lk)
+								$cmd$(dirname $l)/$lk $i/$(dirname $l)/$lk
+							fi
+						done
+					fi
+				else
+					local ldd_res_nf="`ldd $d/usr/bin/$item|grep 'not found (required'|awk '{print $2}'|sort|uniq`"
+					ldd_res="$ldd_res_nf 
+	""`ldd $1/usr/bin/$item|grep -v 'not found (required'|awk '{print $item}'`"
+					while read f; do
+						f=${f##*/}
+						f=${f%%:*}
+						f=${f%% (*)}
+						f=`echo $f|awk '{print$1}'`
+						if [ "$f" != "linux-vdso.so.1" ];then
+							libs="$f
+$libs"
+						fi
+					done < <(echo "$ldd_res")
+				fi
+			fi
+		done
+		for i in `echo "$libs"|sort|uniq`; do
+			cp_lib $i $@
+		done
+	}
+	
+	
+	system-docker cp /usr/bin/find udev:/bin
+
+	cp_lib_back <<"	END"
+		libselinux.so.1
+		libpcre2-8.so.0
+	END
+
+	cp_bin . /installing/state_top/state_root <<"	END"
+		bash
+		busybox
+		grep
+		ls
+		mount
+		mknod
+		mkdir
+		rmdir
+		touch
+		sleep
+		udevadm
+		umount
+		chown
+		chmod
+		btrfs
+		btrfsck
+		strace
+		killall
+		readlink
+		awk
+		sed
+		blkid
+		udevd
+	END
+	
+	system-docker cp udev:/lib/udev ./lib
+	
+	for d in . /installing/state_top/state_root; do
+		if [ -d "$d" ]; then
+			write_file 0755 $d/usr/bin/blkid2 <<'			END'
+				#!/bin/bash
+
+				PATH=/sbin:/usr/sbin:/bin:/usr/bin
+
+				if [ "$1" = "stop" ];then
+					killall udevd
+					exit 0
+				else
+					if [ -z "$(readlink -f `ls /proc/*/exe`|egrep '/udevd$')" ];then
+						udevd  --daemon --resolve-names=never
+						udevadm trigger --action=add --type=subsystems
+						udevadm trigger --action=add --type=devices
+						udevadm trigger --action=change --type=devices
+						udevadm settle
+						sleep 5
+					fi
+				fi
+				
+				ids=(`ls /dev/disk/by-id`)
+				devs=($(readlink -f `ls /dev/disk/by-id/*`))
+				
+				paths=(`ls /dev/disk/by-path`)
+				devsp=($(readlink -f `ls /dev/disk/by-path/*`))
+
+				declare -A blkids
+
+				function add_blist(){
+				    local dev=$1
+				    blkids[$dev]="$@"
+				}
+
+				IFS="
+				"
+				blkids_arr=(`blkid`)
+				for ((i = 0; i < ${#blkids_arr[@]}; i++)); do
+				    IFS=" "
+				    add_blist ${blkids_arr[$i]}
+				done
+
+
+				for ((i = 0; i < ${#ids[@]}; i++)); do
+				    idx=${devs[$((i))]}:
+				    bc=${blkids[$idx]}
+				    if [ -n "$bc" ];then
+				        blkids[$idx]=$bc" ID=\""${ids[$((i))]}'"'
+				    fi
+				done
+
+				for ((i = 0; i < ${#paths[@]}; i++)); do
+				    idx=${devsp[$((i))]}:
+				    bc=${blkids[$idx]}
+				    if [ -n "$bc" ];then
+				        blkids[$idx]=$bc" PATH=\""${paths[$((i))]}'"'
+				    fi
+				done
+
+				for c in "${blkids[@]}";do
+				    echo "${c}"
+				done
+				
+				exit 0
+			END
+		fi
+	done
+	find | cpio -o -H newc  | gzip -c > ../$INITRD_FILE-mod
+	cd $tmpd
+
+	
+}
+
