@@ -193,7 +193,6 @@ function ssh_param(){
 		port=" -p $port"
 	fi
 	SSH_HOST=$host
-	echo ssh $SSH_OPTS $port -v -o \"ConnectTimeout=5\"  -o \"PasswordAuthentication no\" -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" $host echo -n 
 	echo ssh $SSH_OPTS $port -v -o \"ConnectTimeout=5\"  -o \"PasswordAuthentication no\" -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" $host echo -n|bash > $SCRIPT_TMP/test_ssh 2>&1
 	#if [ "$?" = "0" ];then
 		if [ -z "`egrep 'debug1: Executing proxy command:' $SCRIPT_TMP/test_ssh`" ]; then
@@ -371,7 +370,7 @@ function ssh_do(){
 	if [ -z "$SSH_TMP_SUDO" ];then
 		SSH_TMP_SUDO=$sudoing
 	fi
-	CMD=`echo ssh $SSH_PORT_OPT ${SSH_OPTS} $SSH_HOST $sudoing $@`
+	local CMD=`echo ssh $SSH_PORT_OPT ${SSH_OPTS} $SSH_HOST $sudoing $@`
 	#info $sudoing $@  >&2
 	if [ "$#" = "0" ];then
 		local set_env_lines="set | awk '!/^(BASH_ARGV|BASH_ARGC|BASH_LINENO|BASH_SOURCE|GROUPS|FUNCNAME|BASHOPTS|BASH_VERSINFO|EUID|PPID|SHELLOPTS|UID)=/ {print \$0}'"
@@ -413,6 +412,15 @@ function ssh_do(){
 		#info "$SSH_PORT_OPT $SSH_OPTS $SSH_HOST $sudoing $@"
 		eval $CMD
 	fi
+}
+
+function ssh_i(){
+	if [ -z "$SSH_PORT" -o -z "$SSH_HOST" ];then
+		die "missing ssh paramter variables. Please execute 'ssh_param SERVER_NAME' first."
+	fi
+	SSH_TMP=1
+	local CMD=`echo ssh $SSH_PORT_OPT ${SSH_OPTS} $SSH_HOST $@`
+	eval $CMD
 }
 
 function ssh_sudo(){
@@ -545,7 +553,7 @@ function write_env_file(){
 	done;`
 	local c=$(
 		echo -n "'"
-		trim_indent | sed 's/'"'"'/'"'"'"'"'"'"'"'"'/g' | sed -r 's/(^|[^\\])\$('$envreg')([^A-Za-z0-9_]|$)/\1'"'"'$\2'"'"'\3/g'
+		trim_indent | sed 's/'"'"'/'"'"'"'"'"'"'"'"'/g' | sed -r 's/(^|[^\\])\$('$envreg')([^A-Za-z0-9_]|$)/\1'"'"'"$\2"'"'"'\3/g'
 		echo -n "'"
 	)
 	eval echo "$c" > $1

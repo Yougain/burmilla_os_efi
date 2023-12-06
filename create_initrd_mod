@@ -13,9 +13,11 @@ function sfind(){
 
 function create_initrd_mod(){
 	tmpd=`pwd`
-	for i in `ls /installing/boot_dev/initrd`;do
-		umount /installing/boot_dev/$i
-	done
+	if [ -d /installing/boot_dev/initrd ];then
+		for i in `ls /installing/boot_dev/initrd`;do
+			umount /installing/boot_dev/initrd/$i
+		done
+	fi
 	rm -rf /installing/boot_dev/initrd
 	mkdir -p /installing/boot_dev/initrd
 	cd /installing/boot_dev/initrd

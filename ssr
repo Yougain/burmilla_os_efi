@@ -1,0 +1,29 @@
+#!/bin/bash
+
+
+SCRIPT_PATH=$(dirname "$(realpath -s "$0")")
+. $SCRIPT_PATH/err
+. $SCRIPT_PATH/create_initrd_mod
+
+KEY=`cat ~/.ssh/id_ed25519.pub 2>/dev/null`
+if [ -z "$KEY" ];then
+	err Cannot find public key in ~/.ssh/id_ed25519.pub.
+fi
+exit_if_err
+
+
+ssh_param $1 -x -q -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher
+
+if ! ssh_do echo; then
+	if ! install_ssh_key; then
+		die "Cannot log on as user, 'rancher' by password, 'rancher'.
+$Cyan"Please enter following commands on console."
+	sudo passwd rancher
+	rancher
+	rancher"
+	fi
+fi
+
+ssh_i
+
+

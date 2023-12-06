@@ -210,8 +210,9 @@ NET_DEV=`ssh_do ip route show|grep default|awk '{print $5}'|head -1`
 if [ -z "$NET_DEV" ]; then
 	die Cannot find net device for default route.
 fi
-DS=`ssh_do cat /etc/resolv.conf| sed -e 's/[ \t]*#.*//' | grep "nameserver" | sed -e 's/^[ \t]*//' | awk '{print $2}'`
-DNS_SETTINGS=`echo "$DS" | sed -e 's/^/      - /'`
+DS="`ssh_do cat /etc/resolv.conf| sed -e 's/[ \t]*#.*//' | grep "nameserver" | sed -e 's/^[ \t]*//' | awk '{print $2}'`"
+DNS_SETTINGS="`ssh_do cat /etc/resolv.conf| sed -e 's/[ \t]*#.*//' | grep "nameserver" | sed -e 's/^[ \t]*//' | awk '{print $2}' | sed -e 's/^/      - /'`"
+
 DSX=""
 DSX2=""
 for i in $DS; do
@@ -709,7 +710,6 @@ sleep 5
 
 #blkid2
 
-
 ssh_sudo <<'FINAL'
 
 	apt-get -qq update; apt-get -qq install -y gdisk lvm2 dosfstools btrfs-progs parted util-linux cpio gzip fdisk strace
@@ -790,7 +790,7 @@ ssh_sudo <<'FINAL'
 		        address: $INST_IP/$NETMASK
 		        gateway: $GATEWAY
 		ssh_authorized_keys:
-		 - $KEY
+		- $KEY
 	END
 
 	# install on $TARGET_DEV4 (initial state drive, no boot, no state, no oem drive) first
@@ -862,7 +862,7 @@ ssh_sudo <<'FINAL'
 	# move all files from $TARGET_DEV4/boot (initial state drive) to $TARGET_DEV2 (boot drive).
 	mount $TARGET_DEV4 /installing/boot_dev
 	cp -a /installing/state_top/state_root/boot/* /installing/boot_dev
-	mkdir /installing/installer
+	mkdir -p /installing/installer
 	mount LABEL=RANCHEROS /installing/installer
 	cp -a /installing/installer/boot/grub /installing/boot_dev/
 	rm -f /installing/boot_dev/grub/*.cfg
@@ -884,7 +884,6 @@ ssh_sudo <<'FINAL'
 	INITRD_VER=${INITRD_FILE#*-}
 	KERNEL_VER=${VMLINUZ_FILE#*-}
 
-	create_initrd_mod
 
 	GLOBAL_APPEND=`cat /installing/boot_dev/global.cfg | sed "s/ rancher.state.dev=[^ ]*//g" | sed "s/ console=ttyS[^ ]*//g" | sed "s/ rancher.autologin=ttyS[^ ]*//g"`
 	GLOBAL_APPEND_ARGS=${GLOBAL_APPEND#APPEND *}
@@ -945,7 +944,11 @@ ssh_sudo <<'FINAL'
 
 		function boot_default_kernel {
 			linux    /$VMLINUZ_FILE $VGA_ARGS $KERNEL_ARGS $console $ROOT_ARGS
-			initrd   /$INITRD_FILE-mod
+			if [ -e /$INITRD_FILE-mod ];then
+				initrd   /$INITRD_FILE-mod
+			else
+				initrd   /$INITRD_FILE
+			fi
 			boot
 		}
 
@@ -1042,7 +1045,11 @@ ssh_sudo <<'FINAL'
 		function disp_menu {
 			eval "menuentry \"Burmilla OS $INITRD_VER $KERNEL_VER$this_disk\" {
 				linux    /$VMLINUZ_FILE $VGA_ARGS $KERNEL_ARGS $console $ROOT_ARGS panic=10
-				initrd   /$INITRD_FILE-mod
+				if [ -e /$INITRD_FILE-mod ];then
+					initrd   /$INITRD_FILE-mod
+				else
+					initrd   /$INITRD_FILE
+				fi
 			}"
 			if [ -n "$last_booted" ];then
 				set default=1
@@ -1076,7 +1083,11 @@ ssh_sudo <<'FINAL'
 			disp_efi_menu "$EFI_LIST"
 			eval "menuentry \"Burmilla OS $INITRD_VER $KERNEL_VER (debug)$this_disk\" {
 			    linux    /$VMLINUZ_FILE vga=ask rancher.debug=true $KERNEL_ARGS $console $ROOT_ARGS ---
-			    initrd   /$INITRD_FILE-mod
+				if [ -e /$INITRD_FILE-mod ];then
+					initrd   /$INITRD_FILE-mod
+				else
+					initrd   /$INITRD_FILE
+				fi
 			}"
 		}
 
@@ -1092,10 +1103,7 @@ ssh_sudo <<'FINAL'
 
 	reboot
 FINAL
-info final res = $?
-if [ "$res" != "0" ];then
-	exit 1
-fi
+
 
 # installation 2nd phase : boot by target disk
 
@@ -1140,6 +1148,7 @@ fi
 
 install_ssh_key
 
+
 ssh_do sudo mkdir -p /installing/state /installing/oem_part
 ssh_do sudo mount $TARGET_DEV5 /installing/state -odegraded,rw
 if [ -z "`ssh_do ls -ld /installing/state/home`" ];then
@@ -1153,6 +1162,8 @@ UF=/installing/oem_part/var/lib/rancher/conf/cloud-config.d/user_config.yml
 ssh_sudo <<'FINAL'
 	#!/bin/bash
 
+ 	create_initrd_mod
+ 	
 	# patching os-config file
 	if [ ! -x /usr/bin/yq ]; then
 		if [ -n "`uname -a|grep armv7`" ]; then
