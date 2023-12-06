@@ -791,6 +791,13 @@ ssh_sudo <<'FINAL'
 		        gateway: $GATEWAY
 		ssh_authorized_keys:
 		- $KEY
+		runcmd:
+		- export BOOT_DEV=/dev/$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')
+		- mkdir -p /efi_dev
+		- mount "\$BOOT_DEV"2 /efi_dev
+		- cp -f /efi_dev/.gruvenv_empty /efi_dev/.grubenv_booting
+		- umount /efi_dev
+		- rmdir /efi_dev
 	END
 
 	# install on $TARGET_DEV4 (initial state drive, no boot, no state, no oem drive) first
@@ -918,6 +925,20 @@ ssh_sudo <<'FINAL'
 		oem=$this_hd,gpt7
 
 		root=$boot
+		
+		if load_env --file ($efi)/.grubenv_booting; then
+			echo Loaded ($efi)/.grubenv_booting
+			if [ "$booting" = "1" ];then
+				echo Last boot failed.
+				boot_failed="last boot failed"
+				booting=
+			else
+				echo Last boot successful.
+			fi
+		else
+			echo Load failed: ($efi)/.grubenv_booting
+			boot_failed="missing file, '($efi)/.grubenv_booting'"
+		fi
 
 
 		insmod /grub/x86_64-efi/terminfo.mod
@@ -949,6 +970,8 @@ ssh_sudo <<'FINAL'
 			else
 				initrd   /$INITRD_FILE
 			fi
+			booting=1
+			save_env booting --file ($efi)/.grubenv_booting
 			boot
 		}
 
@@ -957,37 +980,39 @@ ssh_sudo <<'FINAL'
 		search --set=ros_efi --label ROS_EFI # installer's boot efi
 
 
+		if [ -n "$boot_failed" ];then
+			timeout=
+		else
+			if ! regexp menu "$chosen";then
+				if [ -n "$ros_efi" -a "$cmdpath" == ($ros_efi)/EFI/BOOT ];then
+					# chain loaded from installer's grub
+					boot_default_kernel
+				fi
 
-		if ! regexp menu "$chosen";then
-			if [ -n "$ros_efi" -a "$cmdpath" == ($ros_efi)/EFI/BOOT ];then
-				# chain loaded from installer's grub
-				boot_default_kernel
-			fi
 
-
-			if [ -n "$installer" ]; then
-				if [ -e ($efi)/.grub_env_for_installing -o -e ($efi)/.reboot ]; then # starting reinstration
-					root=$installer
-					prefix=($root)/boot
-					configfile $prefix/grub/grub.cfg
-				else
-					# check 2nd phase or 3rd phase of installation
-					if [ -e ($state)/state_root/var/lib/rancher/conf/cloud-config.yml ]; then 
-						if [ -e ($state)/state_root/home ]; then # starting reinstration or 3rd phase of installation
-							root=$installer
-							prefix=($root)/boot
-							configfile $prefix/grub/grub.cfg
-						else # 2nd phase of installation : boot by installed target disk
-							boot_default_kernel
+				if [ -n "$installer" ]; then
+					if [ -e ($efi)/.grub_env_for_installing -o -e ($efi)/.reboot ]; then # starting reinstration
+						root=$installer
+						prefix=($root)/boot
+						configfile $prefix/grub/grub.cfg
+					else
+						# check 2nd phase or 3rd phase of installation
+						if [ -e ($state)/state_root/var/lib/rancher/conf/cloud-config.yml ]; then 
+							if [ -e ($state)/state_root/home ]; then # starting reinstration or 3rd phase of installation
+								root=$installer
+								prefix=($root)/boot
+								configfile $prefix/grub/grub.cfg
+							else # 2nd phase of installation : boot by installed target disk
+								boot_default_kernel
+							fi
 						fi
 					fi
 				fi
+			else
+				set menu_chained=1
+				timeout=
 			fi
-		else
-			set menu_chained=1
-			timeout=
 		fi
-
 
 		function search_efi {
 			for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19; do
@@ -996,8 +1021,12 @@ ssh_sudo <<'FINAL'
 				if [ -e $g ];then
 					if [ "hd$i,gpt2" == "$efi" ];then
 						this_disk=" [hd$i]"
-						if [ -e $l ];then
-							this_disk="$this_disk : Last booted"
+						if [ -n $boot_failed ]
+							this_disk="$this_disk : Last boot failed"
+						else
+							if [ -e $l ];then
+								this_disk="$this_disk : Last booted"
+							fi
 						fi
 					else
 						if [ -e $l ];then
@@ -1099,6 +1128,9 @@ ssh_sudo <<'FINAL'
 	END
 
 	echo -n "$USER_SETTINGS_FOR_GRUB_SOURCE_FOR_INSTALLING" > /installing/efipart/.grub_env_for_installing
+	echo -n '# GRUB Environment Block
+#######################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################' > /installing/efipart/.grubenv_empty
+	cp /installing/efipart/.grubenv_empty /installing/efipart/.grubenv_booting
 	echo -e $green"rebooting by target disk ...."
 
 	reboot
@@ -1215,6 +1247,7 @@ ssh_sudo <<'FINAL'
 			- mount "\$BOOT_DEV"4 /boot -odegraded,rw
 			- mkdir -p /boot/efi
 			- mount "\$BOOT_DEV"2 /boot/efi
+			- cp -f /boot/efi/.gruvenv_empty /boot/efi/.gruvenv_booting
 			- rm -f /boot/efi/.grub_env_for_installing
 			- swapon "\$BOOT_DEV"3
 			- btrfs quota enable /state_top_lvl
