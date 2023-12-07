@@ -930,7 +930,7 @@ ssh_sudo <<'FINAL'
 			echo Loaded ($efi)/.grubenv_booting
 			if [ "$booting" = "1" ];then
 				echo Last boot failed.
-				boot_failed="last boot failed"
+				boot_failed="Last boot failed"
 				booting=
 			else
 				echo Last boot successful.
@@ -980,16 +980,46 @@ ssh_sudo <<'FINAL'
 		search --set=ros_efi --label ROS_EFI # installer's boot efi
 
 
-		if [ -n "$boot_failed" ];then
-			timeout=
-		else
-			if ! regexp menu "$chosen";then
-				if [ -n "$ros_efi" -a "$cmdpath" == ($ros_efi)/EFI/BOOT ];then
-					# chain loaded from installer's grub
-					boot_default_kernel
+		function boot_installer{
+			root=$installer
+			prefix=($root)/boot
+			configfile $prefix/grub/grub.cfg
+			echo "loading configfile, $prefix/grub/grub.cfg, failed."
+			sleep 10
+			boot_installer_failed=1
+			false
+		}
+
+
+		function check_installation_terminated{
+			if load_env --file ($efi)/.installing_$1_phase; then
+				tmp="tmp=\$installing_"$1"_phase"
+				eval $tmp
+				if [ -n "$tmp" ]; then
+					boot_failed="Installation terminated."
+					return 1
 				fi
+			fi
+			installing_$1_phase=1
+			save_env installing_$1_phase --file ($efi)/.installing_$1_phase
+			return 0
+		}
+
+		if [ -n "$chosen" ];then
+			if ! regexp menu "$chosen";then
+				# chain loaded from other drive's grub
+				boot_default_kernel
+			else
+				set menu_chained=1
+				timeout=
+			fi
+		fi
 
 
+		while true; do
+			if [ -n "$boot_failed" ];then
+				timeout=
+			else
 				if [ -n "$installer" ]; then
 					if [ -e ($efi)/.grub_env_for_installing -o -e ($efi)/.reboot ]; then # starting reinstration
 						root=$installer
@@ -998,21 +1028,34 @@ ssh_sudo <<'FINAL'
 					else
 						# check 2nd phase or 3rd phase of installation
 						if [ -e ($state)/state_root/var/lib/rancher/conf/cloud-config.yml ]; then 
-							if [ -e ($state)/state_root/home ]; then # starting reinstration or 3rd phase of installation
-								root=$installer
-								prefix=($root)/boot
-								configfile $prefix/grub/grub.cfg
-							else # 2nd phase of installation : boot by installed target disk
+							echo ($state)/state_root/var/lib/rancher/conf/cloud-config.yml found
+							if [ -e ($state)/state_root/home ]; then # starting 3rd phase of installation
+								if ! check_installation_terminated 3rd; then
+									break
+								fi
+								boot_installer
+							else
+								boot_failed="Installation error."
+							fi
+							break
+						else
+							echo ($state)/state_root/var/lib/rancher/conf/cloud-config.yml not found
+							if [ -e ($state)/state_root/home ]; then # has been rebooted for reinstalling
+								echo ($state)/state_root/home found
+								boot_installer
+							else # 2nd phase of installation : boot by target disk
+								if ! check_installation_terminated 2nd; then
+									break
+								fi
 								boot_default_kernel
 							fi
+							break
 						fi
 					fi
 				fi
-			else
-				set menu_chained=1
-				timeout=
 			fi
-		fi
+			break
+		done
 
 		function search_efi {
 			for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19; do
@@ -1022,7 +1065,7 @@ ssh_sudo <<'FINAL'
 					if [ "hd$i,gpt2" == "$efi" ];then
 						this_disk=" [hd$i]"
 						if [ -n $boot_failed ]
-							this_disk="$this_disk : Last boot failed"
+							this_disk="$this_disk : $boot_failed"
 						else
 							if [ -e $l ];then
 								this_disk="$this_disk : Last booted"
@@ -1050,8 +1093,9 @@ ssh_sudo <<'FINAL'
 				eval "menuentry \"Directly boot hard disk (hd$i)$2\" {
 					prefix=($ex_efi)/efi/boot
 					configfile $prefix/grub.cfg
-					echo Cannot continue.... Please reset.
-					sleep 100000000
+					echo "Cannot load config file for hard disk (hd$i)."
+					sleep 10
+					false
 				}"
 				eval "menuentry \"Boot menu of hard disk (hd$i)$2\" {
 					prev_prefix=\\$prefix
@@ -1059,10 +1103,11 @@ ssh_sudo <<'FINAL'
 					configfile $prefix/grub.cfg
 					prefix=\\$prev_prefix
 					chosen=escaped
-					while true;do
-						configfile ($efi)/efi/boot/grub.cfg
-						chosen=escaped
-					done
+					#while true;do
+					#	configfile ($efi)/efi/boot/grub.cfg
+					#	chosen=escaped
+					#done
+					false
 				}"
 			done
 		}
@@ -1131,11 +1176,13 @@ ssh_sudo <<'FINAL'
 	echo -n '# GRUB Environment Block
 #######################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################' > /installing/efipart/.grubenv_empty
 	cp /installing/efipart/.grubenv_empty /installing/efipart/.grubenv_booting
+	cp /installing/efipart/.grubenv_empty /installing/efipart/.installing_2nd_phase
+	cp /installing/efipart/.grubenv_empty /installing/efipart/.installing_3rd_phase
 	echo -e $green"rebooting by target disk ...."
-
 	reboot
 FINAL
 
+exit 1
 
 # installation 2nd phase : boot by target disk
 
@@ -1162,15 +1209,29 @@ while ! ssh_do echo; do
 	wait_sshd_start
 done
 
-if [ "`ssh_do cat /proc/cmdline | grep -o rancher.state.dev=`" = "rancher.state.dev=" ]; then
+
+EFI_UUID_ARG_S=`ssh_do cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`
+TARGET_DEV_S="`ssh_sudo <<'END'
+	echo -n $(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')
+END`"
+
+
+if [ "$EFI_UUID_ARG" = "$EFI_UUID_ARG_S" -a "$TARGET_DEV" = "$TARGET_DEV_S" ]; then
 	cyan_n Waiting initialization.
 	while [ -z "`ssh_do ps ax | grep 'containerd --config /var/run/docker/containerd/containerd.toml'`" ]; do
 		sleep 1
 		cyan_n .
 	done
-	ssh_do sudo rm /var/lib/rancher/conf/cloud-config.d/user_config.yml
-	green Switch to boot by installer
-	ssh_do sudo reboot
+	ssh_sudo <<'	END'
+		mkdir -p /efipart
+		mount /dev/$TARGET_DEV2 /efipart
+		cp -f /efipart/.grubenv_empty /efipart/.installing_2nd_phase
+		umount /efipart
+		rmdir /efipart
+		rm /var/lib/rancher/conf/cloud-config.d/user_config.yml
+		green Switch to boot by installer
+		reboot
+	END
 	wait_sshd_start
 else
 	die target disk not found

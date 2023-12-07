@@ -551,9 +551,11 @@ function write_env_file(){
 			echo -n '|'$ln
 		fi
 	done;`
+	echo $envreg
 	local c=$(
 		echo -n "'"
-		trim_indent | sed 's/'"'"'/'"'"'"'"'"'"'"'"'/g' | sed -r 's/(^|[^\\])\$('$envreg')([^A-Za-z0-9_]|$)/\1'"'"'"$\2"'"'"'\3/g'
+#		trim_indent | sed 's/'"'"'/'"'"'"'"'"'"'"'"'/g' | sed -r 's/(^|[^\\])\$('$envreg')([^A-Za-z0-9_]|$)/\1'"'"'"$\2"'"'"'\3/g'
+		trim_indent | sed 's/'"'"'/'"'"'"'"'"'"'"'"'/g' | sed -r 's/(^|[^\\])(\$('$envreg')(([^A-Za-z0-9_\\]|)\$('$envreg'))*)([^A-Za-z0-9_]|$)/\1'"'"'"\2"'"'"'\7/g'
 		echo -n "'"
 	)
 	eval echo "$c" > $1
