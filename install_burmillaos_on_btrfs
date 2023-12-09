@@ -979,7 +979,7 @@ ssh_sudo <<'FINAL'
 		search --set=installer --label RANCHEROS
 		search --set=ros_efi --label ROS_EFI # installer's boot efi
 
-
+		echo 1
 		function boot_installer{
 			root=$installer
 			prefix=($root)/boot
@@ -990,12 +990,17 @@ ssh_sudo <<'FINAL'
 			false
 		}
 
+		echo 2
 
 		function check_installation_terminated{
 			if load_env --file ($efi)/.installing_$1_phase; then
-				tmp="tmp=\$installing_"$1"_phase"
+				tmp='tmp=$installing_'$1'_phase'
+				echo $tmp
 				eval $tmp
+				echo $tmp
 				if [ -n "$tmp" ]; then
+					echo "Installation terminated."
+					sleep 10
 					boot_failed="Installation terminated."
 					return 1
 				fi
@@ -1005,6 +1010,7 @@ ssh_sudo <<'FINAL'
 			return 0
 		}
 
+		echo 3
 		if [ -n "$chosen" ];then
 			if ! regexp menu "$chosen";then
 				# chain loaded from other drive's grub
@@ -1015,48 +1021,51 @@ ssh_sudo <<'FINAL'
 			fi
 		fi
 
+		echo 4
 
 		while true; do
 			if [ -n "$boot_failed" ];then
 				timeout=
 			else
 				if [ -n "$installer" ]; then
-					if [ -e ($efi)/.grub_env_for_installing -o -e ($efi)/.reboot ]; then # starting reinstration
+					if [ -e ($efi)/.reboot ];then
 						root=$installer
 						prefix=($root)/boot
 						configfile $prefix/grub/grub.cfg
 					else
-						# check 2nd phase or 3rd phase of installation
-						if [ -e ($state)/state_root/var/lib/rancher/conf/cloud-config.yml ]; then 
-							echo ($state)/state_root/var/lib/rancher/conf/cloud-config.yml found
-							if [ -e ($state)/state_root/home ]; then # starting 3rd phase of installation
-								if ! check_installation_terminated 3rd; then
-									break
+						if [ -e ($efi)/.grub_env_for_installing ]; then # starting reinstration
+							# check 2nd phase or 3rd phase of installation
+							if [ -e ($state)/state_root/var/lib/rancher/conf/cloud-config.yml ]; then 
+								echo ($state)/state_root/var/lib/rancher/conf/cloud-config.yml found
+								if [ -e ($state)/state_root/home ]; then # starting 3rd phase of installation
+									if ! check_installation_terminated 3rd; then
+										break
+									fi
+									boot_installer
+								else
+									boot_failed="Installation error."
 								fi
-								boot_installer
+								break
 							else
-								boot_failed="Installation error."
-							fi
-							break
-						else
-							echo ($state)/state_root/var/lib/rancher/conf/cloud-config.yml not found
-							if [ -e ($state)/state_root/home ]; then # has been rebooted for reinstalling
-								echo ($state)/state_root/home found
-								boot_installer
-							else # 2nd phase of installation : boot by target disk
-								if ! check_installation_terminated 2nd; then
-									break
+								echo ($state)/state_root/var/lib/rancher/conf/cloud-config.yml not found
+								if [ -e ($state)/state_root/home ]; then # has been rebooted for reinstalling
+									echo ($state)/state_root/home found
+									boot_installer
+								else # 2nd phase of installation : boot by target disk
+									if ! check_installation_terminated 2nd; then
+										break
+									fi
+									boot_default_kernel
 								fi
-								boot_default_kernel
+								break
 							fi
-							break
 						fi
 					fi
 				fi
 			fi
 			break
 		done
-
+		echo 5
 		function search_efi {
 			for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19; do
 				g=(hd$i,gpt2)/efi/boot/grub.cfg
@@ -1064,7 +1073,7 @@ ssh_sudo <<'FINAL'
 				if [ -e $g ];then
 					if [ "hd$i,gpt2" == "$efi" ];then
 						this_disk=" [hd$i]"
-						if [ -n $boot_failed ]
+						if [ -n $boot_failed ];then
 							this_disk="$this_disk : $boot_failed"
 						else
 							if [ -e $l ];then
@@ -1086,18 +1095,18 @@ ssh_sudo <<'FINAL'
 			done
 		}
 
-
+		echo 6
 		function disp_efi_menu{
 			for i in $1; do
 				ex_efi=hd$i,gpt2
-				eval "menuentry \"Directly boot hard disk (hd$i)$2\" {
+				eval "menuentry \\\"Directly boot hard disk (hd$i)$2\\\" {
 					prefix=($ex_efi)/efi/boot
 					configfile $prefix/grub.cfg
 					echo "Cannot load config file for hard disk (hd$i)."
 					sleep 10
 					false
 				}"
-				eval "menuentry \"Boot menu of hard disk (hd$i)$2\" {
+				eval "menuentry \\\"Boot menu of hard disk (hd$i)$2\\\" {
 					prev_prefix=\\$prefix
 					prefix=($ex_efi)/efi/boot
 					configfile $prefix/grub.cfg
@@ -1111,13 +1120,13 @@ ssh_sudo <<'FINAL'
 				}"
 			done
 		}
-
+		echo 7
 
 		search_efi
 
 
 		function disp_menu {
-			eval "menuentry \"Burmilla OS $INITRD_VER $KERNEL_VER$this_disk\" {
+			eval "menuentry 'Burmilla OS ""$INITRD_VER $KERNEL_VER$this_disk""' {
 				linux    /$VMLINUZ_FILE $VGA_ARGS $KERNEL_ARGS $console $ROOT_ARGS panic=10
 				if [ -e /$INITRD_FILE-mod ];then
 					initrd   /$INITRD_FILE-mod
@@ -1130,20 +1139,20 @@ ssh_sudo <<'FINAL'
 				disp_efi_menu "$last_booted" " : Last booted"
 			fi
 			if [ -n "$installer" -a -z "$menu_chained" ]; then
-				eval "menuentry \"Directly boot installer\" {
+				eval "menuentry 'Directly boot installer' {
 					root=$installer
-					prefix=($root)/boot
-					configfile $prefix/grub/grub.cfg
+					prefix=(\$root)/boot
+					configfile \$prefix/grub/grub.cfg
 				}"
-				eval "menuentry \"Display boot menu in installer\" {
-					prev_root=\\$root
+				eval "menuentry 'Display boot menu in installer' {
+					prev_root=\$root
 					root=$installer
-					prev_prefix=\\$prefix
-					prefix=($root)/boot
-					configfile $prefix/grub/grub.cfg
-					root=\\$prev_root
-					prefix=\\$prev_prefix
-					if [ -n "$efi" ];then
+					prev_prefix=\$prefix
+					prefix=(\$root)/boot
+					configfile \$prefix/grub/grub.cfg
+					root=\$prev_root
+					prefix=\$prev_prefix
+					if [ -n \"$efi\" ];then
 						chosen=escaped
 						while true; do
 							configfile ($efi)/efi/boot/grub.cfg
@@ -1182,7 +1191,7 @@ ssh_sudo <<'FINAL'
 	reboot
 FINAL
 
-exit 1
+
 
 # installation 2nd phase : boot by target disk
 
@@ -1210,11 +1219,31 @@ while ! ssh_do echo; do
 done
 
 
-EFI_UUID_ARG_S=`ssh_do cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`
-TARGET_DEV_S="`ssh_sudo <<'END'
-	echo -n $(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')
-END`"
+ssh_do cat /proc/cmdline
+ssh_sudo <<'END'
+	mount /dev/sda2 /mnt
+	cat /mnt/EFI/boot/grub.cfg
+END
+#EFI_UUID_ARG_S=`ssh_do cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`
+EFI_UUID_ARG_S=`ssh_do cat /proc/cmdline|sed 's/^.*(efi=UUID()).*/'`
+info EFI_UUID_ARG_S=$EFI_UUID_ARG_S
+TARGET_DEV_S=$(
+ssh_sudo <<'END'
+#	echo -n $(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')
+	echo -n $(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|sed -r "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')
+END
+)
+info TARGET_DEV_S=$TARGET_DEV_S
 
+#BOOT_IMAGE=/vmlinuz-5.10.188-burmilla i915.force_probe vga=775 video=1024x768 rancher.state.boot_mountopt=degraded,rw rancher.state.oem_mountopt=degraded,rw,subvol=/oem_root rancher.state.mountopt=degraded,rw,subvol=/state_root rancher.password=rancher printk.devkmsg=on rancher.state.wait transparent_hugepage=never scsi_mod.use_blk_mq=1 apparmor=1 security=apparmor panic=10 console=tty0 rw rootflags=degraded,rw,subvol=/state_root console=ttyS1,115200n8 
+#rancher.state.boot_dev=UUID_SUB=\\\"8b158bb9-1fa6-4fe8-b1e1-fc187acc07f3\\\" 
+#rancher.state.boot_dev=UUID_SUB=\\\"8b158bb9-1fa6-4fe8-b1e1-fc187acc07f3\\\" 
+#rancher.state.oem_dev=UUID_SUB=\\"08599d02-7e8d-4d7b-9565-ce0f27364ce3\\"
+#rancher.state.oem_dev=UUID_SUB=\\08599d02-7e8d-4d7b-9565-ce0f27364ce3\\ 
+#rancher.state.dev=UUID_SUB=\"8cd4c5e8-4fd0-49c0-9ce4-bf47fabf5059\" 
+#rancher.state.dev=UUID_SUB=\"8cd4c5e8-4fd0-49c0-9ce4-bf47fabf5059\" 
+#efi="UUID=EACE-35EA"
+#efi=UUID=EACE-35EA panic=10
 
 if [ "$EFI_UUID_ARG" = "$EFI_UUID_ARG_S" -a "$TARGET_DEV" = "$TARGET_DEV_S" ]; then
 	cyan_n Waiting initialization.

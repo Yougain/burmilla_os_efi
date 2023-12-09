@@ -1,6 +1,6 @@
 
 
-SCRIPT_TMP=/tmp/$RANDOM$RANDOM$RANDOM
+SCRIPT_TMP=/tmp/yougain/${0##*/}/`date +"%y%m%d%H%M%S.%N%z"`-$$
 mkdir -p $SCRIPT_TMP
 
 cleanup (){
@@ -10,7 +10,9 @@ cleanup (){
 	fi
 }
 
-trap cleanup EXIT INT TERM
+if [ -z "$DEBUG" ];then
+	trap cleanup EXIT INT TERM
+fi
 
 error="\033[41m\033[33mERROR    :\033[m \033[31m"
 warning="\033[43m\033[31mWARNING:\033[m \033[33m"
@@ -203,7 +205,11 @@ function ssh_param(){
 		else
 			local pc=`egrep "debug1: channel_connect_stdio_fwd " $SCRIPT_TMP/test_ssh`
 			if [ -n "$pc" ];then
+				pc=${pc%\\r}
 				local adr=${pc#debug1: channel_connect_stdio_fwd }
+				adr=${adr%[[:space:]]}
+				adr=${adr%[[:space:]]}
+				adr=${adr%[[:space:]]}
 				SSH_PORT=${adr##*:}
 				SSH_HOST_IP=${adr%:*}
 				SSH_PORT_OPT=" -p $SSH_PORT"
@@ -311,16 +317,16 @@ function trim_indent(){
 		local sp
 		PIFS="$IFS"
 		IFS=""
-		while read ln; do
+		while read -r ln; do
 			lnx="$ln"
 			sp=${lnx%%[![:space:]]*}
 			if [ -z "$fc" ];then
 				res="${ln#$sp}"
 				if [ -n "$res" -a "${res:0:1}" != "#" ];then
 					fc=`col_width "$sp"`
-					echo "$res"
+					echo -E "$res"
 				else
-					echo "$ln"
+					echo -E "$ln"
 				fi
 			else
 				trim_indent "$ln" "$fc"
@@ -340,13 +346,13 @@ function trim_indent(){
 					pos=$((pos + 1))
 					;;
 				*)
-					echo ${1:$i}
+					echo -E "${1:$i}"
 					return
 					;;
 			esac
 			if [ $pos -ge $fc ];then
 				putsp $((pos - fc))
-				echo ${1:$i + 1}
+				echo -E "${1:$i + 1}"
 				return
 			fi
 			i=$((i + 1))
@@ -397,7 +403,9 @@ function ssh_do(){
 			echo "source $SCRIPT_TMP/env; rm $SCRIPT_TMP/env";
 			# execute script from standard input
 			# set clean up
-			echo "trap cleanup EXIT INT TERM"
+			if [ -z "$DEBUG" ];then
+				echo "trap cleanup EXIT INT TERM"
+			fi
 			cat $SCRIPT_TMP/do_content;
 			# preserve environment after script execution
 			echo "$set_env_lines > $SCRIPT_TMP/env.cont;exit 0"
@@ -428,41 +436,6 @@ function ssh_sudo(){
 }
 
 
-function install_ssh_key(){
-	if [ -z "$KEY" ];then
-		KEY=`cat ~/.ssh/id_ed25519.pub 2>/dev/null`
-		if [ -z "$KEY" ];then
-			die Cannot find public key in ~/.ssh/id_ed25519.pub.
-		fi
-	fi
-	if [ -z "$SSH_PROMPT" ];then
-		SSH_PROMT="$ "
-	fi
-	local SET_KEY_CNT=0
-	while ! ssh_do echo -n; do
-		if [ "$SET_KEY_CNT" = "5" ]; then
-			return 1
-		fi
-		expect -c "
-		set timeout 1
-		spawn ssh $SSH_PORT_OPT -o \"PasswordAuthentication yes\"  -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" $SSH_HOST
-		expect \"assword:\"
-		send \"$SSH_USER\n\"
-		expect \"$SSH_PROMPT\"
-		send \"mkdir ~/.ssh\n\"
-		expect \"$SSH_PROMPT\"
-		send \"chmod 700 ~/.ssh\n\"
-		expect \"$SSH_PROMPT\"
-		send \"echo $KEY >> ~/.ssh/authorized_keys\n\"
-		expect \"$SSH_PROMPT\"
-		send \"exit\"
-		"
-		sleep 1
-		SET_KEY_CNT=$(( SET_KEY_CNT + 1 ))
-	done
-	return 0
-}
-
 
 function  install_ssh_key(){
 	if [ -z "$KEY" ];then
@@ -477,17 +450,17 @@ function  install_ssh_key(){
 			return 1
 		fi
 		expect -c "
-		set timeout 1
-		spawn ssh -p 22 -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" -l rancher $INST_IP
+		set timeout 3
+		spawn ssh -p 22 -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" -l rancher $SSH_HOST
 		expect \"assword:\"
 		send \"rancher\n\"
-		expect \"rancher ~]$ \"
+		expect \"\$ \"
 		send \"mkdir ~/.ssh\n\"
-		expect \"rancher ~]$ \"
+		expect \"\$ \"
 		send \"chmod 700 ~/.ssh\n\"
-		expect \"rancher ~]$ \"
+		expect \"\$ \"
 		send \"echo $KEY >> ~/.ssh/authorized_keys\n\"
-		expect \"rancher ~]$ \"
+		expect \"\$ \"
 		send \"exit\"
 		"
 		sleep 1
@@ -534,7 +507,7 @@ END
 		mount /dev/$efi_dev $SCRIPT_TMP/efi_dev
 		rm $SCRIPT_TMP/efi_dev/.reboot
 		umount $SCRIPT_TMP/efi_dev
-		rm -rf $SCRIPT_TMP/efi_dev
+#		rm -rf $SCRIPT_TMP/efi_dev
 END
 }
 
@@ -570,7 +543,7 @@ function write_file(){
 	fi
 	local lns="`trim_indent`"
 	while (($#));do
-		echo $lns > $1
+		echo "$lns" > $1
 		if [ -n "$mod" ];then
 			chmod $mod $1
 		fi

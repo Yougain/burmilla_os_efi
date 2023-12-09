@@ -13,8 +13,7 @@ exit_if_err
 
 
 ssh_param $1 -x -q -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher
-
-if ! ssh_do echo; then
+if ! ssh_do echo -n; then
 	if ! install_ssh_key; then
 		die "Cannot log on as user, 'rancher' by password, 'rancher'.
 $Cyan"Please enter following commands on console."
