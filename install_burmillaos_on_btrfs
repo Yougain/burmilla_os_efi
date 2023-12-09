@@ -160,7 +160,6 @@ exit_if_err
 
 
 ssh_param $INST_IP 22 -x -q -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher
-SSH_PROMPT="$SSH_USER ~]$ "
 
 # wait ssh connectable
 wait_sshd_start
@@ -792,7 +791,7 @@ ssh_sudo <<'FINAL'
 		ssh_authorized_keys:
 		- $KEY
 		runcmd:
-		- export BOOT_DEV=/dev/$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')
+		- export BOOT_DEV=/dev/$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|sed -r 's/^.*[[:space:]]efi=UUID=(['"'"'"]|)([0-9a-fA-F-]+)\1.*(\n|$)/\2/g'`|sed -r 's/^\/dev\/([a-z]+)[0-9]+$/\1/g')
 		- mkdir -p /efi_dev
 		- mount "\$BOOT_DEV"2 /efi_dev
 		- cp -f /efi_dev/.gruvenv_empty /efi_dev/.grubenv_booting
@@ -1225,12 +1224,12 @@ ssh_sudo <<'END'
 	cat /mnt/EFI/boot/grub.cfg
 END
 #EFI_UUID_ARG_S=`ssh_do cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`
-EFI_UUID_ARG_S=`ssh_do cat /proc/cmdline|sed 's/^.*(efi=UUID()).*/'`
+EFI_UUID_ARG_S=$(ssh_do cat /proc/cmdline| sed -r 's/^.*[[:space:]]efi=UUID=(['"'"'"]|)([0-9a-fA-F-]+)\1.*(\n|$)/\2/g')
 info EFI_UUID_ARG_S=$EFI_UUID_ARG_S
 TARGET_DEV_S=$(
 ssh_sudo <<'END'
 #	echo -n $(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')
-	echo -n $(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|sed -r "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')
+	echo -n $(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|sed -r 's/^.*[[:space:]]efi=UUID=(['"'"'"]|)([0-9a-fA-F-]+)\1.*(\n|$)/\2/g'`|sed -r 's/^\/dev\/([a-z]+)[0-9]+$/\1/g')
 END
 )
 info TARGET_DEV_S=$TARGET_DEV_S
@@ -1329,7 +1328,7 @@ ssh_sudo <<'FINAL'
 			        TZ: $TZL
 			runcmd:
 			- mkdir -p /state_top_lvl
-			- export BOOT_DEV=/dev/$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')
+			- export BOOT_DEV=/dev/$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|sed -r 's/^.*[[:space:]]efi=UUID=(['"'"'"]|)([0-9a-fA-F-]+)\1.*(\n|$)/\2/g'`|sed -r 's/^\/dev\/([a-z]+)[0-9]+$/\1/g')
 			- mount "\$BOOT_DEV"5 -odegraded,rw,subvol=/ /state_top_lvl
 			- mkdir -p /oem_top_lvl
 			- mount "\$BOOT_DEV"7 -odegraded,rw,subvol=/ /oem_top_lvl
@@ -1569,7 +1568,7 @@ ssh_sudo <<'FINAL'
 				rm -f /mnt_efi_test/.last_booted
 				umount /mnt_efi_test
 			done
-			mount /dev/$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')2 /mnt_efi_test
+			mount /dev/$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|sed -r 's/^.*[[:space:]]efi=UUID=(['"'"'"]|)([0-9a-fA-F-]+)\1.*(\n|$)/\2/g'`|sed -r 's/^\/dev\/([a-z]+)[0-9]+$/\1/g')2 /mnt_efi_test
 			touch /mnt_efi_test/.last_booted
 			umount /mnt_efi_test
 			rmdir /mnt_efi_test
