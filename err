@@ -553,7 +553,7 @@ function write_file(){
 
 
 function transfer_env_for_grub(){
-	sed -r 's/\\([\\"])/_\\__\1___/g'|sed -r 's/_\\__"___/"'"'"'"'"'"'"/g'|sed -r 's/_\\__\\___/\\/g'
+	sed -r 's/\\([\\"])/_\\__\1___/g'|sed -r 's/_\\__"___/"'"'"'"'"'"'"/g'|sed -r 's/_\\__\\___/\\\\/g'
 }
 
 

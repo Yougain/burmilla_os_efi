@@ -165,7 +165,7 @@ ssh_param $INST_IP 22 -x -q -o "PasswordAuthentication no" -o "StrictHostKeyChec
 wait_sshd_start
 
 
-if ssh_do ls -la /installing;then
+if ssh_do ls -la /installing 2>/dev/null;then
 	info "Clear terminated installing."
 	for i in `ssh_sudo ls /installing`;do
 		ssh_sudo umount /installing/$i
