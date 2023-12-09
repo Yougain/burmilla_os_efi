@@ -552,8 +552,13 @@ function write_file(){
 }
 
 
+function transfer_env_for_grub(){
+	sed -r 's/\\"/"'"'"'"'"'"'"/g'|sed -r 's/\\\\/\/g'
+}
+
+
 function write_grub_script(){
-	(set_env ; trim_indent) > $1
+	(set_env|transfer_env_for_grub ; trim_indent) > $1
 }
 
 
