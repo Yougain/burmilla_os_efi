@@ -1,18 +1,33 @@
 
-
-SCRIPT_TMP=/tmp/yougain/${0##*/}/`date +"%y%m%d%H%M%S.%N%z"`-$$
-mkdir -p $SCRIPT_TMP
+if [ -z "$SCRIPT_TMP_DIR" ];then
+	SCRIPT_TMP_DIR=/tmp/yougain/${0##*/}/`date +"%y-%m-%d_%H:%M:%S.%N%z"`-$$
+	mkdir -p $SCRIPT_TMP_DIR
+	SCRIPT_ID=$RANDOM$RANDOM$RANDOM
+fi
 
 cleanup (){
-	rm -rf $SCRIPT_TMP
-	if [ -n "$SSH_TMP" ];then
-		ssh_do $SSH_TMP_SUDO rm -rf $SCRIPT_TMP
+	if [ -z "$DEBUG" ];then
+		rm -rf $SCRIPT_TMP_DIR
+		if [ -n "$SSH_TMP" ];then
+			ssh_do $SSH_TMP_SUDO rm -rf $SCRIPT_TMP_DIR
+		fi
+	fi
+	if [[ "$DEBUG" =~ erase|ERASE|delete|DELETE ]];then
+		rm -rf /tmp/yougain/${0##*/}
+		if [ -n "$SSH_TMP" ];then
+			ssh_do $SSH_TMP_SUDO rm -rf /tmp/yougain/${0##*/}
+		fi
 	fi
 }
 
-if [ -z "$DEBUG" ];then
-	trap cleanup EXIT INT TERM
-fi
+trap_int(){
+	echo
+	warn "interrupted."
+	exit 1
+}
+
+trap cleanup EXIT
+trap trap_int INT
 
 error="\033[41m\033[33mERROR    :\033[m \033[31m"
 warning="\033[43m\033[31mWARNING:\033[m \033[33m"
@@ -195,15 +210,15 @@ function ssh_param(){
 		port=" -p $port"
 	fi
 	SSH_HOST=$host
-	echo ssh $SSH_OPTS $port -v -o \"ConnectTimeout=5\"  -o \"PasswordAuthentication no\" -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" $host echo -n|bash > $SCRIPT_TMP/test_ssh 2>&1
+	echo ssh $SSH_OPTS $port -v -o \"ConnectTimeout=5\"  -o \"PasswordAuthentication no\" -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" $host echo -n|bash > $SCRIPT_TMP_DIR/test_ssh 2>&1
 	#if [ "$?" = "0" ];then
-		if [ -z "`egrep 'debug1: Executing proxy command:' $SCRIPT_TMP/test_ssh`" ]; then
-			local SSH_CON_LINE=`egrep -o 'debug1: Connecting to .* port [0-9]+' $SCRIPT_TMP/test_ssh`
+		if [ -z "`egrep 'debug1: Executing proxy command:' $SCRIPT_TMP_DIR/test_ssh`" ]; then
+			local SSH_CON_LINE=`egrep -o 'debug1: Connecting to .* port [0-9]+' $SCRIPT_TMP_DIR/test_ssh`
 			SSH_PORT=`echo $SSH_CON_LINE| egrep -o '[0-9]+$'`
 			SSH_PORT_OPT=" -p $SSH_PORT"
 			SSH_HOST_IP=`echo $SSH_CON_LINE| egrep -o '\[[0-9/A-Fa-f\.:]+\]'| egrep -o [0-9/A-Fa-f\.:]+`
 		else
-			local pc=`egrep "debug1: channel_connect_stdio_fwd " $SCRIPT_TMP/test_ssh`
+			local pc=`egrep "debug1: channel_connect_stdio_fwd " $SCRIPT_TMP_DIR/test_ssh`
 			if [ -n "$pc" ];then
 				pc=${pc%\\r}
 				local adr=${pc#debug1: channel_connect_stdio_fwd }
@@ -240,8 +255,8 @@ function wait_sshd_start(){
 				return
 			fi
 		else
-			echo ssh $SSH_OPTS $port -v -o \"ConnectTimeout=5\"  -o \"PasswordAuthentication no\" -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" $SSH_HOST echo -n|bash > $SCRIPT_TMP/test_ssh 2>&1
-			if [ `grep 'debug1: Remote protocol version 2.0, remote software version OpenSSH' $SCRIPT_TMP/test_ssh|wc|awk '{print $1}'` = "2" ];then
+			echo ssh $SSH_OPTS $port -v -o \"ConnectTimeout=5\"  -o \"PasswordAuthentication no\" -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" $SSH_HOST echo -n|bash > $SCRIPT_TMP_DIR/test_ssh 2>&1
+			if [ `grep 'debug1: Remote protocol version 2.0, remote software version OpenSSH' $SCRIPT_TMP_DIR/test_ssh|wc|awk '{print $1}'` = "2" ];then
 				cyanBgBlue connected
 				return
 			fi
@@ -250,9 +265,6 @@ function wait_sshd_start(){
 	echo
 	die Tried 120 times. Still cannot connect SSH port "($SSH_PORT)". Exited.
 }
-
-
-THIS_FILE="$(realpath -s "$0")"
 
 
 function transfer_arguments(){
@@ -376,43 +388,46 @@ function ssh_do(){
 	if [ -z "$SSH_TMP_SUDO" ];then
 		SSH_TMP_SUDO=$sudoing
 	fi
-	local CMD=`echo ssh $SSH_PORT_OPT ${SSH_OPTS} $SSH_HOST $sudoing $@`
+	local CMD=`echo ssh $SSH_PORT_OPT ${SSH_OPTS} $SSH_HOST $@`
 	#info $sudoing $@  >&2
 	if [ "$#" = "0" ];then
 		local set_env_lines="set | awk '!/^(BASH_ARGV|BASH_ARGC|BASH_LINENO|BASH_SOURCE|GROUPS|FUNCNAME|BASHOPTS|BASH_VERSINFO|EUID|PPID|SHELLOPTS|UID)=/ {print \$0}'"
 		local SET_ENV_LINES="`eval $set_env_lines`"
-		trim_indent > $SCRIPT_TMP/do_content
-		eval $CMD mkdir -p $SCRIPT_TMP
+		trim_indent > $SCRIPT_TMP_DIR/do_content
+		eval $CMD mkdir -p $SCRIPT_TMP_DIR
 		(
 			# preserve host environment
 			echo "#!/bin/bash"
-			echo "mkdir -p $SCRIPT_TMP"
-			echo "$set_env_lines > $SCRIPT_TMP/env";
+			echo "mkdir -p $SCRIPT_TMP_DIR"
+			echo "$set_env_lines > $SCRIPT_TMP_DIR/env";
 			echo "
 				# set client environment
-				if [ ! -e $SCRIPT_TMP/env.cont ];then # missing previous host environment 
+				if [ ! -e $SCRIPT_TMP_DIR/env.cont ];then # missing previous host environment 
 					# set client command line argument
 					$TRANSFER_ARGUMENTS
 					$SET_ENV_LINES
 				else # found previous host environment 
-					source $SCRIPT_TMP/env.cont; 
-					rm $SCRIPT_TMP/env.cont;
+					source $SCRIPT_TMP_DIR/env.cont; 
+					rm $SCRIPT_TMP_DIR/env.cont;
 				fi
 			";
 			# restore host environment
-			echo "source $SCRIPT_TMP/env; rm $SCRIPT_TMP/env";
+			echo "source $SCRIPT_TMP_DIR/env; if [ -z \"\$DEBUG\" ]; then rm $SCRIPT_TMP_DIR/env; fi";
 			# execute script from standard input
 			# set clean up
-			if [ -z "$DEBUG" ];then
-				echo "trap cleanup EXIT INT TERM"
-			fi
-			cat $SCRIPT_TMP/do_content;
+			echo "trap cleanup EXIT"
+			echo "trap trap_int INT"
+			echo "SETDIFF_ID_$SCRIPT_ID=\`set_diff_begin\`"
+			cat $SCRIPT_TMP_DIR/do_content;
 			# preserve environment after script execution
-			echo "$set_env_lines > $SCRIPT_TMP/env.cont;exit 0"
-		) | eval $CMD tee $SCRIPT_TMP/scr > /dev/null
-		eval $CMD chmod +x $SCRIPT_TMP/scr
-		eval $CMD $SCRIPT_TMP/scr
+			echo 'set_diff_end $SETDIFF_ID_'$SCRIPT_ID $SCRIPT_TMP_DIR/env.diff
+			echo "$set_env_lines > $SCRIPT_TMP_DIR/env.cont;exit 0"
+		) | eval $CMD tee $SCRIPT_TMP_DIR/scr > /dev/null
+		eval $CMD chmod +x $SCRIPT_TMP_DIR/scr
+		eval $CMD $SCRIPT_TMP_DIR/scr
 		local res=$?
+		eval $CMD cat $SCRIPT_TMP_DIR/env.diff > $SCRIPT_TMP_DIR/remote_env.diff
+		. $SCRIPT_TMP_DIR/remote_env.diff
 		if [ "$res" = "1" ];then
 			exit 1
 		fi
@@ -493,9 +508,9 @@ function ssh_reboot(){
 	ssh_sudo <<'END'
 		efi_dev=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')2
 		if [ -z "$efi_dev" ]; then die "boot efi device not found."; fi
-		mkdir -p $SCRIPT_TMP/efi_dev
-		mount /dev/$efi_dev $SCRIPT_TMP/efi_dev
-		touch $SCRIPT_TMP/efi_dev/.reboot
+		mkdir -p $SCRIPT_TMP_DIR/efi_dev
+		mount /dev/$efi_dev $SCRIPT_TMP_DIR/efi_dev
+		touch $SCRIPT_TMP_DIR/efi_dev/.reboot
 		reboot
 END
 	wait_sshd_start
@@ -503,11 +518,11 @@ END
 	ssh_sudo <<'END'
 		efi_dev=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')2
 		if [ -z "$efi_dev" ]; then die "boot efi device not found."; fi
-		mkdir -p $SCRIPT_TMP/efi_dev
-		mount /dev/$efi_dev $SCRIPT_TMP/efi_dev
-		rm $SCRIPT_TMP/efi_dev/.reboot
-		umount $SCRIPT_TMP/efi_dev
-#		rm -rf $SCRIPT_TMP/efi_dev
+		mkdir -p $SCRIPT_TMP_DIR/efi_dev
+		mount /dev/$efi_dev $SCRIPT_TMP_DIR/efi_dev
+		rm $SCRIPT_TMP_DIR/efi_dev/.reboot
+		umount $SCRIPT_TMP_DIR/efi_dev
+#		rm -rf $SCRIPT_TMP_DIR/efi_dev
 END
 }
 
@@ -558,7 +573,7 @@ function transfer_env_for_grub(){
 
 
 function write_grub_script(){
-	(set_env|transfer_env_for_grub ; trim_indent) > $1
+	(set_env ; trim_indent) > $1
 }
 
 
@@ -614,9 +629,9 @@ function get_exported(){
 
 
 function env_defined(){
-	echo "`env_var`
+	(echo "`env_var`
 __ORG_EVAR__
-$__ORG_EVAR__" | sort | uniq -u; get_exported | sort | uniq
+$__ORG_EVAR__" | sort | uniq -u; get_exported) | sort | uniq
 }
 
 function set_env(){
@@ -630,6 +645,83 @@ function set_env(){
 			echo "$ln"
 		fi
 	done
+}
+
+
+function _set_diff_save(){
+	echo "$1VNAMES='""`env_defined`""'" >> $2
+	local ln
+	env_defined | while read ln; do
+		local content
+		local vname
+		ln="`declare -p $ln`"
+		ln=${ln#declare -* }
+		if [[ ${ln} =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]];then
+			content="''"
+			vname=${ln}
+		else
+			content="${ln#*=}"
+			vname=${ln%%=*}
+		fi
+		if [ -n "$vname" ];then
+			echo -E "$1EACH_$vname=$content" >> $2
+		fi
+	done
+}
+
+
+function set_diff_begin(){
+	local __diff_id_set_diff_local__=$RANDOM$RANDOM$RANDOM
+	local __d_set_diff_local__=$SCRIPT_TMP_DIR/set_diff/$__diff_id_set_diff_local__
+	mkdir -p $__d_set_diff_local__
+	echo "#/bin/bash" >> $__d_set_diff_local__/get_diff
+	chmod +x $__d_set_diff_local__/get_diff
+	echo $__diff_id_set_diff_local__
+	unset __diff_id_set_diff_local__
+	_set_diff_save __SET_DIFF_BEGIN_PRESERVE_ $__d_set_diff_local__/get_diff
+}
+
+
+function set_diff_end(){
+	local __d_set_diff_local__="$SCRIPT_TMP_DIR/set_diff/$1"
+	_set_diff_save __SET_DIFF_END_PRESERVE_ $__d_set_diff_local__/get_diff
+	local out
+	if [ -z "$2" ];then
+		out=$__d_set_diff_local__/get_diff
+	else
+		out=$2
+	fi
+	if [ -z "$1" -o ! -d "$__d_set_diff_local__" ];then
+		die "ID for 'set_diff_begin' is missing."
+	fi
+	echo -E '
+		echo -n > '$out'
+		(echo -E "$__SET_DIFF_BEGIN_PRESERVE_VNAMES";
+		 echo -E "$__SET_DIFF_END_PRESERVE_VNAMES") | sort | uniq -u | while read vn; do
+			if [ -n "$vn" ];then
+				if declare -p __SET_DIFF_BEGIN_PRESERVE_EACH_$vn > /dev/null 2>&1; then
+					echo "unset $vn" >> '$out'
+				fi
+			fi
+		done
+		for vn in $__SET_DIFF_END_PRESERVE_VNAMES; do
+			if declare -p __SET_DIFF_END_PRESERVE_EACH_$vn > /dev/null 2>&1; then
+				vname_end=__SET_DIFF_END_PRESERVE_EACH_$vn
+				vname_begin=__SET_DIFF_BEGIN_PRESERVE_EACH_$vn
+				if [ "`eval \"echo $\"\"$vname_begin\"`" != "`eval \"echo $\"\"$vname_end\"`" ];then
+					ln="`declare -p $vname_end`"
+					ln=${ln#declare -* }
+					if [[ ${ln} =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]];then
+						content="''"
+					else
+						content="${ln#*=}"
+					fi
+					echo -E "$vn=$content" >> '$out'
+				fi
+			fi
+		done
+' >>  $__d_set_diff_local__/get_diff
+	bash -c $__d_set_diff_local__/get_diff
 }
 
 
