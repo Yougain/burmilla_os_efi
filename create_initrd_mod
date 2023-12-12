@@ -22,9 +22,13 @@ function create_initrd_mod(){
 		done
 	fi
 	rm -rf /installing/boot_dev/initrd
+	mkdir -p /installing/boot_dev
+	mount $TARGET_DEV4 /installing/boot_dev
 	mkdir -p /installing/boot_dev/initrd
 	cd /installing/boot_dev/initrd
-	zcat /installing/boot_dev/$INITRD_FILE | cpio -idmv 2> /dev/null
+	apt-get -y update
+	apt-get -y install cpio btrfs-progs strace
+	zcat /installing/boot_dev/$INITRD_FILE | cpio -idmv
 
 	ln -s usr/lib lib
 	ln -s lib lib64

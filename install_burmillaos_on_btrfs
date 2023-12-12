@@ -306,11 +306,11 @@ else
 fi
 
 if [ -n "$TARGET_DEV" ];then
-	if [ "$TARGET_DEV" = "$DRV" ]; then
+	if [ "$TARGET_DEV" = "/dev/$DRV" ]; then
 		TARGET_DEV=/dev/$DRV
 	else
 		if [ -n "$DRV" ]; then
-			die "Command line specified drive, '$TARGET_DEV' is different from instralled drive, '/dev/$DRV'."
+			die "Command line specified drive, '$TARGET_DEV' is different from installed drive, '/dev/$DRV'."
 		fi
 	fi
 else
@@ -1263,7 +1263,7 @@ install_ssh_key
 
 
 ssh_do sudo mkdir -p /installing/state /installing/oem_part
-ssh_do sudo mount $TARGET_DEV5 /installing/state -odegraded,rw
+ssh_do sudo mount $TARGET_DEV5 /installing/state
 if [ -z "`ssh_do ls -ld /installing/state/home`" ];then
 	die "Please boot from installed hard disk only ONCE."
 fi
@@ -1297,9 +1297,10 @@ ssh_sudo <<'FINAL'
 	mount -t btrfs -odegraded,rw,subvol=/oem_root $TARGET_DEV7 /installing/oem_part
 	mkdir -p /installing/oem_part/var/lib/rancher/conf/cloud-config.d
 	if [ -z "$USER_CONFIG" -o ! -e "$UF" ]; then
+		DATE=`date`
 		write_env_file $UF << '	FEND'
 			hostname: $HNAME_FULL
-			date: `date`
+			date: $DATE
 			rancher:
 			  network:
 			    dns:
@@ -1422,12 +1423,12 @@ ssh_sudo <<'FINAL'
 	fi
 	cp -an $ssh_dir /installing/oem_part/etc
 	if [ -n "$NEW_SSHD_CONF" ];then
-		sed -i 's/#Port 22/Port $PORT/' /installing/oem_part/etc/ssh/sshd_config
+		sed -i 's/#Port 22/Port '$PORT'/' /installing/oem_part/etc/ssh/sshd_config
 		sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /installing/oem_part/etc/ssh/sshd_config
 	else
 		if [ -n "$FORCE" ];then
-			sed -i 's/#Port 22/Port $PORT/' /installing/oem_part/etc/ssh/sshd_config
-			sed -i 's/Port[[:space:]]*[0-9][0-9]*/Port $PORT/' /installing/oem_part/etc/ssh/sshd_config
+			sed -i 's/#Port 22/Port '$PORT'/' /installing/oem_part/etc/ssh/sshd_config
+			sed -i 's/Port[[:space:]]*[0-9][0-9]*/Port '$PORT'/' /installing/oem_part/etc/ssh/sshd_config
 			echo -e $_Red`grep Port /installing/oem_part/etc/ssh/sshd_config`$_plain
 		else
 			echo -e $_Purple"No force option."$plain
