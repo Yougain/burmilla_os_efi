@@ -388,46 +388,57 @@ function ssh_do(){
 	if [ -z "$SSH_TMP_SUDO" ];then
 		SSH_TMP_SUDO=$sudoing
 	fi
-	local CMD=`echo ssh $SSH_PORT_OPT ${SSH_OPTS} $SSH_HOST $@`
+	local SSH_ID=$RANDOM$RANDOM$RANDOM
+	mkdir -p $SCRIPT_TMP_DIR/$SSH_ID
+	local CMD=`echo ssh $SSH_PORT_OPT ${SSH_OPTS} $SSH_HOST $sudoing $@`
 	#info $sudoing $@  >&2
 	if [ "$#" = "0" ];then
 		local set_env_lines="set | awk '!/^(BASH_ARGV|BASH_ARGC|BASH_LINENO|BASH_SOURCE|GROUPS|FUNCNAME|BASHOPTS|BASH_VERSINFO|EUID|PPID|SHELLOPTS|UID)=/ {print \$0}'"
 		local SET_ENV_LINES="`eval $set_env_lines`"
-		trim_indent > $SCRIPT_TMP_DIR/do_content
-		eval $CMD mkdir -p $SCRIPT_TMP_DIR
+		trim_indent > $SCRIPT_TMP_DIR/$SSH_ID/do_content
+		eval $CMD mkdir -p $SCRIPT_TMP_DIR/$SSH_ID
 		(
 			# preserve host environment
 			echo "#!/bin/bash"
-			echo "mkdir -p $SCRIPT_TMP_DIR"
-			echo "$set_env_lines > $SCRIPT_TMP_DIR/env";
+			echo "mkdir -p $SCRIPT_TMP_DIR/$SSH_ID"
+			echo "$set_env_lines > $SCRIPT_TMP_DIR/$SSH_ID/env";
 			echo "
 				# set client environment
-				if [ ! -e $SCRIPT_TMP_DIR/env.cont ];then # missing previous host environment 
+				if [ ! -e $SCRIPT_TMP_DIR/$SSH_ID/env.cont ];then # missing previous host environment 
 					# set client command line argument
 					$TRANSFER_ARGUMENTS
 					$SET_ENV_LINES
 				else # found previous host environment 
-					source $SCRIPT_TMP_DIR/env.cont; 
-					rm $SCRIPT_TMP_DIR/env.cont;
+					source $SCRIPT_TMP_DIR/$SSH_ID/env.cont; 
+					rm $SCRIPT_TMP_DIR/$SSH_ID/env.cont;
 				fi
 			";
 			# restore host environment
-			echo "source $SCRIPT_TMP_DIR/env; if [ -z \"\$DEBUG\" ]; then rm $SCRIPT_TMP_DIR/env; fi";
+			echo "source $SCRIPT_TMP_DIR/$SSH_ID/env; if [ -z \"\$DEBUG\" ]; then rm $SCRIPT_TMP_DIR/$SSH_ID/env; fi";
 			# execute script from standard input
-			# set clean up
-			echo "trap cleanup EXIT"
-			echo "trap trap_int INT"
 			echo "SETDIFF_ID_$SCRIPT_ID=\`set_diff_begin\`"
-			cat $SCRIPT_TMP_DIR/do_content;
 			# preserve environment after script execution
-			echo 'set_diff_end $SETDIFF_ID_'$SCRIPT_ID $SCRIPT_TMP_DIR/env.diff
-			echo "$set_env_lines > $SCRIPT_TMP_DIR/env.cont;exit 0"
-		) | eval $CMD tee $SCRIPT_TMP_DIR/scr > /dev/null
-		eval $CMD chmod +x $SCRIPT_TMP_DIR/scr
-		eval $CMD $SCRIPT_TMP_DIR/scr
+			echo "function transfer_new_env(){"
+			echo 'set_diff_end $SETDIFF_ID_'$SCRIPT_ID $SCRIPT_TMP_DIR/$SSH_ID/env.diff
+			echo "$set_env_lines > $SCRIPT_TMP_DIR/$SSH_ID/env.cont"
+			echo "}"
+			echo "function int_exit(){"
+			echo "exit 1"
+			echo "}"
+			echo "trap transfer_new_env EXIT"
+			echo "trap int_exit INT HUP"
+			cat $SCRIPT_TMP_DIR/$SSH_ID/do_content;
+		) | eval $CMD tee $SCRIPT_TMP_DIR/$SSH_ID/scr > /dev/null
+		eval $CMD chmod +x $SCRIPT_TMP_DIR/$SSH_ID/scr
+		eval $CMD $SCRIPT_TMP_DIR/$SSH_ID/scr
 		local res=$?
-		eval $CMD cat $SCRIPT_TMP_DIR/env.diff > $SCRIPT_TMP_DIR/remote_env.diff
-		. $SCRIPT_TMP_DIR/remote_env.diff
+		eval $CMD cat $SCRIPT_TMP_DIR/$SSH_ID/env.diff > $SCRIPT_TMP_DIR/$SSH_ID/remote_env.diff
+		if [ -n "$DEBUG" ];then
+			info "transfer env ----"
+			cat . $SCRIPT_TMP_DIR/$SSH_ID/remote_env.diff
+			info "-----------------"
+		fi
+		. $SCRIPT_TMP_DIR/$SSH_ID/remote_env.diff
 		if [ "$res" = "1" ];then
 			exit 1
 		fi

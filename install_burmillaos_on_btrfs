@@ -1186,13 +1186,20 @@ ssh_sudo <<'FINAL'
 	cp /installing/efipart/.grubenv_empty /installing/efipart/.grubenv_booting
 	cp /installing/efipart/.grubenv_empty /installing/efipart/.installing_2nd_phase
 	cp /installing/efipart/.grubenv_empty /installing/efipart/.installing_3rd_phase
-	echo -e $green"rebooting by target disk ...."
-	reboot
 FINAL
 
 if [ "$?" = "1" ];then
 	exit 1
 fi
+
+if [ -z "$INITRD_FILE" ];then
+	die 'missing $INITRD_FILE'
+fi
+
+ssh_sudo <<'FINAL'
+	echo -e $green"rebooting by target disk ...."
+	reboot
+FINAL
 
 # installation 2nd phase : boot by target disk
 

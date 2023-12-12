@@ -12,6 +12,9 @@ function sfind(){
 
 
 function create_initrd_mod(){
+	if [ -z "$INITRD_FILE" ];then
+		die 'missing $INITRD_FILE'
+	fi
 	tmpd=`pwd`
 	if [ -d /installing/boot_dev/initrd ];then
 		for i in `ls /installing/boot_dev/initrd`;do
