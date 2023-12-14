@@ -1,4 +1,4 @@
-#!/bin/bash
+# bash source
 
 
 function find(){
@@ -198,76 +198,10 @@ $libs"
 	
 	system-docker cp udev:/lib/udev ./lib
 	
-	for d in . /installing/state_top/state_root; do
-		if [ -d "$d" ]; then
-			write_file 0755 $d/usr/bin/blkid2 <<'			END'
-				#!/bin/bash
-
-				PATH=/sbin:/usr/sbin:/bin:/usr/bin
-
-				if [ "$1" = "stop" ];then
-					killall udevd
-					exit 0
-				else
-					if [ -z "$(readlink -f `ls /proc/*/exe`|egrep '/udevd$')" ];then
-						udevd  --daemon --resolve-names=never
-						udevadm trigger --action=add --type=subsystems
-						udevadm trigger --action=add --type=devices
-						udevadm trigger --action=change --type=devices
-						udevadm settle
-						sleep 5
-					fi
-				fi
-				
-				ids=(`ls /dev/disk/by-id`)
-				devs=($(readlink -f `ls /dev/disk/by-id/*`))
-				
-				paths=(`ls /dev/disk/by-path`)
-				devsp=($(readlink -f `ls /dev/disk/by-path/*`))
-
-				declare -A blkids
-
-				function add_blist(){
-				    local dev=$1
-				    blkids[$dev]="$@"
-				}
-
-				IFS="
-				"
-				blkids_arr=(`blkid`)
-				for ((i = 0; i < ${#blkids_arr[@]}; i++)); do
-				    IFS=" "
-				    add_blist ${blkids_arr[$i]}
-				done
-
-
-				for ((i = 0; i < ${#ids[@]}; i++)); do
-				    idx=${devs[$((i))]}:
-				    bc=${blkids[$idx]}
-				    if [ -n "$bc" ];then
-				        blkids[$idx]=$bc" ID=\""${ids[$((i))]}'"'
-				    fi
-				done
-
-				for ((i = 0; i < ${#paths[@]}; i++)); do
-				    idx=${devsp[$((i))]}:
-				    bc=${blkids[$idx]}
-				    if [ -n "$bc" ];then
-				        blkids[$idx]=$bc" PATH=\""${paths[$((i))]}'"'
-				    fi
-				done
-
-				for c in "${blkids[@]}";do
-				    echo "${c}"
-				done
-				
-				exit 0
-			END
-		fi
-	done
+	do_install blkid2 ./usr/bin
+	
 	find | cpio -o -H newc  | gzip -c > ../$INITRD_FILE-mod
 	cd $tmpd
 
-	
 }
 

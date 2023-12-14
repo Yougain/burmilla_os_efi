@@ -1,9 +1,27 @@
+# bash source
 
-if [ -z "$SCRIPT_TMP_DIR" ];then
-	SCRIPT_TMP_DIR=/tmp/yougain/${0##*/}/`date +"%y-%m-%d_%H:%M:%S.%N%z"`-$$
-	mkdir -p $SCRIPT_TMP_DIR
-	SCRIPT_ID=$RANDOM$RANDOM$RANDOM
-fi
+
+__FILE__() {
+	readlink -f "${BASH_SOURCE[1]}"
+}
+
+__DIR__() {
+	dirname "$(readlink -f "${BASH_SOURCE[1]}")"
+}
+
+
+initalize_support_lib(){
+	if [ -z "$SCRIPT_TMP_DIR" ];then
+		SCRIPT_TMP_DIR=/tmp/yougain/${0##*/}/`date +"%y-%m-%d_%H:%M:%S.%N%z"`-$$
+		mkdir -p $SCRIPT_TMP_DIR
+		SCRIPT_ID=$RANDOM$RANDOM$RANDOM
+		SUPPORT_LIB_CONTENT="`cat __FILE__`"
+		local f=`__FILE__`
+		SUPPORT_LIB_NAME=${f##*/}
+	fi
+}
+initalize_support_lib
+
 
 cleanup (){
 	if [ -z "$DEBUG" ];then
@@ -734,5 +752,47 @@ function set_diff_end(){
 ' >>  $__d_set_diff_local__/get_diff
 	bash -c $__d_set_diff_local__/get_diff
 }
+
+
+
+function do_install(){
+	local to_inst=$1
+	if [ -z "$to_inst" ];then
+		die "missing argument"
+	fi
+	local d
+	shift
+	for d in $@; do
+		if [ ! -d "$d" ];then
+			if [ -e "$d" ];then
+				die "'$d' is not a directory."
+			else
+				if ! mkdir -p "$d"
+					die "cannot create directory, '$d'"
+				fi
+			fi
+		fi
+		if [ ! -e $d/$SUPPORT_LIB_NAME ];then
+			echo -E "$SUPPORT_LIB_CONTENT" > $d/$SUPPORT_LIB_NAME
+			chmod +x $d/$SUPPORT_LIB_NAME
+		fi
+		if [ ! -e $d/$to_inst ];then
+			trim_indent <<"			END" >> $d/$to_inst
+				#!/bin/bash
+				source $SUPPORT_LIB_NAME
+			END
+			if ! declare -f $to_inst >> $d/$to_inst
+				die "function, '$to_inst' does not exist"
+			fi
+			trim_indent <<"			END" >> $d/$to_inst
+				if [ "\${0##*/}" = "$to_inst" ];then
+					$to_inst \$@
+				fi
+			END
+			chmod +x $d/$to_inst
+		fi
+	done
+}
+
 
 
