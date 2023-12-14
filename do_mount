@@ -1,0 +1,234 @@
+# bash source
+
+
+function do_mount(){
+	require blkid2
+	declare -A opts
+	local args=()
+	local moptShift
+	local forceDegraded
+	declare -A mopts
+	declare -A moptsNoDeg
+	declare -A moptsWithDeg
+	local tmopts=()
+	local i
+	while (( "$#" )); do
+		if [ "${1:0:1}" = "-" ];then
+			if [ -n "$moptShift" ];then
+				die "missing mount option operand"
+			fi
+			if [ "${1:0:2}" = "--" ];then
+				case $1 in
+					--options)
+						moptShift=1
+						;;
+					--fake)
+						opts[-f]=1
+						;;
+					--verbose)
+						opts[-v]=1
+						;;
+					--rw)
+						if [ -n "${mopts[ro]}" ];then
+							die "both 'rw' and 'ro' mount option specified"
+						fi
+						mopts[rw]=1
+						;;
+					--read-write)
+						if [ -n "${mopts[ro]}" ];then
+							die "both 'rw' and 'ro' mount option specified"
+						fi
+						mopts[rw]=1
+						;;
+					--read-only)
+						if [ -n "${mopts[rw]}" ];then
+							die "both 'rw' and 'ro' mount option specified"
+						fi
+						mopts[ro]=1
+						;;
+					--force-degraded)
+						forceDegraded=1
+						;;
+					*)
+						die "not supported option '$1'"
+						;;
+				esac
+			else
+				local i
+				local mustLast=""
+				for (( i=0; i<${#1}; i++ )); do
+					if [ -n "$mustLast" ];then
+						die "missing mount option operand"
+					fi
+					local o="${foo:$i:1}"
+					case "$o" in
+						f)
+							opts[-f]=1
+							;;
+						v)
+							opts[-v]=1
+							;;
+						w)
+							if [ -n "${mopts[ro]}" ];then
+								die "both 'rw' and 'ro' mount option specified"
+							fi
+							opts[rw]=1
+							;;
+						r)
+							if [ -n "${mopts[rw]}" ];then
+								die "both 'rw' and 'ro' mount option specified"
+							fi
+							mopts[ro]=1
+							;;
+						o)
+							mustLast=1
+							moptShift=1
+							;;
+						*)
+							die "unknown option '-$o'"
+							;;
+							
+					esac
+				done
+			fi
+		else
+			if [ -n "$moptShift" ];then
+				moptShift=
+				split tmopts "$1" ,
+				for i in "${tmopts[@]}"; do
+					if [ "$i"="rw" -a "${mopts[ro]}"=1 ]; then
+						die "both 'rw' and 'ro' mount option specified"
+					fi
+					if [ "$i"="ro" -a "${mopts[rw]}"=1 ]; then
+						die "both 'rw' and 'ro' mount option specified"
+					fi
+					mopts[$i]=1
+				done
+			else
+				args+=($1)
+				i=${#args}
+				if ((i > 2)); then
+					die "extra arguments specified"
+				fi
+			fi
+		fi
+		shift
+	done
+	local opts="${!opts[@]}"
+	for i in "${!mopts[@]}"; do
+		if [ "$i" != "degraded" ];then
+			moptsNoDeg[$i]=${mopts[$i]}
+		fi
+	done
+	for i in "${!mopts[@]}"; do
+		moptsWithDeg[$i]=${mopts[$i]}
+	done
+	if [ "${moptsWithDeg[ro]}" != 1 ];then
+		moptsWithDeg[rw]=1
+	fi
+	moptsWithDeg[degraded]=1
+	mopts=$(joinopt "-o " , "${!mopts[@]}")
+	moptsWithNoDeg=$(joinopt "-o " , "${!moptsWithNoDeg[@]}")
+	moptsWithDeg="-o "$(joinopt "-o " , "${!moptsWithDeg[@]}")
+	local src=${args[0]}
+	local dst=${args[1]}
+	declare -A to_mount_cand
+	local to_mount
+	if [[ "$src" =~ ^[0-9]*$ ]];then
+		if [ -z "$EFI_UUID_ARG" ];then
+			if grep efi=UUID= /proc/cmdline > /dev/null;then
+				local tmp_uuid_arg="`cat /proc/cmdline|sed -r 's/^.*[[:space:]]efi=UUID=((\\\\|)['"'"'"]|)([0-9a-fA-F-]+)\1.*$/\3/g'`"
+				if [[ "$tmp_uuid_arg" =~ ^[0-9a-fA-F-]+$ ]];then
+					EFI_UUID_ARG=$tmp_uuid_arg
+				fi
+			fi
+		fi
+		if [ -n "$EFI_UUID_ARG" ];then
+			local boot_drive=`readlink -f /dev/disk/by-uuid/$EFI_UUID_ARG|sed -r 's/^\/dev\/([a-z]+)[0-9]+$/\1/g'`
+			if [ -b "/dev/$boot_drive" ];then
+				if [ -b "/dev/$boot_drive"$src ];then
+					to_mount_cand["/dev/$boot_drive"$src]=1
+				else
+					warn "'/dev/$boot_drive"$src"' is not a block device."
+				fi
+			else
+				warn "'/dev/$boot_drive' is not a block device."
+			fi
+		fi
+	fi
+	if [ -b "$src" ];then
+		to_mount_cand[$src]=1
+	else
+		to_mount=`blkid2 "$src"`
+		if [ -b "$to_mount" ];then
+			to_mount_cand[$to_mount]=1
+		fi
+	fi
+	if [ -d "$src" ];then
+		opts[-B]=1
+	fi
+	if [ -e "$src" ];then
+		to_mount_cand[$(readlink -f "$src")]=1
+	fi
+	i=${#to_mount_cand[@]}
+	if [ "$i" = 0 ];then
+		die "'$src' is not mountable source."
+	fi
+	if ((i > 1)); then
+		i=$(joinq ', ' "'" "${!to_mount_cand[@]}")
+		die "'$src' is ambiguous. Candidates are $i"
+	fi
+	to_mount=${!to_mount_cand[@]}
+	local type=`blkid $to_mount|sed -r 's/.*TYPE="([^"]+)".*/\1/g'`
+	if [ -z "$type" ];then
+		die "cannot detect filesystem of '$to_mount'."
+	fi
+	if [ "$type" = "swap" ];then
+		if [ -n "$dst" ];then
+			err "cannot mount swap partition"
+		fi
+		if [ -n "$opts" -o -n "$mopts" ];then
+			err "cannot use option for swap partition"
+		fi
+		exit_if_err
+		swapon $to_mount
+	else
+		if [ -z "$dst" ];then
+			die "mount point is not specified."
+		fi
+		if [ ! -d "$dst" ];then
+			if [ -e "$dst" ];then
+				die "'$dst' is not a directory."
+			fi
+			mkdir -p "$dst"
+		fi
+		local res
+		if [ "$type" = "btrfs" ];then
+			if [ -z "$forceDegraded" ];then
+				local i=0
+				while ! mount $opts $moptsNoDeg $to_mount $dst;do
+					i=$((i + 1))
+					if [ $i = 5 ];then
+						mount $opts $moptsWithDeg $to_mount $dst
+						res=$?
+						break
+					fi
+					sleep 5
+				done
+				res=$?
+			else
+				mount $opts $moptsWithDeg $to_mount $dst
+				res=$?
+			fi
+		else
+			mount $opts $mopts $to_mount $dst
+			res=$?
+		fi
+		if [ "$res" != "0" ];then
+			die "cannot mount $to_mount on $dst"
+		fi
+	fi
+}
+
+
+

@@ -1,0 +1,980 @@
+# bash source
+
+
+__FILE__() {
+	readlink -f "${BASH_SOURCE[1]}"
+}
+
+__DIR__() {
+	dirname "$(readlink -f "${BASH_SOURCE[1]}")"
+}
+
+
+initialize_support_lib(){
+	if [ -z "$SCRIPT_TMP_DIR" ];then
+		SCRIPT_TMP_DIR=/tmp/yougain/${0##*/}/`date +"%y-%m-%d_%H:%M:%S.%N%z"`-$$
+		mkdir -p $SCRIPT_TMP_DIR
+		SCRIPT_ID=$RANDOM$RANDOM$RANDOM
+		SUPPORT_LIB_CONTENT="`cat $(__FILE__)`"
+		SUPPORT_LIB_MTIME="`stat $(__FILE__) -c %Y`"
+		local f=`__FILE__`
+		SUPPORT_LIB_NAME=${f##*/}
+		SOURCES_LOADED=()
+		return 0
+	else
+		return 1
+	fi
+}
+
+
+if initialize_support_lib; then
+
+
+function split(){
+	local IFS="$3"
+	eval "$1=(\$2)"
+}
+
+
+function revParenths(){
+	for ((i=0; i<${#1}; i++)); do
+		local c="${1:$i:1}"
+		case "$c" in
+			"[")
+				echo -n ']'
+				;;
+			']')
+				echo -n '['
+				;;
+			'(')
+				echo -n ')'
+				;;
+			')')
+				echo -n '('
+				;;
+			'{')
+				echo -n '}'
+				;;
+			'}')
+				echo -n '{'
+				;;
+			'<')
+				echo -n '>'
+				;;
+			'>')
+				echo -n '<'
+				;;
+			*)
+				echo -n $c
+				;;
+		esac
+	done
+}
+
+
+function join(){
+	local sep=$1
+	local i
+	shift
+	local ret=$1
+	shift
+	for i in "$@";do
+		ret="$ret$sep$i"
+	done
+	echo -n $ret
+}
+
+
+function joinopt(){
+	local opt=$1
+	shift
+	local sep=$1
+	local i
+	shift
+	local ret=$1
+	shift
+	for i in "$@";do
+		ret="$ret$sep$i"
+	done
+	if [ -n "$ret" ];then
+		ret="$opt$ret"
+	fi
+	echo -n $ret
+}
+
+
+function joinq(){
+	local sep=$1
+	local i
+	shift
+	local quot=$1
+	local rquot=$(revParenths "$1")
+	shift
+	local ret=$quot$1$rquot
+	shift
+	for i in "$@";do
+		ret="$ret$sep$quot$i$rquot"
+	done
+	echo -n $ret
+}
+
+
+function detect(){
+	local i
+	eval '
+		for i in "${'$1'[@]}"; do
+			if [ "$i" = "'$2'" ]; then
+				return 0
+			fi
+		done
+	'
+	return 1
+}
+
+
+function detect_if(){
+	eval '
+		for '$2' in "${'$1'[@]}"; do
+			if '$3'; then
+				return 0
+			fi
+		done
+		'$2'=""
+	'
+	return 1
+}
+
+
+SOURCES_LOADED=()
+
+require(){
+	local to_load
+	if [ "${1:0:1}" != "/" ];then
+		local parr
+		split parr "$PATH" :
+		local p
+		if detect_if parr p '[ -e "$p/'$1'" ]';then
+			to_load="$p/$1"
+		else
+			die "'$1' not found in PATH"
+		fi
+	else
+		to_load="$1"
+	fi
+	to_load="$(readlink -f "$to_load")"
+	if detect SOURCES_LOADED "$to_load";then
+		return 1
+	fi
+	SOURCES_LOADED+="$to_load"
+	if ! source "$to_load";then
+		die "require '$1', failed"
+	fi
+}
+
+
+cleanup (){
+	if [ -z "$DEBUG" ];then
+		rm -rf $SCRIPT_TMP_DIR
+		if [ -n "$SSH_TMP" ];then
+			ssh_do $SSH_TMP_SUDO rm -rf $SCRIPT_TMP_DIR
+		fi
+	fi
+	if [[ "$DEBUG" =~ erase|ERASE|delete|DELETE ]];then
+		rm -rf /tmp/yougain/${0##*/}
+		if [ -n "$SSH_TMP" ];then
+			ssh_do $SSH_TMP_SUDO rm -rf /tmp/yougain/${0##*/}
+		fi
+	fi
+}
+
+trap_int(){
+	echo
+	warn "interrupted."
+	exit 1
+}
+
+trap cleanup EXIT
+trap trap_int INT
+
+error="\033[41m\033[33mERROR    :\033[m \033[31m"
+warning="\033[43m\033[31mWARNING:\033[m \033[33m"
+info="\033[46m\033[34mINFO     :\033[m \033[36m "
+plain="\033[m"
+normal="\033[m"
+
+black="0"
+red="1"
+green="2"
+yellow="3"
+blue="4"
+purple="5"
+magenta="5"
+cyan="6"
+white="7"
+
+
+allColors="black red green yellow blue purple magenta cyan white"
+
+function capitalize(){
+	local B
+	local F
+	B=`echo -n "${1:0:1}" | tr "[:lower:]" "[:upper:]"`
+	F="${B}${1:1}"
+	shift
+	echo -n $F $@
+}
+
+function errmsg(){
+	if [ -z "$ERRMSG" ]; then
+		ERRMSG="$error`capitalize $@`$plain"
+	else
+		ERRMSG="$ERRMSG
+$error""`capitalize $@`"$plain
+	fi
+}
+
+
+alias err=errmsg
+alias error=errmsg
+
+
+function info_n(){
+	echo -ne $info`capitalize $@`$plain
+}
+function info(){
+	info_n $@"\n"
+}
+
+
+function warning_n(){
+	echo -ne "$warning""$@"
+}
+function warning(){
+	warning_n "$@""\n"
+}
+
+function warn(){
+	warning_n "$@""\n"
+}
+alias warn_n=warning_n
+
+
+for col in `echo $allColors`; do
+	eval '
+		'`capitalize $col`'="\033[3$'$col'""m"
+		'_`capitalize $col`'="\\033[3$'$col'""m"
+		function '$col'_n(){
+			echo -ne "\033[3$'$col'""m''$@''$plain"
+		}
+		function '$col'(){
+			'$col'_n $@"\n"
+		}
+		function bg'`capitalize $col`'_n(){
+			echo -ne "\033[4$'$col'""m''$@''$plain"
+		}
+		function bg'`capitalize $col`'(){
+			bg'`capitalize $col`'_n $@"\n"
+		}
+	'
+	for bgCol in $allColors; do
+		eval '
+			function '$col'Bg'`capitalize $bgCol`'_n(){
+				echo -ne "\033[3$'$col'""m\033[4$'$bgCol'""m''$@''$plain"
+			}
+			function '$col'Bg'`capitalize $bgCol`'(){
+				'$col'Bg'`capitalize $bgCol`'_n $@
+			}
+		'
+	done
+done
+
+
+function exit_if_err(){
+	if [ -n "$1" ]; then
+		errmsg $@
+	fi
+	if [ -n "$ERRMSG" ];then
+		echo -en $ERRMSG
+		exit 1
+	fi
+}
+
+function die(){
+	if [ -n "$1" ]; then
+		errmsg $@
+	fi
+	if [ -n "$ERRMSG" ];then
+		echo -en $ERRMSG
+	fi
+	exit 1
+}
+
+
+function ssh_param(){
+	local p
+	local h
+	local port
+	local host
+	local opt_start
+	while (( "$#" )); do
+		if [ "${1:0:1}" = "-" -o -n "$SSH_OPTS" ];then
+			if [ "${1:0:1}" = "-" ]; then
+				SSH_OPTS="$SSH_OPTS $1"
+			else
+				SSH_OPTS="$SSH_OPTS \"$1\""
+			fi
+		else
+			h="${1%%:*}"
+			p="${1##*:}"
+			if [ "$h" = "$1" ];then # ':' is missing
+				if [ -n "`echo -n $1|egrep -o '^[0-9][0-9]*$'`" ];then
+					if [ -n "$port" ];then
+						die "duplicated port"
+					else
+						port=$p
+					fi
+				else
+					if [ -n "$host" ];then
+						die "duplicated host name"
+					else
+						host=$h
+					fi
+				fi
+			else
+				if [ -n "$port" ];then
+					die "duplicated port"
+				else
+					port=$p
+				fi
+				if [ -n "$host" ];then
+					die "duplicated host name"
+				else
+					host=$h
+				fi
+			fi
+		fi
+		shift
+	done
+	local o
+	local on
+	for o in $SSH_OPTS;do
+		if [ "$o" = "-l" ]; then
+			on=1
+		else
+			if [ -n "$on" ]; then
+				SSH_USER=$o
+				break
+			fi
+		fi
+	done
+	if [ -z "$SSH_USER" ];then
+		SSH_USER=$USER
+		if [ -z "$SSH_USER" ];then
+			die "cannot find \$USER"
+		fi
+	fi
+	if [ -n "$port" ];then
+		port=" -p $port"
+	fi
+	SSH_HOST=$host
+	echo ssh $SSH_OPTS $port -v -o \"ConnectTimeout=5\"  -o \"PasswordAuthentication no\" -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" $host echo -n|bash > $SCRIPT_TMP_DIR/test_ssh 2>&1
+	#if [ "$?" = "0" ];then
+		if [ -z "`egrep 'debug1: Executing proxy command:' $SCRIPT_TMP_DIR/test_ssh`" ]; then
+			local SSH_CON_LINE=`egrep -o 'debug1: Connecting to .* port [0-9]+' $SCRIPT_TMP_DIR/test_ssh`
+			SSH_PORT=`echo $SSH_CON_LINE| egrep -o '[0-9]+$'`
+			SSH_PORT_OPT=" -p $SSH_PORT"
+			SSH_HOST_IP=`echo $SSH_CON_LINE| egrep -o '\[[0-9/A-Fa-f\.:]+\]'| egrep -o [0-9/A-Fa-f\.:]+`
+		else
+			local pc=`egrep "debug1: channel_connect_stdio_fwd " $SCRIPT_TMP_DIR/test_ssh`
+			if [ -n "$pc" ];then
+				pc=${pc%\\r}
+				local adr=${pc#debug1: channel_connect_stdio_fwd }
+				adr=${adr%[[:space:]]}
+				adr=${adr%[[:space:]]}
+				adr=${adr%[[:space:]]}
+				SSH_PORT=${adr##*:}
+				SSH_HOST_IP=${adr%:*}
+				SSH_PORT_OPT=" -p $SSH_PORT"
+				SSH_PROXY=1
+			fi
+		fi
+		if [ -n "$SSH_PORT" ];then
+			return 0
+		fi
+	#fi
+	return 1
+}
+
+
+function wait_sshd_start(){
+	if [ -z "$SSH_PORT" -o -z "$SSH_HOST" ];then
+		die "missing ssh paramter variables. Please execute 'ssh_param SERVER_NAME' first."
+	fi
+	local SSH_CON_
+	info_n connecting SSH...
+	for i in $(seq 1 120); do
+		sleep 1
+		blue_n "."
+		if [ -z "$SSH_PROXY" ];then
+			SSH_CON_=`echo | nc $SSH_HOST_IP $SSH_PORT 2>&1`
+			if [ "${SSH_CON_:0:3}" = "SSH" ];then
+				cyanBgBlue connected
+				return
+			fi
+		else
+			echo ssh $SSH_OPTS $port -v -o \"ConnectTimeout=5\"  -o \"PasswordAuthentication no\" -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" $SSH_HOST echo -n|bash > $SCRIPT_TMP_DIR/test_ssh 2>&1
+			if [ `grep 'debug1: Remote protocol version 2.0, remote software version OpenSSH' $SCRIPT_TMP_DIR/test_ssh|wc|awk '{print $1}'` = "2" ];then
+				cyanBgBlue connected
+				return
+			fi
+		fi
+	done
+	echo
+	die Tried 120 times. Still cannot connect SSH port "($SSH_PORT)". Exited.
+}
+
+
+function transfer_arguments(){
+	local i
+	local j=-1
+	while IFS= read -r -d $'\0' i; do
+	    if [ $j != "-1" ];then
+	    	TRANSFER_ARGUMENTS="$TRANSFER_ARGUMENTS$1$j='$i'"$'\n'
+	    fi
+	    j=$(( j + 1 ))
+	done < <(cat /proc/$$/cmdline)
+}
+
+transfer_arguments A
+
+
+
+function col_width(){
+	if [ -z "$TAB_STOP" ];then
+		TAB_STOP=4
+	fi
+	local i=0
+	local len=${#1}
+	local pos=0
+	while [ $i -lt $len ];do
+		case "${1:$i:1}" in
+			"	")
+				pos=$((pos + TAB_STOP - pos % TAB_STOP))
+				;;
+			*)
+				pos=$((pos + 1))
+				;;
+		esac
+		i=$((i + 1))
+	done
+	echo $pos
+}
+
+function putsp(){
+	if [ -z "$TAB_STOP" ];then
+		TAB_STOP=4
+	fi
+	local w=$1
+	local t=$((w / TAB_STOP))
+	local s=$((w % TAB_STOP))
+	local i
+	for ((i = 0; i < t; i++)); do
+		echo -n "\t"
+	done
+	for ((i = 0; i < t; i++)); do
+		echo -n " "
+	done
+}
+
+function trim_indent(){
+	if [ -z "$TAB_STOP" ];then
+		local TAB_STOP=4
+	fi
+	if [ "$#" = 0 ];then
+		local fc
+		local ln
+		local sp
+		local res
+		local IFS=""
+		local preLns=()
+		local preLn
+		while read -r ln; do
+			local lnx="$ln"
+			sp=${lnx%%[![:space:]]*}
+			if [ -z "$fc" ];then
+				res="${ln#$sp}"
+				if [ -n "$res" -a "${res:0:1}" != "#" ];then
+					fc=`col_width "$sp"`
+					for preLn in "${preLns[@]}";do
+						trim_indent  "$preLn" "$fc"
+					done
+					echo -E "$res"
+				else
+					preLns+=("$ln")
+				fi
+			else
+				trim_indent "$ln" "$fc"
+			fi
+		done
+	else
+		local pos=0
+		local i=0
+		local len=${#1}
+		while [ $i -lt $len ];do
+			case "${1:$i:1}" in
+				"	")
+					pos=$((pos + TAB_STOP - pos % TAB_STOP))
+					;;
+				" ")
+					pos=$((pos + 1))
+					;;
+				*)
+					echo -E "${1:$i}"
+					return
+					;;
+			esac
+			if [ $pos -ge $fc ];then
+				putsp $((pos - fc))
+				echo -E "${1:$i + 1}"
+				return
+			fi
+			i=$((i + 1))
+		done
+		putsp $pos
+		echo
+	fi
+}
+
+
+function ssh_do(){
+	local sudoing
+	if [ "$1" = "sudo" ];then
+		sudoing=sudo
+		shift
+	fi
+	if [ -z "$SSH_PORT" -o -z "$SSH_HOST" ];then
+		die "missing ssh paramter variables. Please execute 'ssh_param SERVER_NAME' first."
+	fi
+	SSH_TMP=1
+	if [ -z "$SSH_TMP_SUDO" ];then
+		SSH_TMP_SUDO=$sudoing
+	fi
+	local SSH_ID=$RANDOM$RANDOM$RANDOM
+	mkdir -p $SCRIPT_TMP_DIR/$SSH_ID
+	local CMD=`echo ssh $SSH_PORT_OPT ${SSH_OPTS} $SSH_HOST $sudoing $@`
+	#info $sudoing $@  >&2
+	if [ "$#" = "0" ];then
+		local set_env_lines="set | awk '!/^(BASH_ARGV|BASH_ARGC|BASH_LINENO|BASH_SOURCE|GROUPS|FUNCNAME|BASHOPTS|BASH_VERSINFO|EUID|PPID|SHELLOPTS|UID)=/ {print \$0}'"
+		local SET_ENV_LINES="`eval $set_env_lines`"
+		trim_indent > $SCRIPT_TMP_DIR/$SSH_ID/do_content
+		eval $CMD mkdir -p $SCRIPT_TMP_DIR/$SSH_ID
+		(
+			# preserve host environment
+			echo "#!/bin/bash"
+			echo "mkdir -p $SCRIPT_TMP_DIR/$SSH_ID"
+			echo "$set_env_lines > $SCRIPT_TMP_DIR/$SSH_ID/env";
+			echo "
+				# set client environment
+				if [ ! -e $SCRIPT_TMP_DIR/$SSH_ID/env.cont ];then # missing previous host environment 
+					# set client command line argument
+					$TRANSFER_ARGUMENTS
+					$SET_ENV_LINES
+				else # found previous host environment 
+					source $SCRIPT_TMP_DIR/$SSH_ID/env.cont; 
+					rm $SCRIPT_TMP_DIR/$SSH_ID/env.cont;
+				fi
+			";
+			# restore host environment
+			echo "source $SCRIPT_TMP_DIR/$SSH_ID/env; if [ -z \"\$DEBUG\" ]; then rm $SCRIPT_TMP_DIR/$SSH_ID/env; fi";
+			# execute script from standard input
+			echo "SETDIFF_ID_$SCRIPT_ID=\`set_diff_begin\`"
+			# preserve environment after script execution
+			echo "function transfer_new_env$SCRIPT_ID(){"
+			echo 'set_diff_end $SETDIFF_ID_'$SCRIPT_ID $SCRIPT_TMP_DIR/$SSH_ID/env.diff
+			echo "$set_env_lines > $SCRIPT_TMP_DIR/$SSH_ID/env.cont"
+			echo "unset -f transfer_new_env$SCRIPT_ID"
+			echo "}"
+			echo "function int_exit(){"
+			echo "exit 1"
+			echo "}"
+			echo "trap transfer_new_env$SCRIPT_ID EXIT"
+			echo "trap int_exit INT HUP"
+			cat $SCRIPT_TMP_DIR/$SSH_ID/do_content;
+		) | eval $CMD tee $SCRIPT_TMP_DIR/$SSH_ID/scr > /dev/null
+		eval $CMD chmod +x $SCRIPT_TMP_DIR/$SSH_ID/scr
+		eval $CMD $SCRIPT_TMP_DIR/$SSH_ID/scr
+		local res=$?
+		eval $CMD cat $SCRIPT_TMP_DIR/$SSH_ID/env.diff > $SCRIPT_TMP_DIR/$SSH_ID/remote_env.diff
+		if [ -n "$DEBUG" ];then
+			info "transfer env ----"
+			cat $SCRIPT_TMP_DIR/$SSH_ID/remote_env.diff
+			info "-----------------"
+		fi
+		. $SCRIPT_TMP_DIR/$SSH_ID/remote_env.diff
+		if [ "$res" = "1" ];then
+			exit 1
+		fi
+	else
+		#info "$SSH_PORT_OPT $SSH_OPTS $SSH_HOST $sudoing $@"
+		eval $CMD
+	fi
+}
+
+function ssh_i(){
+	if [ -z "$SSH_PORT" -o -z "$SSH_HOST" ];then
+		die "missing ssh paramter variables. Please execute 'ssh_param SERVER_NAME' first."
+	fi
+	SSH_TMP=1
+	local CMD=`echo ssh $SSH_PORT_OPT ${SSH_OPTS} $SSH_HOST $@`
+	eval $CMD
+}
+
+function ssh_sudo(){
+	ssh_do sudo $@
+}
+
+
+
+function  install_ssh_key(){
+	if [ -z "$KEY" ];then
+		KEY=`cat ~/.ssh/id_ed25519.pub 2>/dev/null`
+		if [ -z "$KEY" ];then
+			die Cannot find public key in ~/.ssh/id_ed25519.pub.
+		fi
+	fi
+	local SET_KEY_CNT=0
+	while ! ssh_do echo; do
+		if [ "$SET_KEY_CNT" = "5" ]; then
+			return 1
+		fi
+		expect -c "
+		set timeout 3
+		spawn ssh -p 22 -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" -l rancher $SSH_HOST
+		expect \"assword:\"
+		send \"rancher\n\"
+		expect \"\$ \"
+		send \"mkdir ~/.ssh\n\"
+		expect \"\$ \"
+		send \"chmod 700 ~/.ssh\n\"
+		expect \"\$ \"
+		send \"echo $KEY >> ~/.ssh/authorized_keys\n\"
+		expect \"\$ \"
+		send \"exit\"
+		"
+		sleep 1
+		SET_KEY_CNT=$(( SET_KEY_CNT + 1 ))
+	done
+	return 0
+}
+
+
+
+function ask_yes_no {
+	local ANS
+	while true; do
+		read ANS
+		case $ANS in
+			[Yy]*)
+				return 0
+				;;  
+			[Nn]*)
+				return 1
+				;;
+			*)
+				;;
+		esac
+	done
+}
+
+
+function ssh_reboot(){
+	ssh_sudo <<'END'
+		efi_dev=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')2
+		if [ -z "$efi_dev" ]; then die "boot efi device not found."; fi
+		mkdir -p $SCRIPT_TMP_DIR/efi_dev
+		mount /dev/$efi_dev $SCRIPT_TMP_DIR/efi_dev
+		touch $SCRIPT_TMP_DIR/efi_dev/.reboot
+		reboot
+END
+	wait_sshd_start
+	echo try ssh connect
+	ssh_sudo <<'END'
+		efi_dev=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')2
+		if [ -z "$efi_dev" ]; then die "boot efi device not found."; fi
+		mkdir -p $SCRIPT_TMP_DIR/efi_dev
+		mount /dev/$efi_dev $SCRIPT_TMP_DIR/efi_dev
+		rm $SCRIPT_TMP_DIR/efi_dev/.reboot
+		umount $SCRIPT_TMP_DIR/efi_dev
+#		rm -rf $SCRIPT_TMP_DIR/efi_dev
+END
+}
+
+
+function write_env_file(){
+	local ln
+	local first=0
+	local envreg
+	envreg=`env_defined | while read ln; do
+		if [ "$first" = 0 ];then
+			echo -n $ln
+			first=1
+		else
+			echo -n '|'$ln
+		fi
+	done;`
+	echo $envreg
+	local c=$(
+		echo -n "'"
+#		trim_indent | sed 's/'"'"'/'"'"'"'"'"'"'"'"'/g' | sed -r 's/(^|[^\\])\$('$envreg')([^A-Za-z0-9_]|$)/\1'"'"'"$\2"'"'"'\3/g'
+		trim_indent | sed 's/'"'"'/'"'"'"'"'"'"'"'"'/g' | sed -r 's/(^|[^\\])(\$('$envreg')(([^A-Za-z0-9_\\]|)\$('$envreg'))*)([^A-Za-z0-9_]|$)/\1'"'"'"\2"'"'"'\7/g'
+		echo -n "'"
+	)
+	eval echo "$c" > $1
+}
+
+
+function write_file(){
+	local mod
+	if [[ $1 =~ ^0[0-9][0-9][0-9]$ ]];then
+		mod=$1
+		shift
+	fi
+	local lns="`trim_indent`"
+	while (($#));do
+		echo "$lns" > $1
+		if [ -n "$mod" ];then
+			chmod $mod $1
+		fi
+		shift
+	done
+}
+
+
+function transfer_env_for_grub(){
+	sed -r 's/\\([\\"])/_\\__\1___/g'|sed -r 's/_\\__"___/"'"'"'"'"'"'"/g'|sed -r 's/_\\__\\___/\\\\/g'
+}
+
+
+function write_grub_script(){
+	(set_env ; trim_indent) > $1
+}
+
+
+function write_script(){
+	local mod
+	if [[ $1 =~ ^0[0-9][0-9][0-9]$ ]]; then
+		mod=$1
+		shift
+	fi
+	local first
+	local ln
+	local lns=$(trim_indent | while read ln;do
+		echo $ln
+		if [ -z "$first" ];then
+			set_env
+			first=1
+		fi
+	done)
+	while (($#));do
+		echo $lns > $1
+		if [ -n "$mod" ];then
+			chmod $mod $1
+		fi
+		shift
+	done
+}
+
+
+function env_var(){
+	local ln
+	declare -p |egrep '^declare -[A-Za-z-]* [A-Za-z_][A-Za-z0-9_]*'| while read ln; do
+		ln=${ln#declare -* }
+		ln=${ln%%=*}
+		tmp="`declare -p $ln 2>/dev/null`"
+		if [ "$?" = "0" ];then
+			echo $ln
+		fi
+	done|sort|uniq
+}
+
+
+__ORG_EVAR__="`env_var`"
+
+
+function get_exported(){
+	local ln
+	awk 'BEGIN{for (i in ENVIRON) {print i}}' | while read ln; do
+		if [ "$ln" != "AWKPATH" ];then
+			echo $ln
+		fi
+	done
+}
+
+
+function env_defined(){
+	(echo "`env_var`
+__ORG_EVAR__
+$__ORG_EVAR__" | sort | uniq -u; get_exported) | sort | uniq
+}
+
+function set_env(){
+	local ln
+	env_defined | while read ln; do
+		ln="`declare -p $ln`"
+		ln=${ln#declare -* }
+		if [[ ${ln} =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]];then
+			echo "$ln=''"
+		else
+			echo "$ln"
+		fi
+	done
+}
+
+
+function _set_diff_save(){
+	echo "$1VNAMES='""`env_defined`""'" >> $2
+	local ln
+	env_defined | while read ln; do
+		local content
+		local vname
+		ln="`declare -p $ln`"
+		ln=${ln#declare -* }
+		if [[ ${ln} =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]];then
+			content="''"
+			vname=${ln}
+		else
+			content="${ln#*=}"
+			vname=${ln%%=*}
+		fi
+		if [ -n "$vname" ];then
+			echo -E "$1EACH_$vname=$content" >> $2
+		fi
+	done
+}
+
+
+function set_diff_begin(){
+	local __diff_id_set_diff_local__=$RANDOM$RANDOM$RANDOM
+	local __d_set_diff_local__=$SCRIPT_TMP_DIR/set_diff/$__diff_id_set_diff_local__
+	mkdir -p $__d_set_diff_local__
+	echo "#/bin/bash" >> $__d_set_diff_local__/get_diff
+	chmod +x $__d_set_diff_local__/get_diff
+	echo $__diff_id_set_diff_local__
+	unset __diff_id_set_diff_local__
+	_set_diff_save __SET_DIFF_BEGIN_PRESERVE_ $__d_set_diff_local__/get_diff
+}
+
+
+function set_diff_end(){
+	unset SETDIFF_ID_$SCRIPT_ID
+	local __d_set_diff_local__="$SCRIPT_TMP_DIR/set_diff/$1"
+	_set_diff_save __SET_DIFF_END_PRESERVE_ $__d_set_diff_local__/get_diff
+	local out
+	if [ -z "$2" ];then
+		out=$__d_set_diff_local__/get_diff
+	else
+		out=$2
+	fi
+	if [ -z "$1" -o ! -d "$__d_set_diff_local__" ];then
+		die "ID for 'set_diff_begin' is missing."
+	fi
+	echo -E '
+		echo -n > '$out'
+		(echo -E "$__SET_DIFF_BEGIN_PRESERVE_VNAMES";
+		 echo -E "$__SET_DIFF_END_PRESERVE_VNAMES") | sort | uniq -u | while read vn; do
+			if [ -n "$vn" ];then
+				[ "$vn" = __diff_id_set_diff_local__ ] && continue
+				if declare -p __SET_DIFF_BEGIN_PRESERVE_EACH_$vn > /dev/null 2>&1; then
+					echo "unset $vn" >> '$out'
+				fi
+			fi
+		done
+		for vn in $__SET_DIFF_END_PRESERVE_VNAMES; do
+			if declare -p __SET_DIFF_END_PRESERVE_EACH_$vn > /dev/null 2>&1; then
+				[ "$vn" = EPOCHREALTIME ] && continue
+				[ "$vn" = EPOCHSECONDS ] && continue
+				[ "$vn" = SRANDOM ] && continue
+				vname_end=__SET_DIFF_END_PRESERVE_EACH_$vn
+				vname_begin=__SET_DIFF_BEGIN_PRESERVE_EACH_$vn
+				if [ "`eval \"echo $\"\"$vname_begin\"`" != "`eval \"echo $\"\"$vname_end\"`" ];then
+					ln="`declare -p $vname_end`"
+					ln=${ln#declare -* }
+					if [[ ${ln} =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]];then
+						content="''"
+					else
+						content="${ln#*=}"
+					fi
+					echo -E "$vn=$content" >> '$out'
+				fi
+			fi
+		done
+' >>  $__d_set_diff_local__/get_diff
+	bash -c $__d_set_diff_local__/get_diff
+}
+
+
+
+function do_install(){
+	local to_inst=$1
+	if [ -z "$to_inst" ];then
+		die "missing argument"
+	fi
+	local d
+	shift
+	local newLns
+	function _do_install_each(){
+		local d="$1"
+		if [ ! -d "$d" ];then
+			if [ -e "$d" ];then
+				die "'$d' is not a directory."
+			else
+				if ! mkdir -p "$d";then
+					die "cannot create directory, '$d'"
+				fi
+			fi
+		fi
+		if [ ! -e $d/$SUPPORT_LIB_NAME -o `stat $d/$SUPPORT_LIB_NAME -c %Y` -lt $SUPPORT_LIB_MTIME ];then
+			echo -E "$SUPPORT_LIB_CONTENT" > $d/$SUPPORT_LIB_NAME
+			chmod +x $d/$SUPPORT_LIB_NAME
+		fi
+		if [ -z "$newLns" ];then
+			(
+				trim_indent <<END
+					#!/bin/bash
+					source $SUPPORT_LIB_NAME
+END
+				if ! declare -f $to_inst ;then
+					die "function, '$to_inst' does not exist"
+				fi
+				trim_indent <<'END'
+					eval '
+						THIS_FILE'$SCRIPT_ID'=$(__FILE__)
+						THE_CMD'$SCRIPT_ID'=$(readlink -f $0)
+						if [ "${THE_CMD'$SCRIPT_ID'}" = "${THIS_FILE'$SCRIPT_ID'}" ];then
+							unset THIS_FILE'$SCRIPT_ID'
+							unset THE_CMD'$SCRIPT_ID'
+END
+				echo "
+							'$to_inst' \$@
+						fi
+					'
+"
+			) > $SCRIPT_TMP_DIR/$to_inst
+			newLns="`cat $SCRIPT_TMP_DIR/$to_inst`"
+		fi
+		if [ ! -e "$d/$to_inst" -o "$newLns" != "`cat $d/$to_inst`" ]; then
+			echo -E "$newLns" > $d/$to_inst
+			chmod +x $d/$to_inst
+		fi
+	}
+	if [ ${#@} = 0 ];then
+		_do_install_each /usr/bin
+	else
+		for d in "$@"; do
+			_do_install_each "$d"
+		done
+	fi
+}
+
+
+fi
