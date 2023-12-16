@@ -2,7 +2,17 @@
 
 
 function do_mount(){
-	require blkid2
+	function _mount(){
+		local msg="`/bin/mount $@ 2>&1`"
+		local ret=$?
+		if echo $msg|grep "already mounted"
+			die $msg
+		else
+			echo -n $msg
+		fi
+		return $ret
+	}
+	require -f blkid2
 	declare -A opts
 	local args=()
 	local moptShift
@@ -56,11 +66,11 @@ function do_mount(){
 			else
 				local i
 				local mustLast=""
-				for (( i=0; i<${#1}; i++ )); do
+				for (( i=1; i<${#1}; i++ )); do
 					if [ -n "$mustLast" ];then
 						die "missing mount option operand"
 					fi
-					local o="${foo:$i:1}"
+					local o="${1:$i:1}"
 					case "$o" in
 						f)
 							opts[-f]=1
@@ -96,17 +106,17 @@ function do_mount(){
 				moptShift=
 				split tmopts "$1" ,
 				for i in "${tmopts[@]}"; do
-					if [ "$i"="rw" -a "${mopts[ro]}"=1 ]; then
+					if [ "$i" = "rw" -a "${mopts[ro]}" = 1 ]; then
 						die "both 'rw' and 'ro' mount option specified"
 					fi
-					if [ "$i"="ro" -a "${mopts[rw]}"=1 ]; then
+					if [ "$i" = "ro" -a "${mopts[rw]}" = 1 ]; then
 						die "both 'rw' and 'ro' mount option specified"
 					fi
 					mopts[$i]=1
 				done
 			else
 				args+=($1)
-				i=${#args}
+				i=${#args[@]}
 				if ((i > 2)); then
 					die "extra arguments specified"
 				fi
@@ -129,7 +139,7 @@ function do_mount(){
 	moptsWithDeg[degraded]=1
 	mopts=$(joinopt "-o " , "${!mopts[@]}")
 	moptsWithNoDeg=$(joinopt "-o " , "${!moptsWithNoDeg[@]}")
-	moptsWithDeg="-o "$(joinopt "-o " , "${!moptsWithDeg[@]}")
+	moptsWithDeg=$(joinopt "-o " , "${!moptsWithDeg[@]}")
 	local src=${args[0]}
 	local dst=${args[1]}
 	declare -A to_mount_cand
@@ -206,10 +216,10 @@ function do_mount(){
 		if [ "$type" = "btrfs" ];then
 			if [ -z "$forceDegraded" ];then
 				local i=0
-				while ! mount $opts $moptsNoDeg $to_mount $dst;do
+				while ! _mount $opts $moptsNoDeg $to_mount $dst;do
 					i=$((i + 1))
 					if [ $i = 5 ];then
-						mount $opts $moptsWithDeg $to_mount $dst
+						_mount $opts $moptsWithDeg $to_mount $dst
 						res=$?
 						break
 					fi
@@ -217,11 +227,11 @@ function do_mount(){
 				done
 				res=$?
 			else
-				mount $opts $moptsWithDeg $to_mount $dst
+				_mount $opts $moptsWithDeg $to_mount $dst
 				res=$?
 			fi
 		else
-			mount $opts $mopts $to_mount $dst
+			_mount $opts $mopts $to_mount $dst
 			res=$?
 		fi
 		if [ "$res" != "0" ];then

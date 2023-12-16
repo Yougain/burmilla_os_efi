@@ -10,10 +10,49 @@ __DIR__() {
 }
 
 
+function split(){
+	local IFS="$3"
+	eval "$1=(\$2)"
+}
+
+
+mkopendir(){
+	local arr
+	split arr "$1" "/"
+	local d
+	local dj
+	for d in "${arr[@]}";do
+		dj="$dj/$d"
+		if [ ! -e "$dj" ];then
+			if ! mkdir "$dj";then
+				echo "ERROR: mkdir failed, '$dj'" >&2
+				exit 1
+			fi
+			if ! chmod 777 "$dj";then
+				echo "ERROR: chmod 777 failed, '$dj'" >&2
+				exit 1
+			fi
+		else
+			if [ ! -d "$dj" ];then
+				echo "ERROR: file exists, '$dj'"  >&2
+				exit 1
+			fi
+		fi
+	done
+}
+
+
 initialize_support_lib(){
 	if [ -z "$SCRIPT_TMP_DIR" ];then
+		mkdir -p /tmp/yougain
+		chmod 777 /tmp/yougain
 		SCRIPT_TMP_DIR=/tmp/yougain/${0##*/}/`date +"%y-%m-%d_%H:%M:%S.%N%z"`-$$
 		mkdir -p $SCRIPT_TMP_DIR
+		if [ -n "$SUDO_USER" ];then
+			chown -R "$SUDO_USER" $SCRIPT_TMP_DIR
+		fi
+		rm -f /tmp/yougain/${0##*/}/latest
+		ln -s $SCRIPT_TMP_DIR /tmp/yougain/${0##*/}/latest
 		SCRIPT_ID=$RANDOM$RANDOM$RANDOM
 		SUPPORT_LIB_CONTENT="`cat $(__FILE__)`"
 		SUPPORT_LIB_MTIME="`stat $(__FILE__) -c %Y`"
@@ -28,12 +67,6 @@ initialize_support_lib(){
 
 
 if initialize_support_lib; then
-
-
-function split(){
-	local IFS="$3"
-	eval "$1=(\$2)"
-}
 
 
 function revParenths(){
@@ -148,6 +181,15 @@ function detect_if(){
 SOURCES_LOADED=()
 
 require(){
+	local requireFunc
+	if [ "$1" = "-f" ];then
+		requireFunc=1
+		shift
+		if declare -f "${1#**/}" > /dev/null ;then
+			return 0
+		fi
+	fi
+	local PATH=./:$PATH
 	local to_load
 	if [ "${1:0:1}" != "/" ];then
 		local parr
@@ -168,6 +210,11 @@ require(){
 	SOURCES_LOADED+="$to_load"
 	if ! source "$to_load";then
 		die "require '$1', failed"
+	fi
+	if [ -n "$requireFunc" ];then
+		if ! declare -f "${1#**/}" > /dev/null ;then
+			die "function '$1', not found in any files of (\$PATH)/$1."
+		fi
 	fi
 }
 
@@ -198,7 +245,8 @@ trap trap_int INT
 
 error="\033[41m\033[33mERROR    :\033[m \033[31m"
 warning="\033[43m\033[31mWARNING:\033[m \033[33m"
-info="\033[46m\033[34mINFO     :\033[m \033[36m "
+info="\033[46m\033[34mINFO     :\033[m \033[36m"
+debug="\033[42m\033[34mDEBUG     :\033[m \033[32m"
 plain="\033[m"
 normal="\033[m"
 
@@ -226,10 +274,11 @@ function capitalize(){
 
 function errmsg(){
 	if [ -z "$ERRMSG" ]; then
-		ERRMSG="$error`capitalize $@`$plain"
+		ERRMSG="$error$@$plain
+"
 	else
 		ERRMSG="$ERRMSG
-$error""`capitalize $@`"$plain
+$error$@$plain"
 	fi
 }
 
@@ -239,7 +288,7 @@ alias error=errmsg
 
 
 function info_n(){
-	echo -ne $info`capitalize $@`$plain
+	echo -ne $info$@$plain >&2
 }
 function info(){
 	info_n $@"\n"
@@ -247,7 +296,7 @@ function info(){
 
 
 function warning_n(){
-	echo -ne "$warning""$@"
+	echo -ne "$warning""$@"  >&2
 }
 function warning(){
 	warning_n "$@""\n"
@@ -257,6 +306,14 @@ function warn(){
 	warning_n "$@""\n"
 }
 alias warn_n=warning_n
+
+
+function deb(){
+	if [ -n "DEBUG" ];then
+		echo -e $debug$@$plain >&2
+	fi
+}
+alias debug=deb
 
 
 for col in `echo $allColors`; do
@@ -294,7 +351,7 @@ function exit_if_err(){
 		errmsg $@
 	fi
 	if [ -n "$ERRMSG" ];then
-		echo -en $ERRMSG
+		echo -en $ERRMSG >&2
 		exit 1
 	fi
 }
@@ -304,7 +361,7 @@ function die(){
 		errmsg $@
 	fi
 	if [ -n "$ERRMSG" ];then
-		echo -en $ERRMSG
+		echo -en $ERRMSG >&2
 	fi
 	exit 1
 }
@@ -561,13 +618,19 @@ function ssh_do(){
 	fi
 	local SSH_ID=$RANDOM$RANDOM$RANDOM
 	mkdir -p $SCRIPT_TMP_DIR/$SSH_ID
+	if [ -n "$SUDO_USER" ];then
+		chown $SUDO_USER:$SUDO_USER $SCRIPT_TMP_DIR/$SSH_ID
+	fi
 	local CMD=`echo ssh $SSH_PORT_OPT ${SSH_OPTS} $SSH_HOST $sudoing $@`
+	#echo $CMD >&2
 	#info $sudoing $@  >&2
 	if [ "$#" = "0" ];then
 		local set_env_lines="set | awk '!/^(BASH_ARGV|BASH_ARGC|BASH_LINENO|BASH_SOURCE|GROUPS|FUNCNAME|BASHOPTS|BASH_VERSINFO|EUID|PPID|SHELLOPTS|UID)=/ {print \$0}'"
 		local SET_ENV_LINES="`eval $set_env_lines`"
 		trim_indent > $SCRIPT_TMP_DIR/$SSH_ID/do_content
 		eval $CMD mkdir -p $SCRIPT_TMP_DIR/$SSH_ID
+		#echo $CMD bash -c "\"\\\"if [ -n \"\$SUDO_USER\" ];then chown \$SUDO_USER:\$SUDO_USER "$SCRIPT_TMP_DIR/$SSH_ID"; fi\\\"\"" >&2
+		eval $CMD bash -c "\"\\\"if [ -n \"\$SUDO_USER\" ];then chown \$SUDO_USER:\$SUDO_USER "$SCRIPT_TMP_DIR/$SSH_ID"; fi\\\"\""
 		(
 			# preserve host environment
 			echo "#!/bin/bash"
@@ -606,9 +669,9 @@ function ssh_do(){
 		local res=$?
 		eval $CMD cat $SCRIPT_TMP_DIR/$SSH_ID/env.diff > $SCRIPT_TMP_DIR/$SSH_ID/remote_env.diff
 		if [ -n "$DEBUG" ];then
-			info "transfer env ----"
+			deb "transfer env ----"
 			cat $SCRIPT_TMP_DIR/$SSH_ID/remote_env.diff
-			info "-----------------"
+			deb "-----------------"
 		fi
 		. $SCRIPT_TMP_DIR/$SSH_ID/remote_env.diff
 		if [ "$res" = "1" ];then
@@ -635,7 +698,7 @@ function ssh_sudo(){
 
 
 
-function  install_ssh_key(){
+function install_ssh_key(){
 	if [ -z "$KEY" ];then
 		KEY=`cat ~/.ssh/id_ed25519.pub 2>/dev/null`
 		if [ -z "$KEY" ];then
@@ -722,7 +785,7 @@ function write_env_file(){
 			echo -n '|'$ln
 		fi
 	done;`
-	echo $envreg
+	deb "$envreg"
 	local c=$(
 		echo -n "'"
 #		trim_indent | sed 's/'"'"'/'"'"'"'"'"'"'"'"'/g' | sed -r 's/(^|[^\\])\$('$envreg')([^A-Za-z0-9_]|$)/\1'"'"'"$\2"'"'"'\3/g'
@@ -933,7 +996,16 @@ function do_install(){
 				fi
 			fi
 		fi
-		if [ ! -e $d/$SUPPORT_LIB_NAME -o `stat $d/$SUPPORT_LIB_NAME -c %Y` -lt $SUPPORT_LIB_MTIME ];then
+		#echo "[ ! -e $d/$SUPPORT_LIB_NAME -o `stat $d/$SUPPORT_LIB_NAME -c %Y` -lt $SUPPORT_LIB_MTIME ]"
+		local do
+		if [ ! -e $d/$SUPPORT_LIB_NAME ]; then
+			do=1
+		else
+			if [ "`stat $d/$SUPPORT_LIB_NAME -c %Y`" -lt $SUPPORT_LIB_MTIME ];then
+				do=1
+			fi
+		fi
+		if [ -n "$do" ];then
 			echo -E "$SUPPORT_LIB_CONTENT" > $d/$SUPPORT_LIB_NAME
 			chmod +x $d/$SUPPORT_LIB_NAME
 		fi
@@ -962,7 +1034,14 @@ END
 			) > $SCRIPT_TMP_DIR/$to_inst
 			newLns="`cat $SCRIPT_TMP_DIR/$to_inst`"
 		fi
-		if [ ! -e "$d/$to_inst" -o "$newLns" != "`cat $d/$to_inst`" ]; then
+		if [ ! -e "$d/$to_inst" ];then
+			do=1
+		else
+			if [ "$newLns" != "`cat $d/$to_inst`" ]; then
+				do=1
+			fi
+		fi
+		if [ -n "$do" ];then
 			echo -E "$newLns" > $d/$to_inst
 			chmod +x $d/$to_inst
 		fi

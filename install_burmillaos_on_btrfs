@@ -3,11 +3,9 @@
 
 source $(dirname "$(realpath -s "$0")")/bashlib_y
 
-PATH=./:$PATH (
-	require create_initrd_mod
-	require blkid2
-	require do_mount
-)
+PATH=./:$PATH require create_initrd_mod
+PATH=./:$PATH require blkid2
+PATH=./:$PATH require do_mount
 
 
 # argument analysis
@@ -230,7 +228,7 @@ done
 DNS_SETTINGS_YQ="[$DSX]"
 DNS_SETTINGS_YQ2="[$DSX2]"
 
-echo $DNS_SETTINGS_YQ2
+deb $DNS_SETTINGS_YQ2
 
 
 if [ -z "$DNS_SETTINGS" ]; then
@@ -635,9 +633,45 @@ fi
 
 
 ssh_do sudo apt-get -qq -y update
-if ! ssh_do sudo apt-get -qq -y install fdisk util-linux; then
+if ! ssh_do sudo apt-get -qq -y install fdisk util-linux vim; then
 	die cannot install fdisk, util-linux
 fi
+
+
+function install_vim(){
+	apt-get -y update
+	apt-get install -y vim
+	echo 'set t_Co=256
+set fileencoding=japan
+set fileencodings=utf-8
+set tabstop=4
+let $LANG='ja_JP.UTF-8'
+set encoding=utf-8
+set backspace=indent,eol,start
+
+if &term == "xterm"
+	let &t_ti = &t_ti . "\e[?2004h"
+	let &t_te = "\e[?2004l" . &t_te
+	let &pastetoggle = "\e[201~"
+
+	function XTermPasteBegin(ret)
+    	set paste
+    	return a:ret
+  	endfunction
+
+	map <special> <expr> <Esc>[200~ XTermPasteBegin("i")
+	imap <special> <expr> <Esc>[200~ XTermPasteBegin("")
+	cmap <special> <Esc>[200~ <nop>
+	cmap <special> <Esc>[201~ <nop>
+endif
+' > .vimrc
+	sudo cp .vimrc /root
+}
+
+
+ssh_do <<'END'
+	install_vim
+END
 
 
 DISK_SIZE=`ssh_do -t sudo fdisk -l $TARGET_DEV \|grep \"Disk $TARGET_DEV\"\|awk \"{print $\"\"5}\"|grep -v boundary`
@@ -806,7 +840,7 @@ ssh_sudo <<'FINAL'
 
 	# install on $TARGET_DEV4 (initial state drive, no boot, no state, no oem drive) first
 	ln $INST_DRIVE /dev/sr0
-	ls -la /dev/sr0
+	deb "`ls -la /dev/sr0`"
 	if ros install --no-reboot -f -t gptsyslinux -c cloud-config.yml -d $TARGET_DEV -p $TARGET_DEV4; then
 		info ros insall finished
 	else
@@ -844,7 +878,8 @@ ssh_sudo <<'FINAL'
 	if [ -z "$BOOT_UUID_SUB" ];then
 		die cannot detect uuid of boot device, $TARGET_DEV4.
 	fi
-
+	# install btrfs mount tool for best mounting for maybe degraded drive.
+	do_install do_mount
 	# initialize oem drive if it does not exists, or remain contact
 	if [ ! -e /dev/disk/by-label/RANCHER_OEM_SIBLING -o -n "$INITIALIZE_OEM" ]; then
 		mkfs.btrfs -L RANCHER_OEM_SIBLING -f $TARGET_DEV7
@@ -1247,8 +1282,9 @@ if [ "$TARGET_DEV" = "$TARGET_DEV_S" ]; then
 		cyan_n .
 	done
 	ssh_sudo <<'	END'
+		apt-get install vim
 		mkdir -p /efipart
-		mount /dev/$TARGET_DEV2 /efipart
+		mount $TARGET_DEV2 /efipart
 		cp -f /efipart/.grubenv_empty /efipart/.installing_2nd_phase
 		umount /efipart
 		rmdir /efipart
@@ -1263,9 +1299,15 @@ else
 	die target disk not found
 fi
 
+
 # installation 3rd phase : boot by installer
 
 install_ssh_key
+
+
+ssh_do <<'END'
+	install_vim
+END
 
 
 ssh_do sudo mkdir -p /installing/state /installing/oem_part
@@ -1300,7 +1342,7 @@ ssh_sudo <<'FINAL'
 		exit 1
 	fi
 
-	mount -t btrfs -odegraded,rw,subvol=/oem_root $TARGET_DEV7 /installing/oem_part
+	do_mount 7 /installing/oem_part
 	mkdir -p /installing/oem_part/var/lib/rancher/conf/cloud-config.d
 	if [ -z "$USER_CONFIG" -o ! -e "$UF" ]; then
 		DATE=`TZ=$TZL date`
@@ -1326,15 +1368,10 @@ ssh_sudo <<'FINAL'
 			      environment:
 			        TZ: $TZL
 			runcmd:
-			- mkdir -p /state_top_lvl
-			- echo /dev/$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|sed -r 's/^.*[[:space:]]efi=UUID=((\\\\|)['"'"'"]|)([0-9a-fA-F-]+)\1.*$/\3/g'`|sed -r 's/^\/dev\/([a-z]+)[0-9]+$/\1/g') > /tmp/boot_drive
-			- mount `cat /tmp/boot_drive`5 -odegraded,rw,subvol=/ /state_top_lvl
-			- mkdir -p /oem_top_lvl
-			- mount `cat /tmp/boot_drive`7 -odegraded,rw,subvol=/ /oem_top_lvl
-			- mkdir -p /boot
-			- mount `cat /tmp/boot_drive`4 /boot -odegraded,rw
-			- mkdir -p /boot/efi
-			- mount `cat /tmp/boot_drive`2 /boot/efi
+			- do_mount 5 -o subvol=/ /state_top_lvl
+			- do_mount 7 -o subvol=/ /oem_top_lvl
+			- do_mount 4 /boot
+			- do_mount 2 /boot/efi
 			- cp -f /boot/efi/.gruvenv_empty /boot/efi/.gruvenv_booting
 			- rm -f /boot/efi/.grub_env_for_installing
 			- swapon `cat /tmp/boot_drive`3
@@ -1562,12 +1599,13 @@ ssh_sudo <<'FINAL'
 			fi
 
 			mkdir -p /mnt_efi_test
+			# clear booting flags on all sibling drives
 			/sbin/blkid | grep LABEL=\"EFI\" | awk '{print substr($1, 1, length($1) - 1)}' | while read efi; do
 				mount $efi /mnt_efi_test
 				rm -f /mnt_efi_test/.last_booted
 				umount /mnt_efi_test
 			done
-			mount /dev/$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|sed -r 's/^.*[[:space:]]efi=UUID=((\\|)['"'"'"]|)([0-9a-fA-F-]+)\1.*$/\3/g'`|sed -r 's/^\/dev\/([a-z]+)[0-9]+$/\1/g')2 /mnt_efi_test
+			do_mount 2 /mnt_efi_test
 			touch /mnt_efi_test/.last_booted
 			umount /mnt_efi_test
 			rmdir /mnt_efi_test
