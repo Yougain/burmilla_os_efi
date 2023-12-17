@@ -10,55 +10,65 @@ PATH=./:$PATH require do_mount
 
 # argument analysis
 while (( "$#" )); do
-	if [ "$1" = "-f" ];then
-		FORCE=1
-	fi
-	if [ "$1" = "-r" ];then
-		REINSTALL=1
-	fi
-	if [ "$1" = "--initialize-oem" ];then
-		INITIALIZE_OEM=1
-	fi
-	if [ "$1" = "--init-oem" ];then
-		INITIALIZE_OEM=1
-	fi
-	if [ "$1" = "--overwrite-oem" ];then
-		INITIALIZE_OEM=1
-	fi
-	if [ -n "`echo $1| egrep '^[0-9]+$'`" ];then
-		PORT=$1
-	fi
-	if [ -n "`echo $1| egrep '^[A-Za-z]'`" ];then
-		CMD_HNAME=$1
-		HNAME=$1
-		if [ "${HNAME#*.}" = "`hostname -d`" ];then
-			HNAME_FULL=$HNAME
-			HNAME=${HNAME%%.*}
-		else
-			if [ -z "`echo $HNAME| grep '\.'`" ];then
-				HNAME_FULL=$HNAME.`hostname -d`
-			else
-				HNAME_FULL=$HNAME
+	case "$1" in
+		"-f")
+			FORCE=1
+			;;
+		"-r")
+			REINSTALL=1
+			;;
+		"--initialize-oem")
+			INITIALIZE_OEM=1
+			;;
+		"--init-oem")
+			INITIALIZE_OEM=1
+			;;
+		"--overwrite-oem")
+			INITIALIZE_OEM=1
+			;;
+		"--install-vim")
+			INSTALL_VIM=1
+			;;
+		"--root-on-oem")
+			ROOT_ON_OEM=1
+			;;
+		*)
+			if [ -n "`echo $1| egrep '^[0-9]+$'`" ];then
+				PORT=$1
 			fi
-		fi
-	fi
-	if [ -n "`echo $1| grep '\:' |egrep '^[0-9A-Fa-f:]+$'`" ];then
-		if [ -z "$INST_IP" ];then
-			INST_IP=$1
-		else
-			IP=$1
-		fi
-	fi
-	if [ -n "`echo $1| grep '\.' |egrep '^[0-9\.]+$'`" ];then
-		if [ -z "$INST_IP" ];then
-			INST_IP=$1
-		else
-			IP=$1
-		fi
-	fi
-	if [ -n "`echo $1| egrep '^/dev/[a-z]+$'`" ];then
-		TARGET_DEV=$1
-	fi
+			if [ -n "`echo $1| egrep '^[A-Za-z]'`" ];then
+				CMD_HNAME=$1
+				HNAME=$1
+				if [ "${HNAME#*.}" = "`hostname -d`" ];then
+					HNAME_FULL=$HNAME
+					HNAME=${HNAME%%.*}
+				else
+					if [ -z "`echo $HNAME| grep '\.'`" ];then
+						HNAME_FULL=$HNAME.`hostname -d`
+					else
+						HNAME_FULL=$HNAME
+					fi
+				fi
+			fi
+			if [ -n "`echo $1| grep '\:' |egrep '^[0-9A-Fa-f:]+$'`" ];then
+				if [ -z "$INST_IP" ];then
+					INST_IP=$1
+				else
+					IP=$1
+				fi
+			fi
+			if [ -n "`echo $1| grep '\.' |egrep '^[0-9\.]+$'`" ];then
+				if [ -z "$INST_IP" ];then
+					INST_IP=$1
+				else
+					IP=$1
+				fi
+			fi
+			if [ -n "`echo $1| egrep '^/dev/[a-z]+$'`" ];then
+				TARGET_DEV=$1
+			fi
+			;;
+	esac
 	shift
 done
 
@@ -633,7 +643,7 @@ fi
 
 
 ssh_do sudo apt-get -qq -y update
-if ! ssh_do sudo apt-get -qq -y install fdisk util-linux vim; then
+if ! ssh_do sudo apt-get -qq -y install fdisk util-linux; then
 	die cannot install fdisk, util-linux
 fi
 
@@ -669,9 +679,11 @@ endif
 }
 
 
-ssh_do <<'END'
-	install_vim
-END
+if [ -n "$INSTALL_VIM" ];then
+	ssh_do <<'	END'
+		install_vim
+	END
+fi
 
 
 DISK_SIZE=`ssh_do -t sudo fdisk -l $TARGET_DEV \|grep \"Disk $TARGET_DEV\"\|awk \"{print $\"\"5}\"|grep -v boundary`
@@ -1282,7 +1294,9 @@ if [ "$TARGET_DEV" = "$TARGET_DEV_S" ]; then
 		cyan_n .
 	done
 	ssh_sudo <<'	END'
-		apt-get install vim
+		if [ -n "$INSTALL_VIM" ];then
+			apt-get install vim
+		fi
 		mkdir -p /efipart
 		mount $TARGET_DEV2 /efipart
 		cp -f /efipart/.grubenv_empty /efipart/.installing_2nd_phase
@@ -1305,9 +1319,11 @@ fi
 install_ssh_key
 
 
-ssh_do <<'END'
-	install_vim
-END
+if [ -n "$INSTALL_VIM" ];then
+	ssh_do <<'	END'
+		install_vim
+	END
+fi
 
 
 ssh_do sudo mkdir -p /installing/state /installing/oem_part
@@ -1521,12 +1537,20 @@ ssh_sudo <<'FINAL'
 		mkdir -p /installing/oem_part/opt/rancher/bin
 		write_script 0755 /installing/oem_part/opt/rancher/bin/start.sh <<'	START_UP'
 			#!/bin/bash
-			mount --bind /usr/share/ros/oem/etc/ssh /etc/ssh
-			mount --bind /usr/share/ros/oem/root /root
+			if [ ! -L /etc/ssh ];then
+				info symlink /usr/share/ros/oem/etc/ssh /etc/ssh
+				rm -rf /etc/ssh
+				ln -sf /usr/share/ros/oem/etc/ssh /etc/ssh
+				kill -HUP $(ps ax |grep 'sshd -D' | grep -v grep | awk '{ print $1 }')
+			fi
+			if [ ! -L /root ];then
+				info symlink /usr/share/ros/oem/root /root
+				rm -rf /root
+				ln -sf /usr/share/ros/oem/root /root
+			fi
 			if [  ! -e /bin/env ];then
 				ln -s /usr/bin/env /bin/env
 			fi
-			kill -HUP $(ps ax |grep 'sshd -D' | grep -v grep | awk '{ print $1 }')
 			if [ ! -e /etc/profile.d/lang.sh ]; then
 				echo export LANG=$LANG > /etc/profile.d/lang.sh
 				echo export LC_CTYPE=$LC_CTYPE >> /etc/profile.d/lang.sh
