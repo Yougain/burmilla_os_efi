@@ -831,15 +831,15 @@ function write_script(){
 	fi
 	local first
 	local ln
-	local lns=$(trim_indent | while read ln;do
+	local lns="$(trim_indent | while read ln;do
 		echo $ln
 		if [ -z "$first" ];then
 			set_env
 			first=1
 		fi
-	done)
+	done)"
 	while (($#));do
-		echo $lns > $1
+		echo "$lns" > $1
 		if [ -n "$mod" ];then
 			chmod $mod $1
 		fi

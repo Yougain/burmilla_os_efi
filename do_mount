@@ -5,7 +5,7 @@ function do_mount(){
 	function _mount(){
 		local msg="`/bin/mount $@ 2>&1`"
 		local ret=$?
-		if echo $msg|grep "already mounted"
+		if echo $msg|grep "already mounted";then
 			die $msg
 		else
 			echo -n $msg
@@ -138,7 +138,7 @@ function do_mount(){
 	fi
 	moptsWithDeg[degraded]=1
 	mopts=$(joinopt "-o " , "${!mopts[@]}")
-	moptsWithNoDeg=$(joinopt "-o " , "${!moptsWithNoDeg[@]}")
+	moptsNoDeg=$(joinopt "-o " , "${!moptsNoDeg[@]}")
 	moptsWithDeg=$(joinopt "-o " , "${!moptsWithDeg[@]}")
 	local src=${args[0]}
 	local dst=${args[1]}

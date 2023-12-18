@@ -29,10 +29,10 @@ while (( "$#" )); do
 		"--install-vim")
 			INSTALL_VIM=1
 			;;
-		"--root-on-oem")
-			ROOT_ON_OEM=1
-			;;
 		*)
+			if [ "${1:0:1}" = "-" ];then
+				die "unknown option, '$1'"
+			fi
 			if [ -n "`echo $1| egrep '^[0-9]+$'`" ];then
 				PORT=$1
 			fi
@@ -132,7 +132,9 @@ if [ -z "$INST_IP" ]; then
 					efi_dev="`sudo mount|grep 'on /boot/efi type vfat'|awk '{print \$1}'`"
 					if [ -n "\$efi_dev" ];then
 						sudo blkid "\$efi_dev"
-						sudo cp /oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer /boot/efi/.grub_env_for_installing
+						if ! sudo cp /oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer /boot/efi/.grub_env_for_installing; then
+							exit 4
+						fi
 						sudo touch -d @$((`date +%s` + 300)) /boot/efi/.grub_env_for_installing
 						sudo reboot
 					else
@@ -152,6 +154,9 @@ END
 					;;
 				3)
 					die "EFI partition not mounted."
+					;;
+				4)
+					die /oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer not found.
 					;;
 				*) # Time out. Already booted by installer ?
 					;;
@@ -643,14 +648,17 @@ fi
 
 
 ssh_do sudo apt-get -qq -y update
+ssh_do sudo apt-get -qq install -y apt-utils
 if ! ssh_do sudo apt-get -qq -y install fdisk util-linux; then
 	die cannot install fdisk, util-linux
 fi
 
+deb first apt-get checked.
+
 
 function install_vim(){
-	apt-get -y update
-	apt-get install -y vim
+	sudo apt-get -y update
+	sudo apt-get install -y vim
 	echo 'set t_Co=256
 set fileencoding=japan
 set fileencodings=utf-8
@@ -1284,8 +1292,8 @@ ssh_sudo <<'END'
 	readlink -f /dev/disk/by-uuid/$(cat /proc/cmdline|sed -r 's/^.*[[:space:]]efi=UUID=((\\|)['"'"'"]|)([0-9a-fA-F-]+)\1.*$/\3/g')|sed -r 's/^\/dev\/([a-z]+)[0-9]+$/\1/g'
 END
 )
-info TARGET_DEV_S="'"$TARGET_DEV_S"'"
-info TARGET_DEV="'"$TARGET_DEV"'"
+deb TARGET_DEV_S="'"$TARGET_DEV_S"'"
+deb TARGET_DEV="'"$TARGET_DEV"'"
 
 if [ "$TARGET_DEV" = "$TARGET_DEV_S" ]; then
 	cyan_n Waiting initialization.
@@ -1295,7 +1303,7 @@ if [ "$TARGET_DEV" = "$TARGET_DEV_S" ]; then
 	done
 	ssh_sudo <<'	END'
 		if [ -n "$INSTALL_VIM" ];then
-			apt-get install vim
+			install_vim
 		fi
 		mkdir -p /efipart
 		mount $TARGET_DEV2 /efipart
@@ -1568,7 +1576,7 @@ ssh_sudo <<'FINAL'
 			DNS_SETTINGS=`echo "$DS" | sed -e 's/^/      - /'`
 			DSX=""
 			DSX2=""
-			for i in "$DS"; do
+			for i in $DS; do
 				if [ -z "$DSX" ]; then
 					DSX='"'$i'"'
 					DSX2='\"'$i'\"'
@@ -1634,6 +1642,11 @@ ssh_sudo <<'FINAL'
 			umount /mnt_efi_test
 			rmdir /mnt_efi_test
 		START_UP
+		deb wc start.sh=`wc /installing/oem_part/opt/rancher/bin/start.sh`
+		deb wc start.sh\(awk 1\)=`wc /installing/oem_part/opt/rancher/bin/start.sh|awk '{print $1}'`
+		if [ "`wc /installing/oem_part/opt/rancher/bin/start.sh|awk '{print $1}'`"=1 ];then
+			die "failed to create start.sh"
+		fi
 	fi
 
 
