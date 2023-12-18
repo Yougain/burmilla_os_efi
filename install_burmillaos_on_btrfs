@@ -1545,6 +1545,7 @@ ssh_sudo <<'FINAL'
 		mkdir -p /installing/oem_part/opt/rancher/bin
 		write_script 0755 /installing/oem_part/opt/rancher/bin/start.sh <<'	START_UP'
 			#!/bin/bash
+			source bashlib_y
 			if [ ! -L /etc/ssh ];then
 				info symlink /usr/share/ros/oem/etc/ssh /etc/ssh
 				rm -rf /etc/ssh
@@ -1619,15 +1620,24 @@ ssh_sudo <<'FINAL'
 
 			USER_SETTINGS_FOR_GRUB_SOURCE="USER_SETTINGS='rancher.network.interfaces.$NET_DEV.address=$IP/$NETMASK rancher.network.interfaces.$NET_DEV.gateway=$GATEWAY rancher.network.dns.nameservers=$DNS_SETTINGS_YQ'"
 			mkdir -p /oem_top_lvl/oem_root/opt/rancher/conf/grub
-			if [ "$USER_SETTINGS_FOR_GRUB_SOURCE" != "`cat /oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer`" ]; then
-				if [ -e /oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer.1 ]; then
-					chain_ren /oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer 1
+			local kpF=/oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer
+			local noKernelParam
+			if [ ! -e $kpF ];then
+				noKernelParam=1
+			else
+				if [ "$USER_SETTINGS_FOR_GRUB_SOURCE" != "`cat $kpF`" ]; then
+					noKernelParam=1
 				fi
-				if [ -e /oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer ]; then
-					mv /oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer{,.1}
+			fi
+			if [ -n "$noKernelParam" ];then
+				if [ -e $kpF.1 ]; then
+					chain_ren $kpF 1
 				fi
-				echo -n "$USER_SETTINGS_FOR_GRUB_SOURCE" > /oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer
-				chmod +x /oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer
+				if [ -e $kpF ]; then
+					mv $kpF{,.1}
+				fi
+				echo -n "$USER_SETTINGS_FOR_GRUB_SOURCE" > $kpF
+				chmod +x $kpF
 			fi
 
 			mkdir -p /mnt_efi_test
@@ -1644,7 +1654,7 @@ ssh_sudo <<'FINAL'
 		START_UP
 		deb wc start.sh=`wc /installing/oem_part/opt/rancher/bin/start.sh`
 		deb wc start.sh\(awk 1\)=`wc /installing/oem_part/opt/rancher/bin/start.sh|awk '{print $1}'`
-		if [ "`wc /installing/oem_part/opt/rancher/bin/start.sh|awk '{print $1}'`"=1 ];then
+		if [ "`wc /installing/oem_part/opt/rancher/bin/start.sh|awk '{print $1}'`" = 1 ];then
 			die "failed to create start.sh"
 		fi
 	fi
