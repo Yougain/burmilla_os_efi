@@ -1620,8 +1620,7 @@ ssh_sudo <<'FINAL'
 
 			USER_SETTINGS_FOR_GRUB_SOURCE="USER_SETTINGS='rancher.network.interfaces.$NET_DEV.address=$IP/$NETMASK rancher.network.interfaces.$NET_DEV.gateway=$GATEWAY rancher.network.dns.nameservers=$DNS_SETTINGS_YQ'"
 			mkdir -p /oem_top_lvl/oem_root/opt/rancher/conf/grub
-			local kpF=/oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer
-			local noKernelParam
+			kpF=/oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer
 			if [ ! -e $kpF ];then
 				noKernelParam=1
 			else
