@@ -243,7 +243,7 @@ $libs"
 	
 	find | cpio -o -H newc  | gzip -c > ../$INITRD_FILE-mod.new
 	if [ ! -n "$stand_alone" ];then
-		chain_bak -d ../$INITRD_FILE-mod.new /installing/boot_dev/$INITRD_FILE
+		chain_bak -d ../$INITRD_FILE-mod.new /installing/boot_dev/$INITRD_FILE-mod
 	fi
 	cd $tmpd
 
