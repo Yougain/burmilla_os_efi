@@ -1611,13 +1611,6 @@ ssh_sudo <<'FINAL'
 				die Cannot find default gateway.
 			fi
 
-			chain_ren(){
-				if [ -e "$1.$(($2 + 1))" ];then
-					chain_ren $1 $(($2 + 1))
-				fi
-				mv "$1.$2" "$1.$(($2 + 1))"
-			}
-
 			USER_SETTINGS_FOR_GRUB_SOURCE="USER_SETTINGS='rancher.network.interfaces.$NET_DEV.address=$IP/$NETMASK rancher.network.interfaces.$NET_DEV.gateway=$GATEWAY rancher.network.dns.nameservers=$DNS_SETTINGS_YQ'"
 			mkdir -p /oem_top_lvl/oem_root/opt/rancher/conf/grub
 			kpF=/oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer
@@ -1629,12 +1622,7 @@ ssh_sudo <<'FINAL'
 				fi
 			fi
 			if [ -n "$noKernelParam" ];then
-				if [ -e $kpF.1 ]; then
-					chain_ren $kpF 1
-				fi
-				if [ -e $kpF ]; then
-					mv $kpF{,.1}
-				fi
+				chain_bak $kpF
 				echo -n "$USER_SETTINGS_FOR_GRUB_SOURCE" > $kpF
 				chmod +x $kpF
 			fi
@@ -1662,12 +1650,7 @@ ssh_sudo <<'FINAL'
 	# preserve user setting for grub
 	mkdir -p /installing/oem_part/opt/rancher/conf/grub
 	if [ "$USER_SETTINGS_FOR_GRUB_SOURCE" != "`cat /installing/oem_part/opt/rancher/conf/grub/grub_env_for_installer`" ]; then
-		if [ -e /installing/oem_part/opt/rancher/conf/grub/grub_env_for_installer.1 ]; then
-			chain_ren /installing/oem_part/opt/rancher/conf/grub/grub_env_for_installer 1
-		fi
-		if [ -e /installing/oem_part/opt/rancher/conf/grub/grub_env_for_installer ]; then
-			mv /installing/oem_part/opt/rancher/conf/grub/grub_env_for_installer{,.1}
-		fi
+		chain_bak /installing/oem_part/opt/rancher/conf/grub/grub_env_for_installer
 		echo -n "$USER_SETTINGS_FOR_GRUB_SOURCE" > /installing/oem_part/opt/rancher/conf/grub/grub_env_for_installer
 		chmod +x /installing/oem_part/opt/rancher/conf/grub/grub_env_for_installer
 	fi

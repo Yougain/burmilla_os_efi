@@ -55,6 +55,144 @@ if initialize_support_lib; then
 
 declare -A LOCAL_FUNCS
 
+
+chain_bak(){
+	local argv=()
+	local diff
+	local help
+	local cyclic
+	local cyclicPreserved
+	local verbose
+	local dryrun
+	local theFirst
+
+	while (( "$#" )); do
+		if [ "${1:0:1}" = "-" ];then
+			if [ "${1:0:2}" = "--" ];then
+				case "$1" in
+					"--diff")
+						diff=1
+						;;
+					"--help")
+						help=1
+						;;
+					"--exchange")
+						cyclic=1
+						;;
+					"--cyclic")
+						cyclic=1
+						;;
+					*)
+						die "xnot supported option '$1'"
+						;;
+				esac
+			else
+				local i
+				for (( i=1; i<${#1}; i++ )); do
+					local o="${1:$i:1}"
+					case "$o" in
+						"v")
+							verbose="-v"
+							;;
+						"d")
+							diff=1
+							;;
+						"?")
+							help=1
+							;;
+						"x")
+							cyclic=1
+							;;
+						*)
+							die "not supported option -'$o'"
+							;;
+					esac
+				done
+			fi
+		else
+			argv+=("$1")
+		fi
+		shift
+	done
+	if [ -n "$help" ];then
+		echo "usage: chain_bak [options] SOURCE DEST [ DEST2 DEST3 ... ]
+  SOURCE                      : source file name
+  DEST(s)                     : destination file name
+  (options)
+     -d, --diff               : check difference between SOURCE and DEST
+     -x, --exchange, --cyclic : exchange name cyclically
+     -v, --verbose            : verbose output
+     -?, --help               : show this help messages"
+		exit 0
+	fi
+	if [ -n "$DEBUG" ];then
+		verbose=1
+	
+	fi
+	function _mv_it(){
+		if [ -n "$dryrun" ];then
+			echo mv '$1' '$2'
+		fi
+		mv $verbose "$1" "$2"
+	}
+	function _chain_bak(){
+		local f="$1"
+		shift
+		if [ "$f" = "$1" ];then
+			info "first argumemnt and second argument is same"
+			return 1
+		fi
+		if [ ! -e "$f" ];then
+			die "'$f' does not exist"
+		else
+			if [ -e "$1" ];then
+				if [ -n "$diff" ];then
+					if diff "$f" "$1" >/dev/null; then
+						info "no difference between '$f' '$1'"
+						return 1
+					fi
+				fi
+				if [ -e "$2" ];then
+					_chain_bak "$@"
+				else
+					if [ -n "$cyclic" ];then
+						local noCycDiff
+						if [ -n "$diff" ];then
+							if diff "$theFirst" "$1" >/dev/null; then
+								info "no difference between '$theFirst' '$1'"
+								noCycDiff=1
+							fi
+						fi
+						if [ -z "$noCycDiff" ];then
+							cyclicPreserved="$1.$RANDOM$RANDOM$RANDOM"
+							_mv_it "$1" "$cyclicPreserved"
+						fi
+					else
+						_chain_bak2 "$1" 1
+					fi
+				fi
+			fi
+		fi
+		_mv_it "$f" "$1"
+	}
+	function _chain_bak2(){
+		if [ -e "$1.$2" ];then
+			local nxt="$1.$(($2 + 1))"
+			if [ -e "$nxt" ];then
+				_chain_bak2 "$1" $(($2 + 1))
+			fi
+			_mv_it "$1.$2" "$nxt"
+		fi
+	}
+	theFirst="${argv[0]}"
+	_chain_bak "${argv[@]}"
+	if [ -n "$cyclicPreserved" ];then
+		_mv_it "$cyclicPreserved" "${argv[0]}"
+	fi
+}
+
+
+
 function local_def(){
 	if [ "$#" = 0 ];then
 		die "local_def: missing argument"

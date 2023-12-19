@@ -15,12 +15,12 @@ function create_initrd_mod(){
 	}
 
 	tmpd=`pwd`
-	if [ -d /installing/boot_dev/initrd ];then
-		for i in `ls /installing/boot_dev/initrd`;do
-			umount /installing/boot_dev/initrd/$i
+	if [ -d ./initrd ];then
+		for i in `ls ./initrd`;do
+			umount ./$i
 		done
 	fi
-	rm -rf /installing/boot_dev/initrd
+	rm -rf ./initrd
 	mkdir -p /installing/boot_dev
 	if [ -z "$INITRD_FILE" ];then
 		local stand_alone=1
@@ -32,8 +32,8 @@ function create_initrd_mod(){
 		fi
 		mount $TARGET_DEV4 /installing/boot_dev
 	fi
-	mkdir -p /installing/boot_dev/initrd
-	cd /installing/boot_dev/initrd
+	mkdir -p ./initrd
+	cd ./initrd
 	apt-get -y update
 	apt-get -y install cpio btrfs-progs strace
 
@@ -237,7 +237,12 @@ $libs"
 	do_install do_mount ./usr/bin
 	ln -s ../usr/bin/bash ./bin/bash
 	
-	find | cpio -o -H newc  | gzip -c > ../$INITRD_FILE-mod
+	find | cpio -o -H newc  | gzip -c > ../$INITRD_FILE-mod.new
+	if chain_bak -d ../$INITRD_FILE-mod{.new,}
+		if [ ! -n "$stand_alone" ];then
+			cp ../$INITRD_FILE-mod /installing/boot_dev
+		fi
+	fi
 	cd $tmpd
 
 }
