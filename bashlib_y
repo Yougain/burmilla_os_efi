@@ -33,7 +33,11 @@ initialize_support_lib(){
 		fi
 		rm -f /tmp/yougain/${0##*/}/latest
 		if [ -n "$DEBUG" ];then
-			ln -s $SCRIPT_TMP_DIR /tmp/yougain/${0##*/}/latest
+			local lnk=/tmp/yougain/${0##*/}/latest
+			ln -s $SCRIPT_TMP_DIR $lnk
+			if [ -n "$SUDO_USER" ];then
+				chown "$SUDO_USER" $lnk
+			fi
 		fi
 		SCRIPT_ID=$RANDOM$RANDOM$RANDOM
 		SUPPORT_LIB_CONTENT="`cat $(__FILE__)`"
