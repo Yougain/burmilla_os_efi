@@ -2,6 +2,9 @@
 
 
 function create_initrd_mod(){
+	if [ "`id -u`" != 0 ];then
+		die "not super user"
+	fi
 	function find(){
 		/usr/bin/find $@ 2> >(egrep -v '/proc.*: Invalid argument')
 	}
@@ -197,6 +200,7 @@ $libs"
 		busybox
 		grep
 		ls
+		id
 		mount
 		mknod
 		mkdir
@@ -231,7 +235,6 @@ $libs"
 	
 	do_install blkid2 ./usr/bin
 	do_install do_mount ./usr/bin
-	do_install create_initrd_mod ./usr/bin
 	ln -s ../usr/bin/bash ./bin/bash
 	
 	find | cpio -o -H newc  | gzip -c > ../$INITRD_FILE-mod

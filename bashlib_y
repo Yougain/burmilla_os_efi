@@ -1057,6 +1057,15 @@ END
 			fi
 		fi
 		if [ -n "$do" ];then
+			if [ ! -e $d/$to_inst ];then
+				if [ ! -w $d ];then
+					die "cannot write to '$d/$to_inst'"
+				fi
+			else
+				if [ ! -w $d/$to_inst ];then
+					die "cannot write to '$d/$to_inst'"
+				fi
+			fi
 			echo -E "$newLns" > $d/$to_inst
 			chmod +x $d/$to_inst
 		fi
