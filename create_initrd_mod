@@ -239,11 +239,8 @@ $libs"
 	ln -s ../usr/bin/bash ./bin/bash
 	
 	find | cpio -o -H newc  | gzip -c > ../$INITRD_FILE-mod.new
-	exit 1
-	if chain_bak -d ../$INITRD_FILE-mod{.new,}; then
-		if [ ! -n "$stand_alone" ];then
-			cp ../$INITRD_FILE-mod /installing/boot_dev
-		fi
+	if [ ! -n "$stand_alone" ];then
+		chain_bak -d ../$INITRD_FILE-mod.new /installing/boot_dev/$INITRD_FILE
 	fi
 	cd $tmpd
 
