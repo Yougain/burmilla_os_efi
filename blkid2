@@ -15,11 +15,12 @@ function blkid2(){
 	else
         local i
         local found
-        if [ -n "`__readlink /proc/*/exe 2>/dev/null| egrep '/udevd$'`" ]; then
-            found=1
-        fi
+        #if [ -n "`__readlink /proc/*/exe 2>/dev/null| egrep '/udevd$'`" ]; then
+         #   found=1
+        #fi
         if [ -z "$found" ]; then
  			udevd  --daemon --resolve-names=never
+ 			info udev started
 			udevadm trigger --action=add --type=subsystems
 			udevadm trigger --action=add --type=devices
 			udevadm trigger --action=change --type=devices

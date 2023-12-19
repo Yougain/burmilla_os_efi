@@ -194,9 +194,10 @@ $libs"
 	cp_lib_back <<"	END"
 		libselinux.so.1
 		libpcre2-8.so.0
-		libatomic.so.1
 	END
 
+	cp_lib libatomic.so.1 .
+	
 	cp_bin . /installing/state_top/state_root <<"	END"
 		bash
 		busybox
