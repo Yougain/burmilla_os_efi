@@ -11,6 +11,9 @@ function blkid2(){
 	local PATH=/sbin:/usr/sbin:/bin:/usr/bin
 	if [ "$1" = "stop" ];then
 		killall udevd
+ 		info udev stopped
+ 		ps ax | grep udevd
+		ls -la /dev/btrfs-control
 		return 0
 	else
 		local i
@@ -20,11 +23,12 @@ function blkid2(){
 		fi
 		if [ -z "$found" ]; then
  			udevd  --daemon --resolve-names=never
- 			info udev started
 			udevadm trigger --action=add --type=subsystems
 			udevadm trigger --action=add --type=devices
 			udevadm trigger --action=change --type=devices
 			udevadm settle
+ 			info udev started
+			ls -la /dev/btrfs-control
 			sleep 5
 		fi
 	fi
