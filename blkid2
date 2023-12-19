@@ -2,14 +2,24 @@
 
 
 function blkid2(){
+    __readlink(){
+        for i in "$@"; do
+            readlink -f $i
+        done
+    }
 	local local=$RANDOM$RANDOM$RANDOM
 	local PATH=/sbin:/usr/sbin:/bin:/usr/bin
 	if [ "$1" = "stop" ];then
 		killall udevd
 		return 0
 	else
-		if [ -z "$(readlink -f `ls /proc/*/exe`|egrep '/udevd$')" ];then
-			udevd  --daemon --resolve-names=never
+        local i
+        local found
+        if [ -n "`__readlink /proc/*/exe 2>/dev/null| egrep '/udevd$'`" ]; then
+            found=1
+        fi
+        if [ -z "$found" ]; then
+ 			udevd  --daemon --resolve-names=never
 			udevadm trigger --action=add --type=subsystems
 			udevadm trigger --action=add --type=devices
 			udevadm trigger --action=change --type=devices
@@ -19,12 +29,12 @@ function blkid2(){
 	fi
 	
 	local IDnDEVs_id=(`ls /dev/disk/by-id`)
-	local IDnDEVs_dev=($(readlink -f `ls /dev/disk/by-id/*`))
+	local IDnDEVs_dev=($(__readlink `ls /dev/disk/by-id/*`))
 	local IDnDEVs_n=${#IDnDEVs_id[@]}
 	
 	if [ -d /dev/disk/by-path ];then
 		local PATHnDEVs_path=(`ls /dev/disk/by-path`)
-		local PATHnDEVs_dev=($(readlink -f `ls /dev/disk/by-path/*`))
+		local PATHnDEVs_dev=($(__readlink `ls /dev/disk/by-path/*`))
 		local PATHnDEVs_n=${#IDnPATHs_path[@]}
 	fi
 

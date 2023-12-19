@@ -194,6 +194,7 @@ $libs"
 	cp_lib_back <<"	END"
 		libselinux.so.1
 		libpcre2-8.so.0
+		libatomic.so.1
 	END
 
 	cp_bin . /installing/state_top/state_root <<"	END"
@@ -230,6 +231,7 @@ $libs"
 		uniq
 		egrep
 		ldd
+		date
 	END
 	
 	system-docker cp udev:/lib/udev ./lib
