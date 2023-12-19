@@ -20,7 +20,7 @@ function create_initrd_mod(){
 			umount ./$i
 		done
 	fi
-	rm -rf ./initrd
+	rm -rf --one-file-system ./initrd
 	mkdir -p /installing/boot_dev
 	if [ -z "$INITRD_FILE" ];then
 		local stand_alone=1
