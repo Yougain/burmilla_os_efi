@@ -1,20 +1,16 @@
 # bash source
 
 
-function find(){
-	/usr/bin/find $@ 2> >(egrep -v '/proc.*: Invalid argument')
-}
-
-
-function sfind(){
-	system-docker exec udev find $@ 2> >(egrep -v '/proc.*: Invalid argument')
-}
-
-
 function create_initrd_mod(){
-	if [ -z "$INITRD_FILE" ];then
-		die 'missing $INITRD_FILE'
-	fi
+	function find(){
+		/usr/bin/find $@ 2> >(egrep -v '/proc.*: Invalid argument')
+	}
+
+
+	function sfind(){
+		system-docker exec udev find $@ 2> >(egrep -v '/proc.*: Invalid argument')
+	}
+
 	tmpd=`pwd`
 	if [ -d /installing/boot_dev/initrd ];then
 		for i in `ls /installing/boot_dev/initrd`;do
@@ -23,11 +19,37 @@ function create_initrd_mod(){
 	fi
 	rm -rf /installing/boot_dev/initrd
 	mkdir -p /installing/boot_dev
-	mount $TARGET_DEV4 /installing/boot_dev
+	if [ -z "$INITRD_FILE" ];then
+		local stand_alone=1
+		require do_mount
+		do_mount 4 /installing/boot_dev
+	else
+		if [ -z "$TARGET_DEV4" ];then
+			die "boot drive not found"
+		fi
+		mount $TARGET_DEV4 /installing/boot_dev
+	fi
 	mkdir -p /installing/boot_dev/initrd
 	cd /installing/boot_dev/initrd
 	apt-get -y update
 	apt-get -y install cpio btrfs-progs strace
+
+	if [ -z "$INITRD_FILE" ];then
+		if [ -n "$1" ];then
+			if [ ! -e /installing/boot_dev/initrd-$1 ];then
+				die "'initrd-$1' not found"
+			else
+				INITRD_FILE=initrd-$1
+			fi
+		else
+			INITRD_FILE=`cd /installing/boot_dev;ls -d initrd-*|egrep -v '\-mod$'`
+			local INITRD_FILE_COUNT=`echo "$INITRD_FILE" | wc | awk '{print $1}'`
+			if [ "$INITRD_FILE_COUNT" != "1" ];then
+			    die cannot detect initrd in iso image, or multiple initrd detected.
+			fi
+		fi
+	fi
+
 	zcat /installing/boot_dev/$INITRD_FILE | cpio -idmv
 
 	ln -s usr/lib lib
@@ -194,11 +216,23 @@ $libs"
 		sed
 		blkid
 		udevd
+		rm
+		ln
+		cat
+		stat
+		tr
+		sort
+		uniq
+		egrep
+		ldd
 	END
 	
 	system-docker cp udev:/lib/udev ./lib
 	
 	do_install blkid2 ./usr/bin
+	do_install do_mount ./usr/bin
+	do_install create_initrd_mod ./usr/bin
+	ln -s ../usr/bin/bash ./bin/bash
 	
 	find | cpio -o -H newc  | gzip -c > ../$INITRD_FILE-mod
 	cd $tmpd

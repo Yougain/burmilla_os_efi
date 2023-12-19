@@ -5,6 +5,12 @@ __FILE__() {
 	readlink -f "${BASH_SOURCE[1]}"
 }
 
+__FILE_NAME__(){
+	local f="`__FILE__`"
+	echo "${f##*/}"
+}
+
+
 __DIR__() {
 	dirname "$(readlink -f "${BASH_SOURCE[1]}")"
 }
@@ -16,48 +22,23 @@ function split(){
 }
 
 
-mkopendir(){
-	local arr
-	split arr "$1" "/"
-	local d
-	local dj
-	for d in "${arr[@]}";do
-		dj="$dj/$d"
-		if [ ! -e "$dj" ];then
-			if ! mkdir "$dj";then
-				echo "ERROR: mkdir failed, '$dj'" >&2
-				exit 1
-			fi
-			if ! chmod 777 "$dj";then
-				echo "ERROR: chmod 777 failed, '$dj'" >&2
-				exit 1
-			fi
-		else
-			if [ ! -d "$dj" ];then
-				echo "ERROR: file exists, '$dj'"  >&2
-				exit 1
-			fi
-		fi
-	done
-}
-
-
 initialize_support_lib(){
 	if [ -z "$SCRIPT_TMP_DIR" ];then
-		mkdir -p /tmp/yougain
-		chmod 777 /tmp/yougain
-		SCRIPT_TMP_DIR=/tmp/yougain/${0##*/}/`date +"%y-%m-%d_%H:%M:%S.%N%z"`-$$
+		local f="`__FILE_NAME__`"
+		mkdir -p --mode=0777 /tmp/$f
+		SCRIPT_TMP_DIR=/tmp/$f/${0##*/}/`date +"%y-%m-%d_%H:%M:%S.%N%z"`-$$
 		mkdir -p $SCRIPT_TMP_DIR
 		if [ -n "$SUDO_USER" ];then
 			chown -R "$SUDO_USER" $SCRIPT_TMP_DIR
 		fi
 		rm -f /tmp/yougain/${0##*/}/latest
-		ln -s $SCRIPT_TMP_DIR /tmp/yougain/${0##*/}/latest
+		if [ -n "$DEBUG" ];then
+			ln -s $SCRIPT_TMP_DIR /tmp/yougain/${0##*/}/latest
+		fi
 		SCRIPT_ID=$RANDOM$RANDOM$RANDOM
 		SUPPORT_LIB_CONTENT="`cat $(__FILE__)`"
 		SUPPORT_LIB_MTIME="`stat $(__FILE__) -c %Y`"
-		local f=`__FILE__`
-		SUPPORT_LIB_NAME=${f##*/}
+		SUPPORT_LIB_NAME=$f
 		SOURCES_LOADED=()
 		return 0
 	else
@@ -67,6 +48,40 @@ initialize_support_lib(){
 
 
 if initialize_support_lib; then
+
+declare -A LOCAL_FUNCS
+
+function local_def(){
+	if [ "$#" = 0 ];then
+		die "local_def: missing argument"
+	fi
+	if [ -z "${LOCAL_FUNC_IDS[${FUNCNAME[2]}]}" ];then
+		LOCAL_FUNC_IDS[${FUNCNAME[2]}]=${FUNCNAME[2]}_$RANDOM$RANDOM$RANDOM
+		local fName=${LOCAL_FUNC_IDS[${FUNCNAME[2]}]}$1
+	fi
+	shift
+	if [ -z "${LOCAL_FUNC_EACH[$fName]}" ] ;then
+		LOCAL_FUNC_EACH[$fName]=1
+		eval "function $fName(){
+			$(while read -j ln;do
+				echo -E $ln
+			done)
+		}"
+	fi
+}
+
+
+function local_call(){
+	if [ "$#" = 0 ];then
+		die "local_call: missing argument"
+	fi
+	if [ -z "${LOCAL_FUNCS[${FUNCNAME[2]}]}" ];then
+		die "local_call: local function, '$1' in '${FUNCNAME[2]}]' not defined"
+	fi
+	local fName=${LOCAL_FUNCS[${FUNCNAME[2]}]}$1
+	shift
+	$fName $@
+}
 
 
 function revParenths(){
