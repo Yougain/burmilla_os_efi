@@ -130,10 +130,7 @@ chain_bak(){
 	
 	fi
 	function _mv_it(){
-		if [ -n "$dryrun" ];then
-			echo mv '$1' '$2'
-		fi
-		mv $verbose "$1" "$2"
+		/bin/mv $verbose "$1" "$2"
 	}
 	function _chain_bak(){
 		local f="$1"
@@ -186,8 +183,11 @@ chain_bak(){
 	}
 	theFirst="${argv[0]}"
 	_chain_bak "${argv[@]}"
-	if [ -n "$cyclicPreserved" ];then
+	local res=$?
+	if [ "$res" = 0 -a -n "$cyclicPreserved" ];then
 		_mv_it "$cyclicPreserved" "${argv[0]}"
+	else
+		return $res
 	fi
 }
 
