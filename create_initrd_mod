@@ -22,6 +22,7 @@ function create_initrd_mod(){
 	fi
 	rm -rf --one-file-system ./initrd
 	mkdir -p /installing/boot_dev
+	umount /installing/boot_dev
 	if [ -z "$INITRD_FILE" ];then
 		local stand_alone=1
 		require do_mount
