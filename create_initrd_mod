@@ -2,6 +2,9 @@
 
 
 function create_initrd_mod(){
+	if [ ! -x /usr/bin/system-docker ];then
+		die "/usr/bin/system-docker not found"
+	fi
 	if [ "`id -u`" != 0 ];then
 		die "not super user"
 	fi
@@ -24,18 +27,29 @@ function create_initrd_mod(){
 	mkdir -p /installing/boot_dev
 	umount /installing/boot_dev
 	if [ -z "$INITRD_FILE" ];then
-		local stand_alone=1
-		require do_mount
-		do_mount 4 /installing/boot_dev
-	else
-		if [ -z "$TARGET_DEV4" ];then
-			die "boot drive not found"
+		local stand_alone
+		if [ "$1" = for_installer ];then
+			stand_alone=for_installer
+			mkdir -p /installing/installer
+			if ! mount LABEL=RANCHEROS /installing/installer
+				die "installer disk not found"
+			fi
+			mount --bind /installing/installer/boot /installing/boot_dev
+		else
+			stand_alone=1
+			require do_mount
+			do_mount 4 /installing/boot_dev
 		fi
-		mount $TARGET_DEV4 /installing/boot_dev
-		mkdir -p /installing/state_root
-		umount /installing/state_root
-		mount $TARGET_DEV5 /installing/state_root
-		for_state=/installing/state_root
+	else
+		if [ -n "$TARGET_DEV4" ];then
+			mount $TARGET_DEV4 /installing/boot_dev
+			mkdir -p /installing/state_root
+			umount /installing/state_root
+			mount $TARGET_DEV5 /installing/state_root
+			local for_state=/installing/state_root
+		else
+			die boot drive not found
+		fi
 	fi
 	mkdir -p ./initrd
 	cd ./initrd
@@ -43,7 +57,7 @@ function create_initrd_mod(){
 	apt-get -y install cpio btrfs-progs strace
 
 	if [ -z "$INITRD_FILE" ];then
-		if [ -n "$1" ];then
+		if [ -n "$1" -a "$1" != for_installer ];then
 			if [ ! -e /installing/boot_dev/initrd-$1 ];then
 				die "'initrd-$1' not found"
 			else
@@ -254,12 +268,14 @@ $libs"
 	
 	for d in . $for_state; do
 		system-docker cp udev:/lib/udev $d/lib
+#		ln -sf /dev/null $d/lib/udev/rules.d/75-net-description.rules
+#		ln -sf /dev/null $d/lib/udev/rules.d/80-net-name-slot.rules
 		do_install blkid2 $d/usr/bin
 		do_install do_mount $d/usr/bin
 	done
 	
 	find | cpio -o -H newc  | gzip -c > ../$INITRD_FILE-mod.new
-	if [ ! -n "$stand_alone" ];then
+	if [ -z "$stand_alone" ];then
 		chain_bak -d ../$INITRD_FILE-mod.new /installing/boot_dev/$INITRD_FILE-mod
 	fi
 	cd $tmpd

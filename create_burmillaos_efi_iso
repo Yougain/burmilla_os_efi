@@ -2,7 +2,7 @@
 
 
 SCRIPT_PATH=$(dirname "$(realpath -s "$0")")
-. $SCRIPT_PATH/err
+. $SCRIPT_PATH/bashlib_y
 
 
 UB_CERT_URL=https://letsencrypt.org/certs/lets-encrypt-r3.pem
@@ -12,7 +12,7 @@ UB_RELEASE_URL=https://releases.ubuntu.com
 function check_cmd {
 	while (( "$#" )); do
 		if [ -z "`sudo which $1 2>/dev/null`" ];then
-			echo "Command, '$1' is not found. Please install"
+			err "Command, '$1' is not found. Please install"
 			NO_CMD=1
 		fi
 		shift
@@ -28,8 +28,7 @@ fi
 
 check_cmd fallocate gdisk losetup mkfs.fat mkisofs xorriso #partprobe
 if [ -n "$NO_CMD" ];then
-	echo "Terminated."
-	exit 1
+	die "Terminated."
 fi
 
 
@@ -68,20 +67,17 @@ while (( "$#" )); do
 	case "$1" in
 		"rc" )
 			if [ $(vc $LATEST_STABLE_V) -ge $(vc $LATEST_RC_V) ];then
-				echo "latest rc not found"
-				exit 1
+				die "latest rc not found"
 			fi
 			ARG_FOUND=1
 			BURMILLAOS_VER=$LATEST_RC
 			;;
 		"beta" )
 			if [ $(vc $LATEST_STABLE_V) -ge $(vc $LATEST_BETA_V) ];then
-				echo "latest beta not found"
-				exit 1
+				die "latest beta not found"
 			fi
 			if [ $(vc $LATEST_RC_V) -ge $(vc $LATEST_BETA_V) ];then
-				echo "latest beta not found"
-				exit 1
+				die "latest beta not found"
 			fi
 			ARG_FOUND=1
 			BURMILLAOS_VER=$LATEST_BETA
@@ -105,9 +101,9 @@ if [ -z "$ARG_FOUND" ];then
 fi
 
 if [ -z "$BURMILLAOS_VER" ];then
-	echo "Version, $1 is not found"
-	echo "Available Versions:"
-	echo "$VERSIONS"
+	err "Version, $1 is not found"
+	info "Available Versions:"
+	echo $cyan"$VERSIONS"$normal
 	exit 1
 fi
 
@@ -143,8 +139,7 @@ function WG(){
 			go=1
 			;;
 		"")
-			echo "Error: argument error for wget $@. Exiting" >&2
-			exit 1
+			die "argument error for wget $@. Exiting" >&2
 			;;
 		*)
 			if [ ! -s "$outFile" ];then
@@ -156,13 +151,11 @@ function WG(){
 	if [ -n "$go" ]; then
 		rm $outFile
 		if ! wget $outOpt2 -q $nc $@;then
-			echo "ERROR: wget $@ failed. Exiting." >&2
-			exit 1
+			die "wget $@ failed. Exiting." >&2
 		fi
 		if [ "$outFile" != "-" ]; then
 			if [ ! -s "$outFile" ]; then
-				echo "ERROR: 'wget $outOpt2 $nc $@' failed. Exiting." >&2
-				exit 1
+				die "'wget $outOpt2 $nc $@' failed. Exiting." >&2
 			fi
 		fi
 	fi
@@ -182,7 +175,7 @@ function WG(){
 #fi
 
 BURMILLAOS_VER=${BURMILLAOS_VER%$'\n'*}
-echo BurmillaOS Version: $BURMILLAOS_VER
+info BurmillaOS Version: $BURMILLAOS_VER
 BURMILLA_ISO="$T"/burmillaos-$BURMILLAOS_VER.iso
 
 #LATEST_U=`WG --ca-certificate=$UB_CERT -O - $UB_RELEASE_URL/ 2>/dev/null|awk '/Ubuntu [0-9]+(\.[0-9]+)+ LTS/{print $0}'|head -1|awk '{match($0, /Ubuntu [0-9]+(\.[0-9]+)+ LTS \([^)]+\)/); print substr($0, RSTART, RLENGTH)}'`
@@ -191,7 +184,7 @@ LATEST_UV=`echo $LATEST_U | awk '{print $2}'`
 #UDIR=`WG --ca-certificate=$UB_CERT -O - $UB_RELEASE_URL/ 2>/dev/null|grep "$LATEST_U"|grep href| head -1|awk '{match($0,/href="[^"]+"/);print substr($0,RSTART+6,RLENGTH-7)}'`
 UDIR=`WG --no-check-certificate -O - $UB_RELEASE_URL/ 2>/dev/null|grep "$LATEST_U"|grep href| head -1|awk '{match($0,/href="[^"]+"/);print substr($0,RSTART+6,RLENGTH-7)}'`
 UBUNTU_ISO="$T"/ubuntu-$LATEST_UV-live-server-amd64.iso
-echo Ubuntu Version: $LATEST_UV
+info Ubuntu Version: $LATEST_UV
 
 WG $BM_RELEASE_URL/download/$BURMILLAOS_VER/burmillaos-$BURMILLAOS_VER.iso -O $BURMILLA_ISO
 #WG --ca-certificate=$UB_CERT $UB_RELEASE_URL/$UDIR"ubuntu-$LATEST_UV-live-server-amd64.iso" -O $UBUNTU_ISO
@@ -206,7 +199,7 @@ ED2="$T"/tmpefiimg2
 P_IMG="$T"/burmillaos-$BURMILLAOS_VER.efi.img
 P_ISO="$T"/burmillaos-$BURMILLAOS_VER.efi.iso
 
-echo $P_ISO
+info $P_ISO
 
 P_ISO_SIZE=$(stat -c%s $BURMILLA_ISO)
 P_ISO_SIZE=$((P_ISO_SIZE + P_ISO_SIZE / 10))
@@ -221,12 +214,10 @@ sudo mount $BURMILLA_ISO $RD
 VMLINUZ_FILE=`ls -d $RD/boot/vmlinuz-*`
 VMLINUZ_FILE_COUNT=`echo "$VMLINUZ_FILE" | wc | awk '{print $1}'`
 if [ "$VMLINUZ_FILE_COUNT" != "1" ];then
-	echo "cannot detect linux kernel in iso image, or multiple kernel detected."
-	exit 1
+	die "cannot detect linux kernel in iso image, or multiple kernel detected."
 fi
 if [ "`ls -ld $RD/boot/initrd-$BURMILLAOS_VER | wc | awk '{print $1}'`" != "1" ];then
-	echo "/boot/initrd-$BURMILLAOS_VER is missing in iso image."
-	exit 1
+	die "/boot/initrd-$BURMILLAOS_VER is missing in iso image."
 fi
 KERNEL_FILE=${VMLINUZ_FILE##*/}
 sudo losetup -D `sudo losetup -a | grep $P_IMG | awk '{x=$1; sub(":","", x); print x}'`
@@ -261,6 +252,16 @@ echo sudo cp -ar $RD/* $PD
 sudo cp -ar $RD/* $PD
 echo sudo cp -ar $UD/boot/grub $PD/boot/
 sudo cp -ar $UD/boot/grub $PD/boot/
+
+
+
+require create_initrd_mod
+create_initrd_mod for_installer
+if [ -z "$INITRD_FILE" ];then
+	die initrd file, not detected
+fi
+cp $INITRD_FILE-mod.new $PD/boot/$INITRD_FILE-mod
+
 echo sudo cp -ar $UD/EFI $PD/
 sudo cp -ar $UD/EFI $PD/
 
@@ -443,7 +444,11 @@ write_grub_script "$T"/grub.cfg <<'END'
 	# default parameters for installer boot
 	function boot_default_kernel {
 		linux   /boot/$KERNEL_FILE $VGA_ARGS $USER_SETTINGS $KERNEL_ARGS $SERIAL_ARGS ---
-		initrd  /boot/initrd-$BURMILLAOS_VER
+		if [ -e /boot/initrd-$BURMILLAOS_VER-mod ];then
+			initrd  /boot/initrd-$BURMILLAOS_VER-mod
+		else
+			initrd  /boot/initrd-$BURMILLAOS_VER
+		fi
 		echo set default kernel and initrd
 		echo booting ...
 		boot
@@ -573,7 +578,11 @@ write_grub_script "$T"/grub.cfg <<'END'
 		fi
 		eval "menuentry \"Install/Rescue Burmilla $BURMILLAOS_VER$ip$deb\" {
 			linux   /boot/$KERNEL_FILE $karg_add $1 $KERNEL_ARGS rancher.autologin=ttyS$serial_port console=ttyS$serial_port,115200n8 ---
-			initrd  /boot/initrd-$BURMILLAOS_VER
+			if [ -e /boot/initrd-$BURMILLAOS_VER-mod ];then
+				initrd  /boot/initrd-$BURMILLAOS_VER-mod
+			else
+				initrd  /boot/initrd-$BURMILLAOS_VER
+			fi
 		}"
 	}
 
