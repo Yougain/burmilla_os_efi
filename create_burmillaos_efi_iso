@@ -49,6 +49,7 @@ function ver {
 
 VERSIONS=`wget $BM_RELEASE_URL --quiet -O - |egrep -o 'expanded_assets/v[0-9].*"'|awk '{sub(/.$/, "", $0);print substr($0,17)}'`
 VERSIONS=`ls $T/ | grep -v efi | grep iso | grep burmillaos | sed -s 's/burmillaos-//;s/.iso//'`"
+"$VERSIONS
 echo "$VERSIONS" > $SCRIPT_TMP_DIR/$0.ver
 cat $SCRIPT_TMP_DIR/$0.ver
 exit 1
