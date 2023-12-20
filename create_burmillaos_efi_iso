@@ -12,10 +12,12 @@ UB_CERT_URL=https://letsencrypt.org/certs/lets-encrypt-r3.pem
 BM_RELEASE_URL=https://github.com/burmilla/os/releases
 UB_RELEASE_URL=https://releases.ubuntu.com
 
+
+
 function check_cmd {
 	while (( "$#" )); do
 		if [ -z "`sudo which $1 2>/dev/null`" ];then
-			err "Command, '$1' is not found. Please install"
+			errmsg "Command, '$1' is not found. Please install"
 			NO_CMD=1
 		fi
 		shift
@@ -52,7 +54,6 @@ VERSIONS=`ls $T/ | grep -v efi | grep iso | grep burmillaos | sed -s 's/burmilla
 "$VERSIONS
 echo "$VERSIONS" > $SCRIPT_TMP_DIR/$0.ver
 echo "--`cat $SCRIPT_TMP_DIR/$0.ver`--"
-exit 1
 echo "$VERSIONS" | awk '{gsub(/^v/,"");gsub(/$/, ".2"); gsub(/-rc/,".1.");gsub(/-beta/,".0.");print}' | tr '.' ' ' | awk '{printf "%03d%03d%03d%03d%03d %01d\n", $1, $2, $3, $4, $5, $4}' > $SCRIPT_TMP_DIR/$0.vernum
 paste -d " " $SCRIPT_TMP_DIR/$0.vernum $SCRIPT_TMP_DIR/$0.ver | sort -r | uniq |awk '{print $3}' > $SCRIPT_TMP_DIR/$0.list
 VERSIONS=`cat $SCRIPT_TMP_DIR/$0.list`
@@ -91,11 +92,15 @@ while (( "$#" )); do
 			;;
 		* )
 			ARG_FOUND=1
-			for i in $VERSIONS; do
-				if [ "$i" = "$1" ];then
-					BURMILLAOS_VER=$1
-				fi
-			done
+			if [ -e "$T"/burmillaos-$1.iso ];then
+				BURMILLAOS_VER=$1
+			else
+				for i in $VERSIONS; do
+					if [ "$i" = "$1" ];then
+						BURMILLAOS_VER=$1
+					fi
+				done
+			fi
 	esac
 	shift
 done
