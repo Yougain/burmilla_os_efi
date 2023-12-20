@@ -22,7 +22,7 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2023-11-28 19:46:24.176064000 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2023-12-20 13:51:13.092701300 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2023-12-20 15:15:33.342701300 +0900
 @@ -1,9 +1,14 @@
  package fsmount
  
@@ -56,7 +56,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  		log.Debugf("Not mounting BOOT: %v", err)
  	} else {
  		log.Infof("Mounted BOOT: %s", cfg.Rancher.State.BootDev)
-@@ -54,17 +59,70 @@
+@@ -54,17 +59,69 @@
  	return cfg, nil
  }
  
@@ -82,7 +82,6 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +	out, err := cmd.Output()
 +	if err != nil {
 +		log.Infof("exec /sbin/blkid2, failed.")
-+		log.Infof(err)
 +		return
 +	}
 +	r := bytes.NewReader(out)
@@ -131,7 +130,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  	if fsType == "auto" {
  		fsType, err = util.GetFsType(dev)
  	}
-@@ -74,12 +132,50 @@
+@@ -74,12 +131,50 @@
  	}
  
  	log.Debugf("FsType has been set to %s", fsType)
