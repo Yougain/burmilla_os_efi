@@ -31,7 +31,7 @@ function create_initrd_mod(){
 		if [ "$1" = for_installer ];then
 			stand_alone=for_installer
 			mkdir -p /installing/installer
-			if ! mount LABEL=RANCHEROS /installing/installer
+			if ! mount LABEL=RANCHEROS /installing/installer;then
 				die "installer disk not found"
 			fi
 			mount --bind /installing/installer/boot /installing/boot_dev
