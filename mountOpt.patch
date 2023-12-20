@@ -187,7 +187,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  func tryMountState(cfg *config.CloudConfig) error {
 diff -Naur '--exclude=.git' os.prev/pkg/sysinit/sysinit.go os.new/pkg/sysinit/sysinit.go
 --- os.prev/pkg/sysinit/sysinit.go	2023-11-28 19:46:24.186064000 +0900
-+++ os.new/pkg/sysinit/sysinit.go	2023-12-20 14:04:20.822701300 +0900
++++ os.new/pkg/sysinit/sysinit.go	2023-12-20 15:06:18.552701300 +0900
 @@ -93,6 +93,15 @@
  }
  
@@ -197,7 +197,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/sysinit/sysinit.go os.new/pkg/sysinit/sy
 +	cmd.Stderr = os.Stderr
 +	out, err := cmd.Output()
 +	if err != nil {
-+		log.Infof(("exec /sbin/blkid2 stop, failed.")
++		log.Infof("exec /sbin/blkid2 stop, failed.")
 +		log.Infof(err)
 +	}
 +
