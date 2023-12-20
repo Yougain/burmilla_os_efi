@@ -4,8 +4,8 @@
 SCRIPT_PATH=$(dirname "$(realpath -s "$0")")
 . $SCRIPT_PATH/bashlib_y
 
-if [ "`id -u`" != 0 ];then
-	die "not super user"
+if [ "`id -u`" != 0 -o "$SUDO_USER" ];then
+	die "not sudo"
 fi
 
 UB_CERT_URL=https://letsencrypt.org/certs/lets-encrypt-r3.pem
@@ -37,7 +37,7 @@ if [ -n "$NO_CMD" ];then
 fi
 
 
-T=$SUDO_USER/burmilla_os_iso
+T=/home/$SUDO_USER/burmilla_os_iso
 
 if [ ! -d $T ];then
 	mkdir $T
