@@ -4,6 +4,9 @@
 SCRIPT_PATH=$(dirname "$(realpath -s "$0")")
 . $SCRIPT_PATH/bashlib_y
 
+if [ "`id -u`" != 0 ];then
+	die "not super user"
+fi
 
 UB_CERT_URL=https://letsencrypt.org/certs/lets-encrypt-r3.pem
 BM_RELEASE_URL=https://github.com/burmilla/os/releases
