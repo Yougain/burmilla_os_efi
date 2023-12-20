@@ -1,6 +1,6 @@
-diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
---- os.prev/config/types.go	2023-11-28 19:46:24.166064000 +0900
-+++ os.new/config/types.go	2023-11-28 19:48:15.766064000 +0900
+diff -Naur '--exclude=.git' /home/yougain/os.prev/config/types.go /home/yougain/os.new/config/types.go
+--- /home/yougain/os.prev/config/types.go	2023-11-28 19:46:24.166064000 +0900
++++ /home/yougain/os.new/config/types.go	2023-11-28 19:48:15.766064000 +0900
 @@ -210,6 +210,7 @@
  type StateConfig struct {
  	Directory  string   `yaml:"directory,omitempty"`
@@ -20,9 +20,9 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
  	BootDev    string   `yaml:"boot_dev,omitempty"`
  }
  
-diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
---- os.prev/pkg/init/fsmount/fsmount.go	2023-11-28 19:46:24.176064000 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2023-12-20 11:37:45.592701300 +0900
+diff -Naur '--exclude=.git' /home/yougain/os.prev/pkg/init/fsmount/fsmount.go /home/yougain/os.new/pkg/init/fsmount/fsmount.go
+--- /home/yougain/os.prev/pkg/init/fsmount/fsmount.go	2023-11-28 19:46:24.176064000 +0900
++++ /home/yougain/os.new/pkg/init/fsmount/fsmount.go	2023-12-20 13:51:13.092701300 +0900
 @@ -1,9 +1,14 @@
  package fsmount
  
@@ -56,7 +56,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  		log.Debugf("Not mounting BOOT: %v", err)
  	} else {
  		log.Infof("Mounted BOOT: %s", cfg.Rancher.State.BootDev)
-@@ -54,17 +59,67 @@
+@@ -54,17 +59,70 @@
  	return cfg, nil
  }
  
@@ -81,8 +81,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +	cmd.Stderr = os.Stderr
 +	out, err := cmd.Output()
 +	if err != nil {
-+		fmt.Println("exec /sbin/blkid2, failed.")
-+		fmt.Println(err)
++		log.Infof("exec /sbin/blkid2, failed.")
++		log.Infof(err)
 +		return
 +	}
 +	r := bytes.NewReader(out)
@@ -98,11 +98,14 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +		s1 := strings.Split(line, `TYPE="`)
 +		s2 := strings.Split(s1[1], `"`)
 +		deviceType = s2[0]
++		log.Infof("blkid2MatchStr: deviceName and deviceType detected.")
++		log.Infof(deviceName)
++		log.Infof(deviceType)
 +		return
 +	}
-+	fmt.Println("extract output from /sbin/blkid2, failed.")
-+	fmt.Println(matchStr)
-+	fmt.Println(string(out))
++	log.Infof("extract output from /sbin/blkid2, failed.")
++	log.Infof(matchStr)
++	log.Infof(string(out))
 +	return
 +}
 +
@@ -128,7 +131,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  	if fsType == "auto" {
  		fsType, err = util.GetFsType(dev)
  	}
-@@ -74,12 +129,50 @@
+@@ -74,12 +132,50 @@
  	}
  
  	log.Debugf("FsType has been set to %s", fsType)
@@ -182,21 +185,28 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  }
  
  func tryMountState(cfg *config.CloudConfig) error {
-diff -Naur '--exclude=.git' os.prev/pkg/sysinit/sysinit.go os.new/pkg/sysinit/sysinit.go
---- os.prev/pkg/sysinit/sysinit.go	2023-11-28 19:46:24.186064000 +0900
-+++ os.new/pkg/sysinit/sysinit.go	2023-11-30 22:05:11.578558600 +0900
-@@ -151,6 +151,8 @@
+diff -Naur '--exclude=.git' /home/yougain/os.prev/pkg/sysinit/sysinit.go /home/yougain/os.new/pkg/sysinit/sysinit.go
+--- /home/yougain/os.prev/pkg/sysinit/sysinit.go	2023-11-28 19:46:24.186064000 +0900
++++ /home/yougain/os.new/pkg/sysinit/sysinit.go	2023-12-20 14:04:20.822701300 +0900
+@@ -93,6 +93,15 @@
  }
  
- func RunSysInit(c *config.CloudConfig) (*config.CloudConfig, error) {
-+	exec.Command("/sbin/blkid2", "stop")
+ func SysInit() error {
++	log.Infof("executing /sbin/blkid2 stop")
++	cmd := exec.Command("/sbin/blkid2", "stop")
++	cmd.Stderr = os.Stderr
++	out, err := cmd.Output()
++	if err != nil {
++		log.Infof(("exec /sbin/blkid2 stop, failed.")
++		log.Infof(err)
++	}
 +
- 	loadServicesCache()
- 	args := append([]string{config.SysInitBin}, os.Args[1:]...)
+ 	cfg := config.LoadConfig()
  
-diff -Naur '--exclude=.git' os.prev/scripts/version os.new/scripts/version
---- os.prev/scripts/version	2023-11-28 19:46:24.196064000 +0900
-+++ os.new/scripts/version	2023-11-28 19:48:15.766064000 +0900
+ 	if err := control.PreloadImages(docker.NewSystemClient, systemImagesPreloadDirectory); err != nil {
+diff -Naur '--exclude=.git' /home/yougain/os.prev/scripts/version /home/yougain/os.new/scripts/version
+--- /home/yougain/os.prev/scripts/version	2023-11-28 19:46:24.196064000 +0900
++++ /home/yougain/os.new/scripts/version	2023-11-28 19:48:15.766064000 +0900
 @@ -1,18 +1,26 @@
  #!/bin/bash
  
