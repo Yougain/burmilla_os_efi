@@ -32,6 +32,10 @@ function create_initrd_mod(){
 			die "boot drive not found"
 		fi
 		mount $TARGET_DEV4 /installing/boot_dev
+		mkdir -p /installing/state_root
+		umount /installing/state_root
+		mount $TARGET_DEV5 /installing/state_root
+		for_state=/installing/state_root
 	fi
 	mkdir -p ./initrd
 	cd ./initrd
@@ -56,8 +60,11 @@ function create_initrd_mod(){
 
 	zcat /installing/boot_dev/$INITRD_FILE | cpio -idmv
 
-	ln -s usr/lib lib
-	ln -s lib lib64
+	local d
+	for d in . $for_state; do
+		ln -s usr/lib $d/lib
+		ln -s lib $d/lib64
+	done
 
 	function cp_lib(){
 		item=$1
@@ -196,9 +203,9 @@ $libs"
 		libpcre2-8.so.0
 	END
 
-	cp_lib libatomic.so.1 .
+	cp_lib libatomic.so.1 . $for_state
 	
-	cp_bin . /installing/state_top/state_root <<"	END"
+	cp_bin . $for_state <<"	END"
 		bash
 		busybox
 		grep
@@ -235,11 +242,11 @@ $libs"
 		date
 	END
 	
-	system-docker cp udev:/lib/udev ./lib
-	
-	do_install blkid2 ./usr/bin
-	do_install do_mount ./usr/bin
-	ln -s ../usr/bin/bash ./bin/bash
+	for d in . $for_state; do
+		system-docker cp udev:/lib/udev $d/lib
+		do_install blkid2 $d/usr/bin
+		do_install do_mount $d/usr/bin
+	done
 	
 	find | cpio -o -H newc  | gzip -c > ../$INITRD_FILE-mod.new
 	if [ ! -n "$stand_alone" ];then
