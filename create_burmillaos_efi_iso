@@ -104,9 +104,9 @@ if [ -z "$ARG_FOUND" ];then
 fi
 
 if [ -z "$BURMILLAOS_VER" ];then
-	errmsg "Version, $1 is not found"
+	echo -e  $error"Version, $1 is not found"$normal
 	info "Available Versions:"
-	echo $cyan"$VERSIONS"$normal
+	echo -e $cyan"$VERSIONS"$normal
 	exit 1
 fi
 
