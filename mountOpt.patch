@@ -1,6 +1,6 @@
-diff -Naur '--exclude=.git' /home/yougain/os.prev/config/types.go /home/yougain/os.new/config/types.go
---- /home/yougain/os.prev/config/types.go	2023-11-28 19:46:24.166064000 +0900
-+++ /home/yougain/os.new/config/types.go	2023-11-28 19:48:15.766064000 +0900
+diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
+--- os.prev/config/types.go	2023-11-28 19:46:24.166064000 +0900
++++ os.new/config/types.go	2023-11-28 19:48:15.766064000 +0900
 @@ -210,6 +210,7 @@
  type StateConfig struct {
  	Directory  string   `yaml:"directory,omitempty"`
@@ -20,9 +20,9 @@ diff -Naur '--exclude=.git' /home/yougain/os.prev/config/types.go /home/yougain/
  	BootDev    string   `yaml:"boot_dev,omitempty"`
  }
  
-diff -Naur '--exclude=.git' /home/yougain/os.prev/pkg/init/fsmount/fsmount.go /home/yougain/os.new/pkg/init/fsmount/fsmount.go
---- /home/yougain/os.prev/pkg/init/fsmount/fsmount.go	2023-11-28 19:46:24.176064000 +0900
-+++ /home/yougain/os.new/pkg/init/fsmount/fsmount.go	2023-12-20 13:51:13.092701300 +0900
+diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
+--- os.prev/pkg/init/fsmount/fsmount.go	2023-11-28 19:46:24.176064000 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2023-12-20 13:51:13.092701300 +0900
 @@ -1,9 +1,14 @@
  package fsmount
  
@@ -185,9 +185,9 @@ diff -Naur '--exclude=.git' /home/yougain/os.prev/pkg/init/fsmount/fsmount.go /h
  }
  
  func tryMountState(cfg *config.CloudConfig) error {
-diff -Naur '--exclude=.git' /home/yougain/os.prev/pkg/sysinit/sysinit.go /home/yougain/os.new/pkg/sysinit/sysinit.go
---- /home/yougain/os.prev/pkg/sysinit/sysinit.go	2023-11-28 19:46:24.186064000 +0900
-+++ /home/yougain/os.new/pkg/sysinit/sysinit.go	2023-12-20 14:04:20.822701300 +0900
+diff -Naur '--exclude=.git' os.prev/pkg/sysinit/sysinit.go os.new/pkg/sysinit/sysinit.go
+--- os.prev/pkg/sysinit/sysinit.go	2023-11-28 19:46:24.186064000 +0900
++++ os.new/pkg/sysinit/sysinit.go	2023-12-20 14:04:20.822701300 +0900
 @@ -93,6 +93,15 @@
  }
  
@@ -204,9 +204,9 @@ diff -Naur '--exclude=.git' /home/yougain/os.prev/pkg/sysinit/sysinit.go /home/y
  	cfg := config.LoadConfig()
  
  	if err := control.PreloadImages(docker.NewSystemClient, systemImagesPreloadDirectory); err != nil {
-diff -Naur '--exclude=.git' /home/yougain/os.prev/scripts/version /home/yougain/os.new/scripts/version
---- /home/yougain/os.prev/scripts/version	2023-11-28 19:46:24.196064000 +0900
-+++ /home/yougain/os.new/scripts/version	2023-11-28 19:48:15.766064000 +0900
+diff -Naur '--exclude=.git' os.prev/scripts/version os.new/scripts/version
+--- os.prev/scripts/version	2023-11-28 19:46:24.196064000 +0900
++++ os.new/scripts/version	2023-11-28 19:48:15.766064000 +0900
 @@ -1,18 +1,26 @@
  #!/bin/bash
  
