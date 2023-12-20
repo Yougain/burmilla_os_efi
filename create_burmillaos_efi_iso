@@ -92,6 +92,7 @@ while (( "$#" )); do
 			;;
 		* )
 			ARG_FOUND=1
+			echo "$T"/burmillaos-$1.iso
 			if [ -e "$T"/burmillaos-$1.iso ];then
 				BURMILLAOS_VER=$1
 			else
