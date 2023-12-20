@@ -1067,6 +1067,7 @@ ssh_sudo <<'FINAL'
 				fi
 			fi
 			installing_$1_phase=1
+			echo setting installing_$1_phase=1
 			save_env installing_$1_phase --file ($efi)/.installing_$1_phase
 			return 0
 		}

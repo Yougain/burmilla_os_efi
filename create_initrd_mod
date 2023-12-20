@@ -70,7 +70,7 @@ function create_initrd_mod(){
 	done
 	
 	if [ -n "$for_state" ];then
-		if [ !-d $for_state/bin ];then
+		if [ ! -d $for_state/bin ];then
 			ln -s usr/bin $for_state/bin
 		fi
 	fi
