@@ -2,6 +2,7 @@
 
 
 function blkid2(){
+	info blkid2 $@
 	__readlink(){
 		for i in "$@"; do
 			readlink -f $i
@@ -11,9 +12,10 @@ function blkid2(){
 	local PATH=/sbin:/usr/sbin:/bin:/usr/bin
 	if [ "$1" = "stop" ];then
 		killall udevd
+		info killall udevd: result = $?
  		info udev stopped
- 		ps ax | grep udevd
-		ls -la /dev/btrfs-control
+ 		info `ps ax | grep udevd`
+ 		info `ls -la /dev/btrfs-control`
 		return 0
 	else
 		local i
@@ -29,7 +31,7 @@ function blkid2(){
 			udevadm settle
  			info udev started
  			mknod /dev/btrfs-control c 10 234
-			ls -la /dev/btrfs-control
+			info `ls -la /dev/btrfs-control`
 			sleep 5
 		fi
 	fi

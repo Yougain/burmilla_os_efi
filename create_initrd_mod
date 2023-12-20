@@ -64,8 +64,16 @@ function create_initrd_mod(){
 	for d in . $for_state; do
 		ln -s usr/lib $d/lib
 		ln -s lib $d/lib64
-		ln -s ../usr/bin/bash $d/bin/bash
+		if [ -d $d/bin ];then
+			ln -s ../usr/bin/bash $d/bin/bash
+		fi
 	done
+	
+	if [ -n "$for_state" ];then
+		if [ !-d $for_state/bin ];then
+			ln -s usr/bin $for_state/bin
+		fi
+	fi
 
 	function cp_lib(){
 		item=$1
