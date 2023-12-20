@@ -22,7 +22,7 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2023-11-28 19:46:24.176064000 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2023-12-20 09:58:00.892701300 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2023-12-20 11:37:45.592701300 +0900
 @@ -1,9 +1,14 @@
  package fsmount
  
@@ -56,7 +56,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  		log.Debugf("Not mounting BOOT: %v", err)
  	} else {
  		log.Infof("Mounted BOOT: %s", cfg.Rancher.State.BootDev)
-@@ -54,17 +59,70 @@
+@@ -54,17 +59,67 @@
  	return cfg, nil
  }
  
@@ -65,15 +65,12 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +	if ! strings.Contains(matchStr, `="`) {
 +		if strings.Contains(matchStr, `='`) {
 +			s0 :=  strings.Split(matchStr, `='`)
-+			len1 := len(s0[1])
 +			matchStr = s0[0] + `="` + s0[1][0 : len(s0[1]) - 1] + `"`	
 +		} else if strings.Contains(matchStr, `=\"`) {
 +			s0 :=  strings.Split(matchStr, `=\"`)
-+			len1 := len(s0[1])
 +			matchStr = s0[0] + `="` + s0[1][0 : len(s0[1]) - 2] + `"`	
 +		} else if strings.Contains(matchStr, `=\'`) {
 +			s0 :=  strings.Split(matchStr, `='`)
-+			len1 := len(s0[1])
 +			matchStr = s0[0] + `="` + s0[1][0 : len(s0[1]) - 2] + `"`	
 +		} else if strings.Contains(matchStr, "=") {
 +			s0 := strings.Split(matchStr, "=")
@@ -131,7 +128,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  	if fsType == "auto" {
  		fsType, err = util.GetFsType(dev)
  	}
-@@ -74,12 +132,50 @@
+@@ -74,12 +129,50 @@
  	}
  
  	log.Debugf("FsType has been set to %s", fsType)
