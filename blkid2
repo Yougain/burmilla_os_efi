@@ -28,6 +28,7 @@ function blkid2(){
 			udevadm trigger --action=change --type=devices
 			udevadm settle
  			info udev started
+ 			mknod /dev/btrfs-control c 10 234
 			ls -la /dev/btrfs-control
 			sleep 5
 		fi

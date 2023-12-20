@@ -64,6 +64,7 @@ function create_initrd_mod(){
 	for d in . $for_state; do
 		ln -s usr/lib $d/lib
 		ln -s lib $d/lib64
+		ln -s ../usr/bin/bash $d/bin/bash
 	done
 
 	function cp_lib(){
@@ -240,6 +241,7 @@ $libs"
 		egrep
 		ldd
 		date
+		mknod
 	END
 	
 	for d in . $for_state; do
