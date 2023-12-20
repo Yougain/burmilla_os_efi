@@ -49,12 +49,12 @@ function ver {
 
 VERSIONS=`wget $BM_RELEASE_URL --quiet -O - |egrep -o 'expanded_assets/v[0-9].*"'|awk '{sub(/.$/, "", $0);print substr($0,17)}'`
 VERSIONS=`ls $T/ | grep -v efi | grep iso | grep burmillaos | sed -s 's/burmillaos-//;s/.iso//'`"
-"$VERSIONS
-echo "$VERSIONS" > /tmp/$0.ver
-cat /tmp/$0.ver
-echo "$VERSIONS" | awk '{gsub(/^v/,"");gsub(/$/, ".2"); gsub(/-rc/,".1.");gsub(/-beta/,".0.");print}' | tr '.' ' ' | awk '{printf "%03d%03d%03d%03d%03d %01d\n", $1, $2, $3, $4, $5, $4}' > /tmp/$0.vernum
-paste -d " " /tmp/$0.vernum /tmp/$0.ver | sort -r | uniq |awk '{print $3}' > /tmp/$0.list
-VERSIONS=`cat /tmp/$0.list`
+echo "$VERSIONS" > $SCRIPT_TMP_DIR/$0.ver
+cat $SCRIPT_TMP_DIR/$0.ver
+exit 1
+echo "$VERSIONS" | awk '{gsub(/^v/,"");gsub(/$/, ".2"); gsub(/-rc/,".1.");gsub(/-beta/,".0.");print}' | tr '.' ' ' | awk '{printf "%03d%03d%03d%03d%03d %01d\n", $1, $2, $3, $4, $5, $4}' > $SCRIPT_TMP_DIR/$0.vernum
+paste -d " " $SCRIPT_TMP_DIR/$0.vernum $SCRIPT_TMP_DIR/$0.ver | sort -r | uniq |awk '{print $3}' > $SCRIPT_TMP_DIR/$0.list
+VERSIONS=`cat $SCRIPT_TMP_DIR/$0.list`
 
 LATEST_STABLE=`echo "$VERSIONS"  | egrep -v '\-rc' | egrep -v '\-beta' | head -1`
 LATEST_BETA=`echo "$VERSIONS" | egrep '\-beta' | head -1`
