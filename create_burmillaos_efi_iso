@@ -37,7 +37,7 @@ if [ -n "$NO_CMD" ];then
 fi
 
 
-T=~/burmilla_os_iso
+T=$SUDO_USER/burmilla_os_iso
 
 if [ ! -d $T ];then
 	mkdir $T
