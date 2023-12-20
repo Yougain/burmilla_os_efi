@@ -51,7 +51,7 @@ VERSIONS=`wget $BM_RELEASE_URL --quiet -O - |egrep -o 'expanded_assets/v[0-9].*"
 VERSIONS=`ls $T/ | grep -v efi | grep iso | grep burmillaos | sed -s 's/burmillaos-//;s/.iso//'`"
 "$VERSIONS
 echo "$VERSIONS" > $SCRIPT_TMP_DIR/$0.ver
-cat $SCRIPT_TMP_DIR/$0.ver
+echo "--`cat $SCRIPT_TMP_DIR/$0.ver`--"
 exit 1
 echo "$VERSIONS" | awk '{gsub(/^v/,"");gsub(/$/, ".2"); gsub(/-rc/,".1.");gsub(/-beta/,".0.");print}' | tr '.' ' ' | awk '{printf "%03d%03d%03d%03d%03d %01d\n", $1, $2, $3, $4, $5, $4}' > $SCRIPT_TMP_DIR/$0.vernum
 paste -d " " $SCRIPT_TMP_DIR/$0.vernum $SCRIPT_TMP_DIR/$0.ver | sort -r | uniq |awk '{print $3}' > $SCRIPT_TMP_DIR/$0.list
