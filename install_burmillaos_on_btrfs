@@ -1052,6 +1052,8 @@ ssh_sudo <<'FINAL'
 		echo 2
 
 		function check_installation_terminated{
+			echo cat ($efi)/.installing_$1_phase
+			cat ($efi)/.installing_$1_phase
 			if load_env --file ($efi)/.installing_$1_phase; then
 				tmp='tmp=$installing_'$1'_phase'
 				echo $tmp
