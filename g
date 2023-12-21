@@ -35,7 +35,9 @@ function v(){
 
 function commit(){
 	git commit -a -m "`v` $@"
+	local c=`git log -1|egrep '^commit '|awk '{print $2}'`
 	git commit -a -m "`v` $@"
+	
 	git push
 }
 
