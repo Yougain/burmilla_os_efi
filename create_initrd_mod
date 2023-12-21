@@ -29,6 +29,8 @@ function create_initrd_mod(){
 	if [ -z "$INITRD_FILE" ];then
 		local stand_alone
 		if [ "$1" = for_installer ];then
+			require blkid2
+			require do_mount
 			stand_alone=for_installer
 			mkdir -p /installing/installer
 			if ! mount LABEL=RANCHEROS /installing/installer;then

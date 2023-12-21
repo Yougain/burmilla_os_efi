@@ -211,8 +211,15 @@ P_ISO="$T"/burmillaos-$BURMILLAOS_VER.efi.iso
 
 info $P_ISO
 
+require create_initrd_mod
+create_initrd_mod for_installer
+if [ -z "$INITRD_FILE" ];then
+	die initrd file, not detected
+fi
+INITRD_SIZE=$(stat -c%s $INITRD_FILE-mod.new)
+
 P_ISO_SIZE=$(stat -c%s $BURMILLA_ISO)
-P_ISO_SIZE=$((P_ISO_SIZE + P_ISO_SIZE / 10))
+P_ISO_SIZE=$((INITRD_SIZE + P_ISO_SIZE + P_ISO_SIZE / 10))
 P_ISO_SIZE_K=$((P_ISO_SIZE / 1024))
 
 sudo umount $PD $UD $RD $ED $ED2
@@ -265,11 +272,6 @@ sudo cp -ar $UD/boot/grub $PD/boot/
 
 
 
-require create_initrd_mod
-create_initrd_mod for_installer
-if [ -z "$INITRD_FILE" ];then
-	die initrd file, not detected
-fi
 cp $INITRD_FILE-mod.new $PD/boot/$INITRD_FILE-mod
 
 echo sudo cp -ar $UD/EFI $PD/
