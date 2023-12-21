@@ -60,6 +60,8 @@ function commit(){
 		url=https://github.com/${url#*:}
 		url=${url%%.git}
 		local tdir=${url%%*/}
+		echo $url $tdir
+		exit 1
 		while read ln; do
 			ssh_param $ln -x
 			if ! ssh_do git-force-clone $url $tdir;then
