@@ -54,7 +54,6 @@ function v(){
 function commit(){
 	echo -E "`v` $*" > version
 	git commit -a -m "`v` $*"
-	exit 1
 	git push
 	if [ -e .git/.ssh_clone ]; then
 		local url=`git config --get remote.origin.url`
