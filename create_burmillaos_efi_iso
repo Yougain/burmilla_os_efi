@@ -211,12 +211,14 @@ P_ISO="$T"/burmillaos-$BURMILLAOS_VER.efi.iso
 
 info $P_ISO
 
+
 require create_initrd_mod
 create_initrd_mod for_installer
 if [ -z "$INITRD_FILE" ];then
 	die initrd file, not detected
 fi
 INITRD_SIZE=$(stat -c%s $INITRD_FILE-mod.new)
+
 
 P_ISO_SIZE=$(stat -c%s $BURMILLA_ISO)
 P_ISO_SIZE=$((INITRD_SIZE + P_ISO_SIZE + P_ISO_SIZE / 10))
