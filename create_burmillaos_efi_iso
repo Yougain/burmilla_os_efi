@@ -4,7 +4,7 @@
 SCRIPT_PATH=$(dirname "$(realpath -s "$0")")
 . $SCRIPT_PATH/bashlib_y
 
-if [ "`id -u`" != 0 -o "$SUDO_USER" ];then
+if [ "`id -u`" != 0 -o -z "$SUDO_USER" ];then
 	die "not sudo"
 fi
 
