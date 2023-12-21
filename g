@@ -62,7 +62,7 @@ function commit(){
 		local tdir=`pwd`
 		tdir=${tdir##*/}
 		while read ln; do
-			ssh_param $ln -x
+			ssh_param $ln -x -q
 			ssh_do git-force-clone $url $tdir
 		done < .git/.ssh_clone
 	fi
