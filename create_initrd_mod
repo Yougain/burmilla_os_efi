@@ -18,12 +18,12 @@ function create_initrd_mod(){
 	}
 
 	tmpd=`pwd`
-	if [ -d ./initrd ];then
-		for i in `ls ./initrd`;do
-			umount ./$i
+	if [ -d $SCRIPT_TMP_DIR/initrd ];then
+		for i in `ls $SCRIPT_TMP_DIR/initrd`;do
+			umount $SCRIPT_TMP_DIR/$i
 		done
 	fi
-	rm -rf --one-file-system ./initrd
+	rm -rf --one-file-system $SCRIPT_TMP_DIR/initrd
 	mkdir -p /installing/boot_dev
 	umount /installing/boot_dev
 	if [ -z "$INITRD_FILE" ];then
@@ -53,8 +53,8 @@ function create_initrd_mod(){
 			die boot drive not found
 		fi
 	fi
-	mkdir -p ./initrd
-	cd ./initrd
+	mkdir -p $SCRIPT_TMP_DIR/initrd
+	cd $SCRIPT_TMP_DIR/initrd
 	apt-get -y update
 	apt-get -y install cpio btrfs-progs strace
 
