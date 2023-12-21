@@ -59,7 +59,8 @@ function commit(){
 		local url=`git config --get remote.origin.url`
 		url=https://github.com/${url#*:}
 		url=${url%%.git}
-		local tdir=${url%%*/}
+		local tdir=`pwd`
+		tdir=${tdir##*/}
 		echo $url $tdir
 		exit 1
 		while read ln; do
