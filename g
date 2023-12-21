@@ -64,7 +64,7 @@ function commit(){
 		while read ln; do
 			ssh_param $ln -x
 			ssh_do <<END
-				if ! git-force-clone $url $tdir
+				if ! git-force-clone $url $tdir;then
 					echo -e $error"failed git-force-clone by 'ssh $ln'"$plain >&2
 				fi
 END
