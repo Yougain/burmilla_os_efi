@@ -6,48 +6,81 @@ if ! PATH="./:$PATH" source bashlib_y;then
 	exit 1
 fi
 
-if [ ! -e ./commit_editmsg ];then
-	if [ ! -e .git/COMMIT_EDITMSG ];then
-		die "'.git/COMMIT_EDITMSG' not found"
-	fi
-	ln .git/COMMIT_EDITMSG ./commit_editmsg
-	git add commit_editmsg
-fi
 
-if [ -n "`git diff`" ];then
-	git commit -a -m $verup
-else
-	warn "Not modified. Exitting."
+if [ -z "`git diff`" ];then
+	warn "Not modified. Exiting."
 	exit 1
 fi
 
 
+if [ ! -e ./version ];then
+	echo 0 > version
+	git add version
+fi
+
+ver=`cat version|awk '{print $1}'`
+if [[ "`cat version|awk '{print $1}'`" =~ ^[0-9]+(\.[0-9]+)*$ ]];then
+	vers=(`echo $ver |tr '.' ' '`)
+else
+	die "The first word of file, 'version' cannot interpreted as version number ('$ver').
+Note that you cannot use non-numeric characters in it."
+fi
+
+
 function v(){
-	local grade="$1"
-	local num=${vers[$((grade + 1))]}
-	if [ -z "$num" ];then
-		echo -n 0
+	if [ -n "$1" ];then
+		local grade="$1"
+		local num=${vers[$grade]}
+		if [ -z "$num" ];then
+			echo -n 0
+		else
+			echo -n $num
+		fi
 	else
-		echo -n $num
+		local v
+		local fst=1
+		for v in "${vers[@]}";do
+			if [ -n "$fst" ];then
+				fst=
+			else
+				echo -n "."
+			fi
+			echo -n $v
+		done
 	fi
 }
 
 
 function commit(){
-	git commit -a -m "`v` $@"
-	local c=`git log -1|egrep '^commit '|awk '{print $2}'`
-	git commit -a -m "`v` $@"
-	
+	echo -E "`v` $*" > version
+	git commit -a -m "`v` $*"
+	exit 1
 	git push
+	if [ -e .git/.ssh_clone ]; then
+		local url=`git config --get remote.origin.url`
+		url=https://github.com/${url#*:}
+		url=${url%%.git}
+		local tdir=${url%%*/}
+		while read ln; do
+			ssh_param -x ls$ln
+			if ! ssh_do git-force-clone $url $tdir;then
+				echo -e $error"failed git-force-clone by 'ssh $ln'"$plain >&2
+			fi
+		done < .git/.ssh_clone
+	fi
 }
 
 
-vers=($(cat commit_editmsg | awk '{print $1}' | tr '.' ' '))
+vers=($(cat version | awk '{print $1}' | tr '.' ' '))
 
 cmd="$(__CMD_NAME__)"
 
 if [ "$cmd" = "g" ];then
-	cmd=`cat .git/.g`
+	if [ -e .git/.g ];then
+		cmd=`cat .git/.g`
+	else
+		cmd=g2
+	fi
 fi
 
 
@@ -79,7 +112,8 @@ case "$cmd" in
 		die "command name '$(__CMD_NAME__)', unsupported."
 		;;
 esac
-do_commit "$@"
+
+commit "$@"
 
 
 

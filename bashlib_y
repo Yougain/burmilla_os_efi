@@ -11,6 +11,11 @@ __FILE_NAME__(){
 }
 
 
+__CMD_NAME__(){
+	echo "${0##*/}"
+}
+
+
 __DIR__() {
 	dirname "$(readlink -f "${BASH_SOURCE[1]}")"
 }
