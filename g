@@ -51,6 +51,7 @@ function v(){
 }
 
 
+
 function commit(){
 	echo -E "`v` $*" > version
 	git commit -a -m "`v` $*"
