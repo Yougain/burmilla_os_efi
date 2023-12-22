@@ -17,7 +17,7 @@ __CMD_NAME__(){
 
 
 __DIR__() {
-	dirname "$(readlink -f "${BASH_SOURCE[1]}")"
+	dirname "$(realpath "${BASH_SOURCE[1]}")"
 }
 
 
@@ -29,6 +29,7 @@ function split(){
 
 initialize_support_lib(){
 	if [ -z "$SCRIPT_TMP_DIR" ];then
+		declare -A SSH_PARAM_LIST
 		local f="`__FILE_NAME__`"
 		mkdir -p --mode=0777 /tmp/$f
 		SCRIPT_TMP_DIR=/tmp/$f/${0##*/}/`date +"%y-%m-%d_%H:%M:%S.%N%z"`-$$
@@ -59,6 +60,30 @@ initialize_support_lib(){
 if initialize_support_lib; then
 
 declare -A LOCAL_FUNCS
+
+
+rm_all(){
+	local d
+	local dlen
+	if [ -d $1 -a ! -L $1 ];then
+		d=$(realpath $1)
+		if [ "$d" = "/" ];then
+			die "cannot use rm_all to '/'"
+		fi
+		dlen=${#d}
+		dlen=$((dlen + 1))
+		cat /proc/mounts|awk '{print $3}'| sed '1!G;h;$!d' |while read ln;do
+			if [ "${ln:0:$dlen}" = "$d/" ];then
+				if !umount $ln;then
+					die "cannot unmount '$ln'"
+				fi
+			fi
+		done
+		rm --one-file-system -rf $d
+	else
+		rm $1
+	fi
+}
 
 
 chain_bak(){
@@ -383,16 +408,21 @@ require(){
 
 cleanup (){
 	if [ -z "$DEBUG" ];then
-		rm -rf $SCRIPT_TMP_DIR
-		if [ -n "$SSH_TMP" ];then
-			ssh_do $SSH_TMP_SUDO rm -rf $SCRIPT_TMP_DIR
-		fi
+		rm_all $SCRIPT_TMP_DIR
+		local k
+		for k in "${SSH_PARAM_LIST[@]}"; do
+			ssh "${SSH_PARAM_LIST[$k]}" <<END
+				rm_all $SCRIPT_TMP_DIR
+END
+		done
 	fi
 	if [[ "$DEBUG" =~ erase|ERASE|delete|DELETE ]];then
-		rm -rf /tmp/yougain/${0##*/}
-		if [ -n "$SSH_TMP" ];then
-			ssh_do $SSH_TMP_SUDO rm -rf /tmp/yougain/${0##*/}
-		fi
+		rm_all /tmp/yougain/${0##*/}
+		for k in "${SSH_PARAM_LIST[@]}"; do
+			ssh "${SSH_PARAM_LIST[$k]}" <<END
+				rm_all $SCRIPT_TMP_DIR/..
+END
+		done
 	fi
 }
 
@@ -412,15 +442,15 @@ debug="\033[42m\033[34mDEBUG     :\033[m \033[32m"
 plain="\033[m"
 normal="\033[m"
 
-black="0"
-red="1"
-green="2"
-yellow="3"
-blue="4"
-purple="5"
-magenta="5"
-cyan="6"
-white="7"
+_black="0"
+_red="1"
+_green="2"
+_yellow="3"
+_blue="4"
+_purple="5"
+_magenta="5"
+_cyan="6"
+_white="7"
 
 
 allColors="black red green yellow blue purple magenta cyan white"
@@ -480,16 +510,15 @@ alias debug=deb
 
 for col in `echo $allColors`; do
 	eval '
-		'`capitalize $col`'="\033[3$'$col'""m"
-		'_`capitalize $col`'="\\033[3$'$col'""m"
+		'$col'="\033[3$'_$col'""m"
 		function '$col'_n(){
-			echo -ne "\033[3$'$col'""m''$@''$plain"
+			echo -ne "\033[3$'_$col'""m''$@''$plain"
 		}
 		function '$col'(){
 			'$col'_n $@"\n"
 		}
 		function bg'`capitalize $col`'_n(){
-			echo -ne "\033[4$'$col'""m''$@''$plain"
+			echo -ne "\033[4$'_$col'""m''$@''$plain"
 		}
 		function bg'`capitalize $col`'(){
 			bg'`capitalize $col`'_n $@"\n"
@@ -498,7 +527,7 @@ for col in `echo $allColors`; do
 	for bgCol in $allColors; do
 		eval '
 			function '$col'Bg'`capitalize $bgCol`'_n(){
-				echo -ne "\033[3$'$col'""m\033[4$'$bgCol'""m''$@''$plain"
+				echo -ne "\033[3$'_$col'""m\033[4$'_$bgCol'""m''$@''$plain"
 			}
 			function '$col'Bg'`capitalize $bgCol`'(){
 				'$col'Bg'`capitalize $bgCol`'_n $@
@@ -535,13 +564,10 @@ function ssh_param(){
 	local port
 	local host
 	local opt_start
+	SSH_OPTS=()
 	while (( "$#" )); do
-		if [ "${1:0:1}" = "-" -o -n "$SSH_OPTS" ];then
-			if [ "${1:0:1}" = "-" ]; then
-				SSH_OPTS="$SSH_OPTS $1"
-			else
-				SSH_OPTS="$SSH_OPTS \"$1\""
-			fi
+		if [ "${1:0:1}" = "-" ];then
+			SSH_OPTS=("$@")
 		else
 			h="${1%%:*}"
 			p="${1##*:}"
@@ -576,7 +602,7 @@ function ssh_param(){
 	done
 	local o
 	local on
-	for o in $SSH_OPTS;do
+	for o in ${SSH_OPTS[@]};do
 		if [ "$o" = "-l" ]; then
 			on=1
 		else
@@ -586,8 +612,19 @@ function ssh_param(){
 			fi
 		fi
 	done
+	SSH_HOST=$host
+	if [[ "$host" =~ ^(.*)@(.*)$ ]];then
+		SSH_USER=${BASH_REMATCH[1]}
+	fi
+	SSH_SUDO_PREFIX=
+	SSH_CMD=ssh
 	if [ -z "$SSH_USER" ];then
-		SSH_USER=$USER
+		if [ -n "$SUDO_USER" ];then
+			SSH_USER=$SUDO_USER
+			SSH_CMD="sudo -u $SUDO_USER ssh"
+		else
+			SSH_USER=$USER
+		fi
 		if [ -z "$SSH_USER" ];then
 			die "cannot find \$USER"
 		fi
@@ -595,32 +632,30 @@ function ssh_param(){
 	if [ -n "$port" ];then
 		port=" -p $port"
 	fi
-	SSH_HOST=$host
-	echo ssh $SSH_OPTS $port -v -o \"ConnectTimeout=5\"  -o \"PasswordAuthentication no\" -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" $host echo -n|bash > $SCRIPT_TMP_DIR/test_ssh 2>&1
-	#if [ "$?" = "0" ];then
-		if [ -z "`egrep 'debug1: Executing proxy command:' $SCRIPT_TMP_DIR/test_ssh`" ]; then
-			local SSH_CON_LINE=`egrep -o 'debug1: Connecting to .* port [0-9]+' $SCRIPT_TMP_DIR/test_ssh`
-			SSH_PORT=`echo $SSH_CON_LINE| egrep -o '[0-9]+$'`
+	$SSH_CMD "$SSH_OPTS[@]" $port -v -o "ConnectTimeout=5"  -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" $host echo -n > $SCRIPT_TMP_DIR/test_ssh 2>&1
+	if [ -z "`egrep 'debug1: Executing proxy command:' $SCRIPT_TMP_DIR/test_ssh`" ]; then
+		local SSH_CON_LINE=`egrep -o 'debug1: Connecting to .* port [0-9]+' $SCRIPT_TMP_DIR/test_ssh`
+		SSH_PORT=`echo $SSH_CON_LINE| egrep -o '[0-9]+$'`
+		SSH_PORT_OPT=" -p $SSH_PORT"
+		SSH_HOST_IP=`echo $SSH_CON_LINE| egrep -o '\[[0-9/A-Fa-f\.:]+\]'| egrep -o [0-9/A-Fa-f\.:]+`
+	else
+		local pc=`egrep "debug1: channel_connect_stdio_fwd " $SCRIPT_TMP_DIR/test_ssh`
+		if [ -n "$pc" ];then
+			pc=${pc%\\r}
+			local adr=${pc#debug1: channel_connect_stdio_fwd }
+			adr=${adr%[[:space:]]}
+			adr=${adr%[[:space:]]}
+			adr=${adr%[[:space:]]}
+			SSH_PORT=${adr##*:}
+			SSH_HOST_IP=${adr%:*}
 			SSH_PORT_OPT=" -p $SSH_PORT"
-			SSH_HOST_IP=`echo $SSH_CON_LINE| egrep -o '\[[0-9/A-Fa-f\.:]+\]'| egrep -o [0-9/A-Fa-f\.:]+`
-		else
-			local pc=`egrep "debug1: channel_connect_stdio_fwd " $SCRIPT_TMP_DIR/test_ssh`
-			if [ -n "$pc" ];then
-				pc=${pc%\\r}
-				local adr=${pc#debug1: channel_connect_stdio_fwd }
-				adr=${adr%[[:space:]]}
-				adr=${adr%[[:space:]]}
-				adr=${adr%[[:space:]]}
-				SSH_PORT=${adr##*:}
-				SSH_HOST_IP=${adr%:*}
-				SSH_PORT_OPT=" -p $SSH_PORT"
-				SSH_PROXY=1
-			fi
+			SSH_PROXY=1
 		fi
-		if [ -n "$SSH_PORT" ];then
-			return 0
-		fi
-	#fi
+	fi
+	if [ -n "$SSH_PORT" ];then
+		return 0
+	fi
+	
 	return 1
 }
 
@@ -641,7 +676,7 @@ function wait_sshd_start(){
 				return
 			fi
 		else
-			echo ssh $SSH_OPTS $port -v -o \"ConnectTimeout=5\"  -o \"PasswordAuthentication no\" -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" $SSH_HOST echo -n|bash > $SCRIPT_TMP_DIR/test_ssh 2>&1
+			echo ssh $SSH_OPTS $port -v -o \"ConnectTimeout=5\"  -o \"PasswordAuthentication no\" -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" $SSH_HOST echo -n|"$SSH_SUDO_PREFIX"bash > $SCRIPT_TMP_DIR/test_ssh 2>&1
 			if [ `grep 'debug1: Remote protocol version 2.0, remote software version OpenSSH' $SCRIPT_TMP_DIR/test_ssh|wc|awk '{print $1}'` = "2" ];then
 				cyanBgBlue connected
 				return
@@ -783,65 +818,92 @@ function ssh_do(){
 	if [ -n "$SUDO_USER" ];then
 		chown $SUDO_USER:$SUDO_USER $SCRIPT_TMP_DIR/$SSH_ID
 	fi
-	local CMD=`echo ssh $SSH_PORT_OPT ${SSH_OPTS} $SSH_HOST $sudoing $@`
-	#echo $CMD >&2
-	#info $sudoing $@  >&2
+	local CMD=($SSH_CMD $SSH_PORT_OPT "${SSH_OPTS[@]}" $SSH_HOST $sudoing "$@")
 	if [ "$#" = "0" ];then
-		local set_env_lines="set | awk '!/^(BASH_ARGV|BASH_ARGC|BASH_LINENO|BASH_SOURCE|GROUPS|FUNCNAME|BASHOPTS|BASH_VERSINFO|EUID|PPID|SHELLOPTS|UID)=/ {print \$0}'"
+		SSH_PARAM_LIST["$SSH_HOST $SSH_PORT_OPT"]=($SSH_PORT_OPT "${SSH_PORT_OPT[@]}" $SSH_HOST)
+		local set_env_lines="set | awk '!/^(SSH_PARAM_LIST|SUDO_USER|BASH_ARGV|BASH_ARGC|BASH_LINENO|BASH_SOURCE|GROUPS|FUNCNAME|BASHOPTS|BASH_VERSINFO|EUID|PPID|SHELLOPTS|UID)=/ {print \$0}'"
 		local SET_ENV_LINES="`eval $set_env_lines`"
-		trim_indent > $SCRIPT_TMP_DIR/$SSH_ID/do_content
-		eval $CMD mkdir -p $SCRIPT_TMP_DIR/$SSH_ID
-		#echo $CMD bash -c "\"\\\"if [ -n \"\$SUDO_USER\" ];then chown \$SUDO_USER:\$SUDO_USER "$SCRIPT_TMP_DIR/$SSH_ID"; fi\\\"\"" >&2
-		eval $CMD bash -c "\"\\\"if [ -n \"\$SUDO_USER\" ];then chown \$SUDO_USER:\$SUDO_USER "$SCRIPT_TMP_DIR/$SSH_ID"; fi\\\"\""
+		local trans_started
+		# preserve host environment
 		(
-			# preserve host environment
-			echo "#!/bin/bash"
-			echo "mkdir -p $SCRIPT_TMP_DIR/$SSH_ID"
-			echo "$set_env_lines > $SCRIPT_TMP_DIR/$SSH_ID/env";
-			echo "
+			local ln
+			write_env_file << '			__INNER'
+				#!/bin/bash
+
+				mkdir -p $SCRIPT_TMP_DIR/$SSH_ID
+				mkdir -p --mode=0777 $SCRIPT_TMP_DIR/../..
+				if [ -n "$SUDO_USER" ];then
+					chown -R "$SUDO_USER" $SCRIPT_TMP_DIR
+				fi
+				rm -f $SCRIPT_TMP_DIR/../latest
+				if [ -n "$DEBUG" ];then
+					ln -s $SCRIPT_TMP_DIR $SCRIPT_TMP_DIR/../latest
+					if [ -n "$SUDO_USER" ];then
+						chown "$SUDO_USER" $SCRIPT_TMP_DIR/../latest
+					fi
+				fi
+				
+				$set_env_lines > $SCRIPT_TMP_DIR/$SSH_ID/env
+				
 				# set client environment
 				if [ ! -e $SCRIPT_TMP_DIR/$SSH_ID/env.cont ];then # missing previous host environment 
 					# set client command line argument
 					$TRANSFER_ARGUMENTS
 					$SET_ENV_LINES
 				else # found previous host environment 
-					source $SCRIPT_TMP_DIR/$SSH_ID/env.cont; 
-					rm $SCRIPT_TMP_DIR/$SSH_ID/env.cont;
+					source $SCRIPT_TMP_DIR/$SSH_ID/env.cont
+					rm $SCRIPT_TMP_DIR/$SSH_ID/env.cont
 				fi
-			";
-			# restore host environment
-			echo "source $SCRIPT_TMP_DIR/$SSH_ID/env; if [ -z \"\$DEBUG\" ]; then rm $SCRIPT_TMP_DIR/$SSH_ID/env; fi";
-			# execute script from standard input
-			echo "SETDIFF_ID_$SCRIPT_ID=\`set_diff_begin\`"
-			# preserve environment after script execution
-			echo "function transfer_new_env$SCRIPT_ID(){"
-			echo 'set_diff_end $SETDIFF_ID_'$SCRIPT_ID $SCRIPT_TMP_DIR/$SSH_ID/env.diff
-			echo "$set_env_lines > $SCRIPT_TMP_DIR/$SSH_ID/env.cont"
-			echo "unset -f transfer_new_env$SCRIPT_ID"
-			echo "}"
-			echo "function int_exit(){"
-			echo "exit 1"
-			echo "}"
-			echo "trap transfer_new_env$SCRIPT_ID EXIT"
-			echo "trap int_exit INT HUP"
-			cat $SCRIPT_TMP_DIR/$SSH_ID/do_content;
-		) | eval $CMD tee $SCRIPT_TMP_DIR/$SSH_ID/scr > /dev/null
-		eval $CMD chmod +x $SCRIPT_TMP_DIR/$SSH_ID/scr
-		eval $CMD $SCRIPT_TMP_DIR/$SSH_ID/scr
+				
+				# restore host environment
+				source $SCRIPT_TMP_DIR/$SSH_ID/env;
+				if [ -z "$DEBUG" ]; then
+					rm $SCRIPT_TMP_DIR/$SSH_ID/env
+				fi
+				# execute script from standard input
+				set_diff_begin
+				# preserve environment after script execution
+				function transfer_new_env$SCRIPT_ID(){
+					echo
+					set_diff_end
+					cat $SCRIPT_TMP_DIR/$SSH_ID/env.diff
+					$set_env_lines > $SCRIPT_TMP_DIR/$SSH_ID/env.cont
+					unset -f transfer_new_env$SCRIPT_ID
+				}
+				function int_exit(){
+					exit 1
+				}
+				trap transfer_new_env$SCRIPT_ID EXIT
+				trap int_exit INT HUP
+				cat <<'__DO_CONTENT' > $SCRIPT_TMP_DIR/$SSH_ID/do_content
+			__INNER
+			trim_indent
+			write_env_file << '			__INNER'
+				__DO_CONTENT
+				source $SCRIPT_TMP_DIR/$SSH_ID/do_content
+			__INNER
+		) | "${CMD[@]}" "$@" | while read -j ln; do
+			if [ -z "$trans_started"]; then
+				if [ "$ln" = "__TRANS_ENV_$SCRIPT_ID$SSH_ID" ];then
+					trans_started=1
+				else
+					echo -j $ln
+				fi
+			else
+				echo -j $ln >> $SCRIPT_TMP_DIR/$SSH_ID/remote_env.diff
+			fi
+		done
 		local res=$?
-		eval $CMD cat $SCRIPT_TMP_DIR/$SSH_ID/env.diff > $SCRIPT_TMP_DIR/$SSH_ID/remote_env.diff
 		if [ -n "$DEBUG" ];then
 			deb "transfer env ----"
-			cat $SCRIPT_TMP_DIR/$SSH_ID/remote_env.diff
+			cat $SCRIPT_TMP_DIR/$SSH_ID/remote_env.diff >&2
 			deb "-----------------"
 		fi
 		. $SCRIPT_TMP_DIR/$SSH_ID/remote_env.diff
-		if [ "$res" = "1" ];then
-			exit 1
-		fi
+		return $res
 	else
 		#info "$SSH_PORT_OPT $SSH_OPTS $SSH_HOST $sudoing $@"
-		eval $CMD
+		"${CMD[@]}"
 	fi
 }
 
@@ -954,7 +1016,11 @@ function write_env_file(){
 		trim_indent | sed 's/'"'"'/'"'"'"'"'"'"'"'"'/g' | sed -r 's/(^|[^\\])(\$('$envreg')(([^A-Za-z0-9_\\]|)\$('$envreg'))*)([^A-Za-z0-9_]|$)/\1'"'"'"\2"'"'"'\7/g'
 		echo -n "'"
 	)
-	eval echo "$c" > $1
+	if [ -n "$1" ];then
+		eval echo "$c" > $1
+	else
+		eval echo "$c"
+	fi
 }
 
 
@@ -1079,38 +1145,26 @@ function _set_diff_save(){
 
 
 function set_diff_begin(){
-	local __diff_id_set_diff_local__=$RANDOM$RANDOM$RANDOM
-	local __d_set_diff_local__=$SCRIPT_TMP_DIR/set_diff/$__diff_id_set_diff_local__
-	mkdir -p $__d_set_diff_local__
-	echo "#/bin/bash" >> $__d_set_diff_local__/get_diff
-	chmod +x $__d_set_diff_local__/get_diff
-	echo $__diff_id_set_diff_local__
-	unset __diff_id_set_diff_local__
-	_set_diff_save __SET_DIFF_BEGIN_PRESERVE_ $__d_set_diff_local__/get_diff
+	local get_diff=$SCRIPT_TMP_DIR/$SSH_ID/get_diff
+	echo "#/bin/bash" >> $get_diff
+	chmod +x $get_diff
+	_set_diff_save __SET_DIFF_BEGIN_PRESERVE_ $get_diff
 }
 
 
 function set_diff_end(){
-	unset SETDIFF_ID_$SCRIPT_ID
-	local __d_set_diff_local__="$SCRIPT_TMP_DIR/set_diff/$1"
-	_set_diff_save __SET_DIFF_END_PRESERVE_ $__d_set_diff_local__/get_diff
+	local get_diff=$SCRIPT_TMP_DIR/$SSH_ID/get_diff
+	_set_diff_save __SET_DIFF_END_PRESERVE_ $get_diff
 	local out
-	if [ -z "$2" ];then
-		out=$__d_set_diff_local__/get_diff
-	else
-		out=$2
-	fi
-	if [ -z "$1" -o ! -d "$__d_set_diff_local__" ];then
-		die "ID for 'set_diff_begin' is missing."
-	fi
 	echo -E '
-		echo -n > '$out'
+		echo -n
+		echo __TRANS_ENV_$SCRIPT_ID$SSH_ID
 		(echo -E "$__SET_DIFF_BEGIN_PRESERVE_VNAMES";
 		 echo -E "$__SET_DIFF_END_PRESERVE_VNAMES") | sort | uniq -u | while read vn; do
 			if [ -n "$vn" ];then
 				[ "$vn" = __diff_id_set_diff_local__ ] && continue
 				if declare -p __SET_DIFF_BEGIN_PRESERVE_EACH_$vn > /dev/null 2>&1; then
-					echo "unset $vn" >> '$out'
+					echo "unset $vn"
 				fi
 			fi
 		done
@@ -1129,12 +1183,12 @@ function set_diff_end(){
 					else
 						content="${ln#*=}"
 					fi
-					echo -E "$vn=$content" >> '$out'
+					echo -E "$vn=$content"
 				fi
 			fi
 		done
-' >>  $__d_set_diff_local__/get_diff
-	bash -c $__d_set_diff_local__/get_diff
+' >>  $get_diff
+	bash -c $get_diff
 }
 
 

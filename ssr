@@ -17,7 +17,7 @@ ssh_param $1 -x -q -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" 
 if ! ssh_do echo -n; then
 	if ! install_ssh_key; then
 		die "Cannot log on as user, 'rancher' by password, 'rancher'.
-$Cyan"Please enter following commands on console."
+$cyan"Please enter following commands on console."
 	sudo passwd rancher
 	rancher
 	rancher"

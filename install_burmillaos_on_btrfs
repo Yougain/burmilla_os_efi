@@ -195,7 +195,7 @@ fi
 if ! ssh_do echo; then
 	if ! install_ssh_key; then
 		die "Cannot log on as user, 'rancher' by password, 'rancher'.
-$CyanPlease enter following commands on console.
+"$cyan"Please enter following commands on console.
 	sudo passwd rancher
 	rancher
 	rancher"
@@ -385,14 +385,14 @@ if [ -n "$IP" ]; then
 		done
 		if [ -z "$UC_IP" ];then
 			if [ -n "$FORCE" ];then
-				warning "Overwrite ip address with new one, $Cyan'$IP'$Yellow over current ip, $Cyan'$UC_IPS'$Yellow defined in user_config.yml$plain"
+				warning "Overwrite ip address with new one, $cyan'$IP'$yellow over current ip, $cyan'$UC_IPS'$yellow defined in user_config.yml$plain"
 			else
-				die "Command line specified ip address, $Cyan'$IP'$Red is different from current ip, $Cyan'$UC_IPS'$Red defined in user_config.yml$plain"
+				die "Command line specified ip address, $cyan'$IP'$red is different from current ip, $cyan'$UC_IPS'$red defined in user_config.yml$plain"
 			fi
 		fi
 	fi
 	if ! reachable $IP $NETMASK $GATEWAY; then
-		die "IP address, $Cyan'$IP'$red is not accessible to gateway, $Cyan'$GATEWAY/$NETMASK'$red."
+		die "IP address, $cyan'$IP'$red is not accessible to gateway, $cyan'$GATEWAY/$NETMASK'$red."
 	fi
 else
 	if [ -n "$UC_IPS" ]; then
@@ -412,9 +412,9 @@ if [ -n "$PORT" ]; then
 	if [ -n "$UC_PORT" ]; then
 		if [ "$PORT" != "$UC_PORT" ];then
 			if [ -n "$FORCE" ];then
-				warn "Overwrite ssh port number with new one, $Cyan'$PORT'$Yellow over current ip, $Cyan'$UC_PORT'$Yellow defined in user_config.yml$plain"
+				warn "Overwrite ssh port number with new one, $cyan'$PORT'$yellow over current ip, $cyan'$UC_PORT'$yellow defined in user_config.yml$plain"
 			else
-				die "Command line specified ssh port number, $Cyan'$PORT'$Red is different from current one, $Cyan'$UC_PORT'$Red defined in user_config.yml$plain"
+				die "Command line specified ssh port number, $cyan'$PORT'$red is different from current one, $cyan'$UC_PORT'$red defined in user_config.yml$plain"
 			fi
 		fi
 	fi
@@ -430,9 +430,9 @@ fi
 if [ -n "$HNAME" ]; then
 	if [ -n "$UC_HNAME_FULL" -a "$HNAME_FULL" != "$UC_HNAME_FULL" ]; then
 		if [ -n "$FORCE" ]; then
-			warn "Overwriting host name with new name, $Cyan'$UC_HNAME_FULL'$Yellow in user_config.yml (original: $Cyan'$HNAME_FULL'$Yellow).$plain"
+			warn "Overwriting host name with new name, $cyan'$UC_HNAME_FULL'$yellow in user_config.yml (original: $cyan'$HNAME_FULL'$yellow).$plain"
 		else
-			die "Command line specified host name, $Cyan'$HNAME_FULL'$Red is different from original host name, $Cyan'$HNAME_FULL'$Red defined in  user_config.yml.$plain"
+			die "Command line specified host name, $cyan'$HNAME_FULL'$red is different from original host name, $cyan'$HNAME_FULL'$red defined in  user_config.yml.$plain"
 		fi
 	fi
 else
@@ -442,7 +442,7 @@ else
 		HNAME_FULL=$UC_HNAME_FULL
 	else
 		if [ -n "$FORCE" ]; then
-			warn "Using host name, $Cyan'burmilla'$Yellow, befause missing host name in both command line and user_config.yml.$plain"
+			warn "Using host name, $cyan'burmilla'$yellow, befause missing host name in both command line and user_config.yml.$plain"
 		else
 			die "Missing host name in both command line and user_config.yml.$plain"
 		fi
@@ -524,7 +524,7 @@ Port $PORT
 
 function check_ip_and_port(){
 	if [ -z "$IP" ];then
-		die "Missing IP address for both in the command line and user_config.yml, and cannot find section, $Cyan'Host $HNAME'$Red in $Cyan~./ssh/config$Red, where a line like $Cyan'HostName [ip address or resolvable host name]'$Red should be found.$plain"
+		die "Missing IP address for both in the command line and user_config.yml, and cannot find section, $cyan'Host $HNAME'$red in $cyan~./ssh/config$red, where a line like $cyan'HostName [ip address or resolvable host name]'$red should be found.$plain"
 	fi
 	if [ -z "$PORT" ];then
 		RD=0
@@ -714,7 +714,7 @@ fi
 INST_DRIVE=/dev/`ssh_do readlink /dev/disk/by-label/RANCHEROS | sed -e 's/.*\///'`
 
 if [ "$INST_DRIVE" = "/dev/" ];then
-	die "Abnormal installer's drive $Cyan'$INST_DRIVE'$Red."
+	die "Abnormal installer's drive $cyan'$INST_DRIVE'$red."
 	exit 1
 fi
 
@@ -1365,7 +1365,7 @@ ssh_sudo <<'FINAL'
 		fi
 	fi
 	if [ ! -x /usr/bin/yq ];then
-		echo -e $Red"Cannot download /usr/bin/yq"$Plain
+		echo -e $red"Cannot download /usr/bin/yq"$plain
 		exit 1
 	fi
 
@@ -1499,12 +1499,12 @@ ssh_sudo <<'FINAL'
 		if [ -n "$FORCE" ];then
 			sed -i 's/#Port 22/Port '$PORT'/' /installing/oem_part/etc/ssh/sshd_config
 			sed -i 's/Port[[:space:]]*[0-9][0-9]*/Port '$PORT'/' /installing/oem_part/etc/ssh/sshd_config
-			echo -e $_Red`grep Port /installing/oem_part/etc/ssh/sshd_config`$_plain
+			echo -e $red`grep Port /installing/oem_part/etc/ssh/sshd_config`$plain
 		else
-			echo -e $_Purple"No force option."$plain
+			echo -e $purple"No force option."$plain
 		fi
 	fi
-	echo -e $Green"Rewirte sshd_config finished"$plain
+	echo -e $green"Rewirte sshd_config finished"$plain
 	echo rm -rf $ssh_dir
 	rm -rf $ssh_dir
 	echo ln -sf /usr/share/ros/oem/etc/ssh $ssh_dir
