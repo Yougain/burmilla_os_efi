@@ -501,7 +501,7 @@ alias warn_n=warning_n
 
 
 function deb(){
-	if [ -n "DEBUG" ];then
+	if [ -n "$DEBUG" ];then
 		echo -e $debug$@$plain >&2
 	fi
 }
