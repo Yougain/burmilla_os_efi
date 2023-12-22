@@ -613,6 +613,7 @@ function ssh_param(){
 		fi
 	done
 	SSH_HOST=$host
+	deb $host
 	if [[ "$host" =~ ^(.*)@(.*)$ ]];then
 		SSH_USER=${BASH_REMATCH[1]}
 	fi
