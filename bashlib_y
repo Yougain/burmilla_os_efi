@@ -407,6 +407,9 @@ require(){
 
 
 cleanup (){
+	if [ -n "$DEBUG" ];then
+		ls $SCRIPT_TMP_DIR
+	fi
 	if [ -z "$DEBUG" ];then
 		rm_all $SCRIPT_TMP_DIR
 		local k
