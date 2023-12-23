@@ -37,18 +37,14 @@ initialize_support_lib(){
 		if [ -n "$SUDO_USER" ];then
 			chown -R "$SUDO_USER" $SCRIPT_TMP_DIR
 		fi
-		rm -f /tmp/yougain/${0##*/}/latest
-		echo xxx
+		local lnk=$SCRIPT_TMP_DIR/../latest
+		rm -f $SCRIPT_TMP_DIR/..
 		if [ -n "$DEBUG" ];then
-			echo yyy
-			local lnk=/tmp/yougain/${0##*/}/latest
 			ln -s $SCRIPT_TMP_DIR $lnk
-			ls -la $lnk
 			if [ -n "$SUDO_USER" ];then
 				chown "$SUDO_USER" $lnk
 			fi
 		fi
-		ls /tmp/yougain/${0##*/}/latest
 		SCRIPT_ID=$RANDOM$RANDOM$RANDOM
 		SUPPORT_LIB_CONTENT="`cat $(__FILE__)`"
 		SUPPORT_LIB_MTIME="`stat $(__FILE__) -c %Y`"
