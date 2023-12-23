@@ -38,7 +38,7 @@ initialize_support_lib(){
 			chown -R "$SUDO_USER" $SCRIPT_TMP_DIR
 		fi
 		local lnk=$SCRIPT_TMP_DIR/../latest
-		echo -e "\033[42m\033[34mDEBUG     :\033[m \033[32m"Debug directory - $SCRIPT_TMP_DIR"\033[m"
+		echo -e "\033[42m\033[34mDEBUG :\033[m \033[32m"\$SCRIPT_TMP_DIR = $SCRIPT_TMP_DIR"\033[m"
 		rm -f $lnk
 		if [ -n "$DEBUG" ];then
 			ln -s $SCRIPT_TMP_DIR $lnk
@@ -409,6 +409,7 @@ require(){
 
 cleanup (){
 	if [ -n "$DEBUG" ];then
+		deb "ls -la $SCRIPT_TMP_DIR"
 		ls $SCRIPT_TMP_DIR -la
 	fi
 	if [ -z "$DEBUG" ];then
