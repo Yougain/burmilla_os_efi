@@ -38,7 +38,9 @@ initialize_support_lib(){
 			chown -R "$SUDO_USER" $SCRIPT_TMP_DIR
 		fi
 		local lnk=$SCRIPT_TMP_DIR/../latest
-		echo -e "\033[42m\033[34mDEBUG :\033[m \033[32m"\$SCRIPT_TMP_DIR = $SCRIPT_TMP_DIR"\033[m"
+		if [ -n "$DEBUG" ];then
+			echo -e "\033[42m\033[34mDEBUG :\033[m \033[32m"\$SCRIPT_TMP_DIR = $SCRIPT_TMP_DIR"\033[m"
+		fi
 		rm -f $lnk
 		if [ -n "$DEBUG" ];then
 			ln -s $SCRIPT_TMP_DIR $lnk
@@ -65,27 +67,28 @@ declare -A SCRIPT_FILES
 
 dbv(){
 	if [ -n "$DEBUG" ];then
-		local frame=(caller 1)
+		local frame=(`caller 0`)
 		local f="${frame[2]}"
 		local lno="${frame[0]}"
 		local ln
 		local sid
 		if [ -e "$f" ];then
 			if [ -z "${SCRIPT_FILES[$f]}" ];then
-				sid=SCRIPT_FILE_$RAND$RAND$RAND
-				${SCRIPT_FILES[$f]}=$sid
+				sid=SCRIPT_FILE_$RANDOM$RANDOM$RANDOM
+				SCRIPT_FILES[$f]=$sid
 				eval "
 					$sid=()
 					while read ln;do
-						\$$sid+=("\$ln")
+						$sid+=(\"\$ln\")
 					done < $f
 				"
 			else
 				sid=${SCRIPT_FILES[$f]}
 			fi
-			deb $f:$lno "'$yellow"`eval 'echo -E ${'$sid'[$lno]}'`"$green'" = "'$cyan"$@"$green'"
+			ln="`eval 'echo -E ${'"$sid"'['"$((lno - 1))"']}'`"
+			deb ${f##*/}:$lno "'$yellow"${ln#*dbv }"$green'" = "'$cyan"$@"$green'"
 		else
-			deb $f:$lno $cyan$@
+			deb ${f##*/}:$lno $cyan$@
 		fi
 	fi
 }
@@ -436,9 +439,10 @@ require(){
 
 cleanup (){
 	if [ -n "$DEBUG" ];then
-		dbv ${BASH_SOURCE[@]}
-		deb "ls -la $SCRIPT_TMP_DIR"
-		ls $SCRIPT_TMP_DIR -la
+		local tmp_files=`ls -A $SCRIPT_TMP_DIR`
+		if [ -n "$tmp_files" ];then
+			deb "ls -A $SCRIPT_TMP_DIR = $tmp_files"
+		fi
 	fi
 	if [ -z "$DEBUG" ];then
 		rm_all $SCRIPT_TMP_DIR
