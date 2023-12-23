@@ -34,7 +34,6 @@ initialize_support_lib(){
 		mkdir -p --mode=0777 /tmp/$f
 		SCRIPT_TMP_DIR=/tmp/$f/${0##*/}/`date +"%y-%m-%d_%H:%M:%S.%N%z"`-$$
 		mkdir -p $SCRIPT_TMP_DIR
-		echo $SCRIPT_TMP_DIR
 		if [ -n "$SUDO_USER" ];then
 			chown -R "$SUDO_USER" $SCRIPT_TMP_DIR
 		fi
@@ -409,7 +408,7 @@ require(){
 
 cleanup (){
 	if [ -n "$DEBUG" ];then
-		ls $SCRIPT_TMP_DIR
+		ls $SCRIPT_TMP_DIR -la
 	fi
 	if [ -z "$DEBUG" ];then
 		rm_all $SCRIPT_TMP_DIR
