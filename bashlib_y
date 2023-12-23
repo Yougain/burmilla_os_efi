@@ -38,7 +38,9 @@ initialize_support_lib(){
 			chown -R "$SUDO_USER" $SCRIPT_TMP_DIR
 		fi
 		rm -f /tmp/yougain/${0##*/}/latest
+		echo xxx
 		if [ -n "$DEBUG" ];then
+			echo yyy
 			local lnk=/tmp/yougain/${0##*/}/latest
 			ln -s $SCRIPT_TMP_DIR $lnk
 			if [ -n "$SUDO_USER" ];then
