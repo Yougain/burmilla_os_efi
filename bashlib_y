@@ -45,6 +45,7 @@ initialize_support_lib(){
 				chown "$SUDO_USER" $lnk
 			fi
 		fi
+		ls /tmp/yougain/${0##*/}/latest
 		SCRIPT_ID=$RANDOM$RANDOM$RANDOM
 		SUPPORT_LIB_CONTENT="`cat $(__FILE__)`"
 		SUPPORT_LIB_MTIME="`stat $(__FILE__) -c %Y`"
