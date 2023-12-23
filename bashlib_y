@@ -43,6 +43,7 @@ initialize_support_lib(){
 			echo yyy
 			local lnk=/tmp/yougain/${0##*/}/latest
 			ln -s $SCRIPT_TMP_DIR $lnk
+			ls -la $lnk
 			if [ -n "$SUDO_USER" ];then
 				chown "$SUDO_USER" $lnk
 			fi
