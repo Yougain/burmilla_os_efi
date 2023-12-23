@@ -61,7 +61,34 @@ initialize_support_lib(){
 if initialize_support_lib; then
 
 declare -A LOCAL_FUNCS
+declare -A SCRIPT_FILES
 
+dbv(){
+	if [ -n "$DEBUG" ];then
+		local frame=(caller 1)
+		local f="${frame[2]}"
+		local lno="${frame[0]}"
+		local ln
+		local sid
+		if [ -e "$f" ];then
+			if [ -z "${SCRIPT_FILES[$f]}" ];then
+				sid=SCRIPT_FILE_$RAND$RAND$RAND
+				${SCRIPT_FILES[$f]}=$sid
+				eval "
+					$sid=()
+					while read ln;do
+						\$$sid+=("\$ln")
+					done < $f
+				"
+			else
+				sid=${SCRIPT_FILES[$f]}
+			fi
+			deb $f:$lno "'$yellow"`eval 'echo -E ${'$sid'[$lno]}'`"$green'" = "'$cyan"$@"$green'"
+		else
+			deb $f:$lno $cyan$@
+		fi
+	fi
+}
 
 rm_all(){
 	local d
@@ -409,7 +436,7 @@ require(){
 
 cleanup (){
 	if [ -n "$DEBUG" ];then
-		deb ${BASH_SOURCE[@]}
+		dbv ${BASH_SOURCE[@]}
 		deb "ls -la $SCRIPT_TMP_DIR"
 		ls $SCRIPT_TMP_DIR -la
 	fi
