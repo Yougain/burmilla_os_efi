@@ -637,7 +637,7 @@ function ssh_param(){
 		port=" -p $port"
 	fi
 	deb $SSH_CMD "${SSH_OPTS[@]}" $port -v -o "ConnectTimeout=5"  -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" $host
-	$SSH_CMD "$SSH_OPTS[@]" $port -v -o "ConnectTimeout=5"  -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" $host echo -n > $SCRIPT_TMP_DIR/test_ssh 2>&1
+	$SSH_CMD "${SSH_OPTS[@]}" $port -v -o "ConnectTimeout=5"  -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" $host echo -n > $SCRIPT_TMP_DIR/test_ssh 2>&1
 	if [ -z "`egrep 'debug1: Executing proxy command:' $SCRIPT_TMP_DIR/test_ssh`" ]; then
 		local SSH_CON_LINE=`egrep -o 'debug1: Connecting to .* port [0-9]+' $SCRIPT_TMP_DIR/test_ssh`
 		SSH_PORT=`echo $SSH_CON_LINE| egrep -o '[0-9]+$'`
