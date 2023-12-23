@@ -409,6 +409,7 @@ require(){
 
 cleanup (){
 	if [ -n "$DEBUG" ];then
+		deb ${BASH_SOURCE[@]}
 		deb "ls -la $SCRIPT_TMP_DIR"
 		ls $SCRIPT_TMP_DIR -la
 	fi
