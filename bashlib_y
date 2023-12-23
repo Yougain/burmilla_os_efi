@@ -407,6 +407,7 @@ require(){
 
 
 cleanup (){
+	aaaaaaaaaa
 	if [ -n "$DEBUG" ];then
 		ls $SCRIPT_TMP_DIR
 	fi
