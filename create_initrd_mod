@@ -265,6 +265,7 @@ $libs"
 		egrep
 		ldd
 		date
+		find
 		mknod
 	END
 	

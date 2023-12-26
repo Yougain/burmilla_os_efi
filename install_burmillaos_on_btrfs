@@ -1549,6 +1549,9 @@ ssh_sudo <<'FINAL'
 		write_script 0755 /installing/oem_part/opt/rancher/bin/start.sh <<'	START_UP'
 			#!/bin/bash
 			source bashlib_y
+			chain_bak --num /var/log/init.log.0
+			cp /var/log/init.log /var/log/init.log.0
+			chain_bak /var/log/init.log.0
 			if [ ! -L /etc/ssh ];then
 				info symlink /usr/share/ros/oem/etc/ssh /etc/ssh
 				rm -rf /etc/ssh
