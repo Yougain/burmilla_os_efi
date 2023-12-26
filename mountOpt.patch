@@ -22,7 +22,7 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2023-11-28 19:46:24.176064000 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2023-12-20 15:15:33.342701300 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2023-12-26 15:48:40.053348900 +0900
 @@ -1,9 +1,14 @@
  package fsmount
  
@@ -56,7 +56,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  		log.Debugf("Not mounting BOOT: %v", err)
  	} else {
  		log.Infof("Mounted BOOT: %s", cfg.Rancher.State.BootDev)
-@@ -54,17 +59,69 @@
+@@ -54,32 +59,76 @@
  	return cfg, nil
  }
  
@@ -118,64 +118,27 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  	}
  
 -	dev = util.ResolveDevice(dev)
-+	dev, _, err := blkid2MatchStr(dname)
- 	if dev == "" {
+-	if dev == "" {
 -		return fmt.Errorf("Could not resolve device %q", dev)
-+		dev = util.ResolveDevice(dname)
-+		if dev == "" {
-+			return fmt.Errorf("Could not resolve device %q", dev)
-+		}
- 	}
-+
- 	if fsType == "auto" {
- 		fsType, err = util.GetFsType(dev)
- 	}
-@@ -74,12 +131,50 @@
- 	}
+-	}
+-	if fsType == "auto" {
+-		fsType, err = util.GetFsType(dev)
+-	}
++	log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, option)
  
- 	log.Debugf("FsType has been set to %s", fsType)
++	cmd := exec.Command("/sbin/do_mount", "-o", option, dname, target)
++	cmd.Stderr = os.Stderr
++	out, err := cmd.Output()
+ 	if err != nil {
++		log.Infof("exec /sbin/do_mount, failed.")
++		log.Infof("Mouting %s failed", display)
+ 		return err
+ 	}
+-
+-	log.Debugf("FsType has been set to %s", fsType)
 -	log.Infof("Mounting %s device %s to %s", display, dev, target)
 -	return util.Mount(dev, target, fsType, "")
-+	if fsType == "btrfs" {
-+		opts := strings.Split(option, ",")
-+		nodg := ""
-+		fst := true
-+		rw := 0
-+		for _, s := range opts {
-+			if s == "rw" {
-+				rw = 1
-+			}
-+			if s != "degraded" {
-+				if fst {
-+					nodg = s
-+				} else {
-+					nodg += "," + s
-+				}
-+				fst = false
-+			}
-+		}
-+		dg := "degraded"
-+		if rw == 1 {
-+			dg += ",rw"
-+		}
-+		if nodg != "" {
-+			dg += "," + nodg
-+		}
-+		for i := 0; i < 5; i++ {
-+			log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, nodg)
-+			if err2 := util.Mount(dev, target, fsType, nodg) ; err2 != nil {
-+				log.Infof("Mouting %s faled", display)
-+				time.Sleep(2 * time.Second)
-+			} else {
-+				return nil
-+			}
-+		}
-+		log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, dg)
-+		return util.Mount(dev, target, fsType, dg)
-+	} else {
-+		log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, option)
-+		return util.Mount(dev, target, fsType, option)
-+	}
++	return nil
  }
  
  func mountState(cfg *config.CloudConfig) error {
@@ -186,17 +149,17 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  func tryMountState(cfg *config.CloudConfig) error {
 diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/prepare/prepare.go
 --- os.prev/pkg/init/prepare/prepare.go	2023-11-28 19:46:24.176064000 +0900
-+++ os.new/pkg/init/prepare/prepare.go	2023-12-26 13:53:11.333348900 +0900
++++ os.new/pkg/init/prepare/prepare.go	2023-12-26 15:23:41.503348900 +0900
 @@ -37,5 +37,13 @@
  		log.SetLevel(log.InfoLevel)
  	}
  
-+	log.Infof("executing /sbin/start_udev")
-+	cmd := exec.Command("/sbin/start_udev")
++	log.Infof("executing /sbin/after_save_cmd_line")
++	cmd := exec.Command("/sbin/after_save_cmd_line")
 +	cmd.Stderr = os.Stderr
 +	_, errb := cmd.Output()
 +	if errb != nil {
-+		log.Infof("exec /sbin/start_udev failed.")
++		log.Infof("exec /sbin/after_save_cmd_line failed.")
 +	}
 +
  	return cfg, nil
@@ -222,17 +185,17 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/sysinit/sysinit.go os.new/pkg/sysinit/sysinit.go
 --- os.prev/pkg/sysinit/sysinit.go	2023-11-28 19:46:24.186064000 +0900
-+++ os.new/pkg/sysinit/sysinit.go	2023-12-26 13:53:26.483348900 +0900
++++ os.new/pkg/sysinit/sysinit.go	2023-12-26 15:29:02.123348900 +0900
 @@ -93,6 +93,14 @@
  }
  
  func SysInit() error {
-+	log.Infof("executing /sbin/stop_udev")
-+	cmd := exec.Command("/sbin/stop_udev")
++	log.Infof("executing /sbin/before_sysinit")
++	cmd := exec.Command("/sbin/before_sysinit")
 +	cmd.Stderr = os.Stderr
 +	_, errb := cmd.Output()
 +	if errb != nil {
-+		log.Infof("exec /sbin/stop_udev failed.")
++		log.Infof("exec /sbin/before_sysinit failed.")
 +	}
 +
  	cfg := config.LoadConfig()
