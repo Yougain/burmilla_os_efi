@@ -22,6 +22,7 @@ $cyan"Please enter following commands on console."
 	rancher
 	rancher"
 	fi
+	exit 1
 	ssh_sudo <<END
 		apt-get -y update
 		apt-get -y install vim
@@ -54,7 +55,6 @@ endif
 ' > .vimrc
 END
 fi
-
 
 ssh_i
 

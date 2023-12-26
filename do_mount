@@ -214,6 +214,7 @@ function do_mount(){
 		fi
 		local res
 		if [ "$type" = "btrfs" ];then
+			blkid2 
 			if [ -z "$forceDegraded" ];then
 				local i=0
 				while ! _mount $opts $moptsNoDeg $to_mount $dst;do

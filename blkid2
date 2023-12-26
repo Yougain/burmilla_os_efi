@@ -10,32 +10,80 @@ function blkid2(){
 	}
 	local local=$RANDOM$RANDOM$RANDOM
 	local PATH=/sbin:/usr/sbin:/bin:/usr/bin
-	if [ "$1" = "stop" ];then
-		killall udevd
-		info killall udevd: result = $?
- 		info udev stopped
- 		info `ps ax | grep udevd`
- 		info `ls -la /dev/btrfs-control`
-		return 0
-	else
-		local i
-		local found
-		if [ -n "`__readlink /proc/*/exe 2>/dev/null| egrep '/udevd$'`" ]; then
-			found=1
+
+	local args=()
+	local opts=()
+	local get_sibling
+	while (( "$#" )); do
+		if [ "${1:0:1}" = "-" ];then
+			opts+="$1"
+			if [ $1 = "--get-sibling" ];then
+				get_sibling=1
+			fi
+		else
+			args+="$1"
 		fi
-		if [ -z "$found" ]; then
- 			udevd  --daemon --resolve-names=never
-			udevadm trigger --action=add --type=subsystems
-			udevadm trigger --action=add --type=devices
-			udevadm trigger --action=change --type=devices
-			udevadm settle
- 			info udev started
- 			mknod /dev/btrfs-control c 10 234
-			info `ls -la /dev/btrfs-control`
-			btrfs device scan
-			sleep 5
+		shift
+	done
+
+	if [ ${#args} -ge 2 ];then
+		die "multiple arguments specified"
+	fi
+
+	if [ ! -e /dev/btrfs-control ];then
+		if [ "`id -u`" = 0 ];then
+			mknod /dev/btrfs-control c 10 234
 		fi
 	fi
+	if [ "`id -u`" = 0 ];then
+		btrfs device scan > /dev/null 2>/dev/null
+	fi
+	
+	local ag
+	local op
+	for op in "${opts[@]}"; do
+		case "$op" in
+			"--stop-udev")
+				if [ "`id -u`" != 0 ];then
+					die "cannot use '--stop-udev' without root privilage"
+				fi
+				killall udevd
+				info killall udevd: result = $?
+		 		info udev stopped
+		 		info `ps ax | grep udevd`
+		 		info `ls -la /dev/btrfs-control`
+		 		if ((#args > 0)); then
+		 			warn "${args[@]} are ignored."
+		 		fi
+				return 0
+				;;
+			"--start-udev")
+				if [ "`id -u`" != 0 ];then
+					die "cannot use '--start-udev' without root privilage"
+				fi
+				local found
+				if [ -n "`__readlink /proc/*/exe 2>/dev/null| egrep '/udevd$'`" ]; then
+					found=1
+				fi
+				if [ -z "$found" ]; then
+					udevd  --daemon --resolve-names=never
+					udevadm trigger --action=add --type=subsystems
+					udevadm trigger --action=add --type=devices
+					udevadm trigger --action=change --type=devices
+					udevadm settle
+					info udev started
+					sleep 5
+				fi
+				;;
+			*)
+				die "unknown option $ag"
+				;;
+		esac
+	done
+
+
+	local i
+
 	
 	local IDnDEVs_id=(`ls /dev/disk/by-id`)
 	local IDnDEVs_dev=($(__readlink `ls /dev/disk/by-id/*`))
@@ -47,21 +95,19 @@ function blkid2(){
 		local PATHnDEVs_n=${#IDnPATHs_path[@]}
 	fi
 
-	declare -A blkids
+	declare -A local blkids
 
 	local blkids_arr
 	split blkids_arr "`blkid`" "
 "
-	eval "
-		function add_blist$local(){
-			local dev=\$1
-			blkids[\$dev]=\"\$@\"
-	}"
+	local_fun add_blist <<'	}'
+		local dev=$1
+		blkids[$dev]="$@"
+	}
 	local i
 	for i in "${blkids_arr[@]}"; do
-		add_blist$local $i
+		local_call add_blist $i
 	done
-	unset -f add_blist$fn
 
 	local dev
 	local bc
@@ -74,85 +120,102 @@ function blkid2(){
 	done
 	if [ -d /dev/disk/by-path ];then
 		for ((i = 0; i < $PATHnDEVs_n ; i++)); do
-			dev=${PATHnDEVs_dev[$i]}:
+			dev=${PATHnDEVs_dev[$i]}
 			bc=${blkids[$dev]}
 			if [ -n "$bc" ];then
 				blkids[$dev]="$bc PATH=\""${PATHnDEVs_path[$i]}'"'
 			fi
 		done
 	fi
+	
+	declare -A local uuid_list
+	declare -A local dev2VarNameSibs
+	local varNameSibs # use transformed uuid (tr - _) as variable name for array of siblings
+	for dev in "${blkids[@]}"; do
+		if [[ "${blkids[$dev]}" =~ \ UUID=\"([0-9a-fA-F]+(-[0-9a-fA-F]+)*)\"\  ]]; then
+			varNameSibs=UUID_$(echo ${BASH_REMATCH[1]}|tr - _)
+			if [ -z "${uuid_list[$uuid]}" ];then
+				uuid_list[$varNameSibs]=1
+				eval local $varNameSibs+=($dev)
+			fi
+			eval $varNameSibs+=($dev)
+			dev2VarNameSibs[$dev]=$varNameSibs
+		fi
+	done
 
-	if [ -z "$1" ];then
+	if [ "${#args}" = 0 ];then
 		for bc in "${blkids[@]}";do
 			echo "${bc}"
 		done | sort
+		return 0
 	else
-		eval '
-			function detectSymbol'$local'(){
-				local _arg=$1
-				shift
-				local _dev=${1%:}
-				shift
-				if [ "$_dev" = "$_arg" ];then
-					return 2
-				fi
-				local _arg_val="${_arg#*=}"
-				local _arg_key
-				if [ ${#_arg_val} != ${#_arg} ];then
-					_arg_key=${_arg%%=*}
-				fi
-				local a
-				local a_key
-				if [ -n "$_arg_key" ];then
-					for a in "$@";do
-						if [ "$a" = $_arg_key="$_arg_val" ];then
-							echo $_dev
-							return 0
-						fi
-						if [ "$a" = $_arg_key="\"$_arg_val\"" ];then
-							echo $_dev
-							return 0
-						fi
-						if [ "$a" = $_arg_key="'$_arg_val'" ];then
-							echo $_dev
+		local matched=()
+		local_fun detectSymbol <<'		}'
+			local _arg=$1
+			shift
+			local _dev=${1%:}
+			shift
+			if [ "$_dev" = "$_arg" ];then
+				matched+=($_dev)
+				return 0
+			fi
+			local _arg_val="${_arg#*=}"
+			local _arg_key
+			if [ ${#_arg_val} != ${#_arg} ];then
+				_arg_key=${_arg%%=*}
+			fi
+			local a
+			local q
+			local a_key
+			if [ -n "$_arg_key" ];then
+				for a in "$@";do
+					for q in "" "'" "\"";do
+						if [ "$a" = $_arg_key="$q$_arg_val$q" ];then
+							matched+=($_dev)
 							return 0
 						fi
 					done
-				else
-					for a in "$@";do
-						a_key=${a%%=*}
-						if [ "$a" = $a_key="$_arg_val" ];then
-							echo $_dev
-							return 0
-						fi
-						if [ "$a" = $a_key="\"$_arg_val\"" ];then
-							echo $_dev
-							return 0
-						fi
-						if [ "$a" = $a_key="'$_arg_val'" ];then
-							echo $_dev
+				done
+			else
+				for a in "$@";do
+					a_key=${a%%=*}
+					for q in "" "'" "\"";do
+						if [ "$a" = $a_key="$q$_arg_val$q" ];then
+							matched+=($_dev)
 							return 0
 						fi
 					done
-				fi
-				return 1
-			}
-		'
+				done
+			fi
+			return 1
+		}
 		for bc in "${blkids[@]}";do
-			eval "detectSymbol$local \"$1\" $bc"
-			case $? in
-				2)
-					echo "$bc"
-					return 0
-					;;
-				0)
-					return 0
-					;;
-				1)
-					;;
-			esac
+			local_call detectSymbol "${args[0]}" "$bc"
 		done
-		unset -f detectSymbol$local
+		if [ "${#matched}" = 0 ];then
+			die No matching device found
+		fi
+		local mdev
+		if [ -n "$get_sibling" ];then
+			local varNameSibs1
+			for mdev in "${matched[@]}"; do
+				if [ -z "$varNameSibs1" ]; then
+					varNameSibs1=${dev2VarNameSibs[$mdev]}
+					if [ -z "$varNameSibs1" ];then
+						die "matched device, '$mdev' has no uuid."
+					fi
+				else
+					if [ "$varNameSibs1" != "${dev2VarNameSibs[$mdev]}" ];then
+						die "matched devices has different uuids."
+					fi
+				fi
+			done
+			eval echo '${'$varNameSibs'[@]}'
+		else
+			for mdev in "${matched[@]}"; do
+				echo ${blkids[$mdev]}
+			done
+		fi
 		return 1
 	fi
 	return 0
