@@ -214,7 +214,29 @@ function do_mount(){
 		fi
 		local res
 		if [ "$type" = "btrfs" ];then
-			blkid2 
+			local devices=("`blkid2 --get-siblings $to_mount`")
+			if [ $? != 0 ];then
+				die "'blkid2 --get-siblings $to_mount' failed"
+			fi
+			local dev
+			local devOptArgs
+			for dev in "${devices[@]}";do
+				if [ -z "$devOptArgs" ];then
+					devOptArgs="device=$dev"
+				else
+					devOptArgs="$devOptArgs,device=$dev"
+				fi
+			done
+			if [ -z "$moptsNoDeg" ];then
+				moptsNoDeg=$devOptArgs
+			else
+				moptsNoDeg="$moptsNoDeg,$devOptArgs"
+			fi
+			if [ -z "$moptsWithDeg" ];then
+				moptsWithDeg=$devOptArgs
+			else
+				moptsWithDeg="$moptsWithDeg,$devOptArgs"
+			fi
 			if [ -z "$forceDegraded" ];then
 				local i=0
 				while ! _mount $opts $moptsNoDeg $to_mount $dst;do

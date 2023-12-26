@@ -184,19 +184,55 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  }
  
  func tryMountState(cfg *config.CloudConfig) error {
+diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/prepare/prepare.go
+--- os.prev/pkg/init/prepare/prepare.go	2023-11-28 19:46:24.176064000 +0900
++++ os.new/pkg/init/prepare/prepare.go	2023-12-26 13:53:11.333348900 +0900
+@@ -37,5 +37,13 @@
+ 		log.SetLevel(log.InfoLevel)
+ 	}
+ 
++	log.Infof("executing /sbin/start_udev")
++	cmd := exec.Command("/sbin/start_udev")
++	cmd.Stderr = os.Stderr
++	_, errb := cmd.Output()
++	if errb != nil {
++		log.Infof("exec /sbin/start_udev failed.")
++	}
++
+ 	return cfg, nil
+ }
+diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg/init/switchroot/switchroot.go
+--- os.prev/pkg/init/switchroot/switchroot.go	2023-11-28 19:46:24.176064000 +0900
++++ os.new/pkg/init/switchroot/switchroot.go	2023-12-26 14:14:59.323348900 +0900
+@@ -158,6 +158,15 @@
+ 	}
+ 
+ 	log.Debug("chroot .")
++
++	log.Infof("executing before_switch_root")
++	cmd := exec.Command("/sbin/before_switch_root")
++	cmd.Stderr = os.Stderr
++	_, errb := cmd.Output()
++	if errb != nil {
++		log.Infof("exec /sbin/before_switch_root failed.")
++	}
++
+ 	if err := syscall.Chroot("."); err != nil {
+ 		return err
+ 	}
 diff -Naur '--exclude=.git' os.prev/pkg/sysinit/sysinit.go os.new/pkg/sysinit/sysinit.go
 --- os.prev/pkg/sysinit/sysinit.go	2023-11-28 19:46:24.186064000 +0900
-+++ os.new/pkg/sysinit/sysinit.go	2023-12-20 15:13:38.162701300 +0900
++++ os.new/pkg/sysinit/sysinit.go	2023-12-26 13:53:26.483348900 +0900
 @@ -93,6 +93,14 @@
  }
  
  func SysInit() error {
-+	log.Infof("executing /sbin/blkid2 stop")
-+	cmd := exec.Command("/sbin/blkid2", "stop")
++	log.Infof("executing /sbin/stop_udev")
++	cmd := exec.Command("/sbin/stop_udev")
 +	cmd.Stderr = os.Stderr
 +	_, errb := cmd.Output()
 +	if errb != nil {
-+		log.Infof("exec /sbin/blkid2 stop, failed.")
++		log.Infof("exec /sbin/stop_udev failed.")
 +	}
 +
  	cfg := config.LoadConfig()

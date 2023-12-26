@@ -17,7 +17,7 @@ function blkid2(){
 	while (( "$#" )); do
 		if [ "${1:0:1}" = "-" ];then
 			opts+="$1"
-			if [ $1 = "--get-sibling" ];then
+			if [ $1 = "--get-siblings" ];then
 				get_sibling=1
 			fi
 		else
@@ -38,49 +38,6 @@ function blkid2(){
 	if [ "`id -u`" = 0 ];then
 		btrfs device scan > /dev/null 2>/dev/null
 	fi
-	
-	local ag
-	local op
-	for op in "${opts[@]}"; do
-		case "$op" in
-			"--stop-udev")
-				if [ "`id -u`" != 0 ];then
-					die "cannot use '--stop-udev' without root privilage"
-				fi
-				killall udevd
-				info killall udevd: result = $?
-		 		info udev stopped
-		 		info `ps ax | grep udevd`
-		 		info `ls -la /dev/btrfs-control`
-		 		if ((#args > 0)); then
-		 			warn "${args[@]} are ignored."
-		 		fi
-				return 0
-				;;
-			"--start-udev")
-				if [ "`id -u`" != 0 ];then
-					die "cannot use '--start-udev' without root privilage"
-				fi
-				local found
-				if [ -n "`__readlink /proc/*/exe 2>/dev/null| egrep '/udevd$'`" ]; then
-					found=1
-				fi
-				if [ -z "$found" ]; then
-					udevd  --daemon --resolve-names=never
-					udevadm trigger --action=add --type=subsystems
-					udevadm trigger --action=add --type=devices
-					udevadm trigger --action=change --type=devices
-					udevadm settle
-					info udev started
-					sleep 5
-				fi
-				;;
-			*)
-				die "unknown option $ag"
-				;;
-		esac
-	done
-
 
 	local i
 
