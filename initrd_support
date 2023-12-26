@@ -1,0 +1,51 @@
+# bash source
+
+
+after_save_cmd_line(){
+	__readlink(){
+		for i in "$@"; do
+			readlink -f $i
+		done
+	}
+	local found
+	if [ -n "`__readlink /proc/*/exe 2>/dev/null| egrep '/udevd$'`" ]; then
+		found=1
+	fi
+	if [ -z "$found" ]; then
+		udevd  --daemon --resolve-names=never
+		udevadm trigger --action=add --type=subsystems
+		udevadm trigger --action=add --type=devices
+		udevadm trigger --action=change --type=devices
+		udevadm settle
+		info udev started
+		sleep 5
+	fi
+}
+
+
+__paste_init_log_at_exit_magic_num(){
+	echo 9325439054218358014385
+}
+
+
+before_sysinit(){
+	__paste_init_log_at_exit_magic_num
+	killall udevd
+	info killall udevd: result = $?
+	info udev stopped
+	kill `ps ax | grep `__paste_init_log_at_exit_magic_num` | awk '{print $1}'`
+}
+
+
+paste_init_log_at_exit(){
+	sleep `__paste_init_log_at_exit_magic_num`
+	echo -E "$BOO_INIT_LOG" > /var/log/boot/__init_until_switch_root.log
+	chain_ren /var/log/boot/{__,}init_until_switch_root.log
+}
+
+
+before_switch_root(){
+	BOO_INIT_LOG="`cat /var/log/boot/init.log`" paste_init_log_at_exit &
+}
+
+

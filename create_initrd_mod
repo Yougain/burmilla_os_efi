@@ -269,12 +269,22 @@ $libs"
 		mknod
 	END
 	
+	require initrd_support
+	
 	for d in . $for_state; do
 		system-docker cp udev:/lib/udev $d/lib
 #		ln -sf /dev/null $d/lib/udev/rules.d/75-net-description.rules
 #		ln -sf /dev/null $d/lib/udev/rules.d/80-net-name-slot.rules
-		do_install blkid2 $d/usr/bin
-		do_install do_mount $d/usr/bin
+		local f
+		for f in blkid2                            \
+				do_mount                           \
+				after_save_cmd_line                \
+				__paste_init_log_at_exit_magic_num \
+				before_sysinit                     \
+				paste_init_log_at_exit             \
+				before_switch_root; do
+			do_install $d/usr/bin
+		done
 	done
 	
 	find | cpio -o -H newc  | gzip -c > ../$INITRD_FILE-mod.new
