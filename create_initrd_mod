@@ -267,6 +267,7 @@ $libs"
 		date
 		find
 		mknod
+		diff
 	END
 	
 	require initrd_support

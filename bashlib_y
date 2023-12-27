@@ -1,13 +1,24 @@
-# bash source
+#!/bin/bash
 
 
 __FILE__() {
 	readlink -f "${BASH_SOURCE[1]}"
 }
 
+
+__FILE_PATH__(){
+	realpath "${BASH_SOURCE[1]}"
+}
+
+
 __FILE_NAME__(){
 	local f="`__FILE__`"
 	echo "${f##*/}"
+}
+
+
+__CMD_PATH__(){
+	realpath $0
 }
 
 
@@ -61,7 +72,6 @@ initialize_support_lib(){
 		return 1
 	fi
 }
-
 
 if initialize_support_lib; then
 
@@ -134,6 +144,7 @@ chain_bak(){
 	local force
 	local reverse
 
+	dbv "$@"
 	while (( "$#" )); do
 		if [ "${1:0:1}" = "-" ];then
 			if [ "${1:0:2}" = "--" ];then
@@ -194,14 +205,18 @@ chain_bak(){
 		fi
 		shift
 	done
-	local targv
+	dbv "${argv[@]}"
+	local targv=()
 	if [ -n "$reverse" ];then
 		for ((i = ${#argv[@]} - 1; i >= 0; i--)); do
 			a=${argv[$i]}
-			tragv+=($a)
+			dbv $a
+			targv+=("$a")
 		done
-		argv=targv
+		dbv "${targv[@]}"
+		argv=("${targv[@]}")
 	fi
+	dbv "${argv[@]}"
 	
 	if [ -n "$help" ];then
 		echo "usage: chain_bak [options] SOURCE DEST [ DEST2 DEST3 ... ]
@@ -217,7 +232,7 @@ chain_bak(){
 		exit 0
 	fi
 	if [ -n "$DEBUG" ];then
-		verbose=1
+		verbose="-v"
 	fi
 	if [ -n "$force" ];then
 		if [ -z "$diff" ];then
@@ -226,6 +241,7 @@ chain_bak(){
 	fi
 	
 	function _mv_it(){
+		dbv /bin/mv $verbose "$@"
 		/bin/mv $verbose "$@"
 	}
 	function _check_identity(){
@@ -236,11 +252,14 @@ chain_bak(){
 		if [ -e "$2" ];then
 			local L1="`readlink -f "$1"`"
 			local L2="`readlink -f "$2"`"
-			if [ "$Lf" = "$L1" ];then
+			if [ -z "$L1" -o -z "$L2" ];then
+				return 0
+			fi
+			if [ "$L1" = "$L2" ];then
 				err "source argument '$1' and destination argument '$2' is an identical file, '$L1'"
 				return 1
 			else
-				if [ "`stat -c "%D:%d:%i" "$Lf"`" = "`stat -c "%D:%d:%i" "$L1"`" ];then
+				if [ "`stat -c "%D:%d:%i" "$L1"`" = "`stat -c "%D:%d:%i" "$L2"`" ];then
 					err "source argument '$1' and destination argument '$2' is identical file"
 					return 1
 				fi
@@ -281,27 +300,34 @@ chain_bak(){
 		fi
 		shift
 		if [ ! -e "$f" ];then
-			err "'$f' does not exist"
+			errmsg "File, '$f' does not exist"
 			return 1
 		else
 			if [ "$#" = 0 ];then # only one argument
 				local theme
 				local center
 				local startFile=$f
-				if [[ "$f" =~ ^(.*)\.(\d+)$ ]];then
+				if [[ "$f" =~ ^(.*)\.((-|)[0-9]+)$ ]];then
 					theme=${BASH_REMATCH[1]}
-					center=BASH_REMATCH[2]
+					center=${BASH_REMATCH[2]}
 				else
-					theme=$1
+					theme=$f
 					center=0
 				fi
+				dbv $theme
+				dbv $center
 				_chain_bak_find_max $center
+				dbv $max
 				if [ -n "$beyondCenter" ];then
+					dbv $beyondCenter
 					_chain_bak_find_min $center
+					dbv $min
+					dbv $theme
 					if ! _chain_bak2 $min; then
 						return 1
 					fi
 				else
+					dbv $max
 					if ! _chain_bak2 $center; then
 						return 1
 					fi
@@ -342,27 +368,21 @@ chain_bak(){
 		local f0
 		local f1
 		local isMax
-		if [ "$num" = "$center" ];then
-			f0="$startFile"
-		else
-			f0="$theme.$num"
-		fi
-		if [ "$((num + 1))" = "$center" ];then
-			f1="$startFile"
-		else
-			f1="$theme.$((num + 1))"
-		fi
-		if [ "$((num + 1))" = "$max" ];then
-			isMax=1
-		fi
-		if ! _check_identity "$f0" "$f1"; then
-			return 1
-		fi
-		if [ -z "$isMax" ];then
+		dbv $num, $center
+		dbv $startFile
+		dbv $theme
+		f0="$(_chain_bak_set_file $num)"
+		f1="$(_chain_bak_set_file $((num + 1)))"
+		dbv $f0, $f1
+		if [ "$((num + 1))" != "$((max + 1))" ];then
+			if ! _check_identity "$f0" "$f1"; then
+				return 1
+			fi
 			if ! _chain_bak2 "$((num + 1))"; then
 				return 1
 			fi
 		fi
+		dbv $f0, $f1
 		if ! _mv_it $force "$f0" "$f1"; then
 			return 1
 		fi
@@ -377,7 +397,7 @@ chain_bak(){
 			t="$theme.$n"
 		fi
 		if [ ! -e "$t" ];then
-			max=$2
+			max=$1
 		else
 			_chain_bak_find_max $n
 		fi
@@ -392,13 +412,14 @@ chain_bak(){
 			t="$theme.$n"
 		fi
 		if [ ! -e "$t" ];then
-			max=$2
+			min=$1
 		else
 			_chain_bak_find_min $n
 		fi
 	}
 
 	function _chain_bak_reverse(){
+		dbv "$@"
 		local beyondCenter
 		if [ "$1" = "-" ];then
 			beyondCenter=1
@@ -410,9 +431,9 @@ chain_bak(){
 		fi
 		local theme
 		local center
-		if [[ "$1" =~ ^(.*)\.((-|)(\d+))$ ]];then
+		if [[ "$1" =~ ^(.*)\.((-|)([0-9]+))$ ]];then
 			theme=${BASH_REMATCH[1]}
-			center=$((BASH_REMATCH[2] + 1))
+			center=${BASH_REMATCH[2]}
 		else
 			theme=$1
 			center=0
@@ -425,34 +446,43 @@ chain_bak(){
 		else
 			min=$center
 		fi
+		dbv $1
+		dbv $theme
+		dbv $center
+		dbv $max
+		dbv $min
 		local startFile=$1
 		_chain_bak_reverse2 $max
 	}
 	
+	function _chain_bak_set_file(){
+		case $1 in
+			$center)
+				echo "$startFile"
+				;;
+			0)
+				echo "$theme"
+				;;
+			*)
+				echo "$theme.$1"
+				;;
+		esac
+	}
 	
 	function _chain_bak_reverse2(){
 		local num="$1"
 		local f0
 		local f1
 		local isMin
-		if [ "$((num - 1))" = "$center" ];then
-			f1="$startFile"
-		else
-			f1="$theme.$((num - 1))"
-		fi
-		if [ "$num" = "$center" ];then
-			f0="$startFile"
-		else
-			f0="$theme.$num"
-		fi
-		if [ "$((num - 1))" = "$min" ];then
-			isMin=1
-		fi
-		if ! _check_identity "$f0" "$f1"; then
-			return 1
-		fi
-		if [ -z "$isMin" ];then
-			if ! _chain_bak2_reverse2 "$((num - 1))"; then
+		f1="$(_chain_bak_set_file $((num - 1)))"
+		f0="$(_chain_bak_set_file $num)"
+		dbv $f0 $((num - 1))
+		dbv $f1 $num
+		if [ "$((num - 1))" != "$((min - 1))" ];then
+			if ! _check_identity "$f0" "$f1"; then
+				return 1
+			fi
+			if ! _chain_bak_reverse2 "$((num - 1))"; then
 				return 1
 			fi
 		fi
@@ -462,7 +492,7 @@ chain_bak(){
 	}
 
 
-	if ((#argv >= 2));then
+	if [ ${#argv[@]} -ge 2 ]; then
 		theFirst="${argv[0]}"
 		if _chain_bak "${argv[@]}"; then
 			if [ -n "$cyclicPreserved" ];then
@@ -472,6 +502,12 @@ chain_bak(){
 			fi
 		fi
 	else
+		dbv "${#argv[@]}"
+		dbv "$@"
+		if [ ! -e "${argv[0]}" ];then
+			errmsg "'${argv[0]}' does not exist."
+			return 1
+		fi
 		if [ -z "$reverse" ];then
 			_chain_bak - "${argv[0]}"
 		else
@@ -1555,3 +1591,16 @@ END
 
 
 fi
+
+if [ "$(__FILE_PATH__)" = "$(__CMD_PATH__)" ];then
+	if [[ "$1" =~ / ]]; then
+		$@
+	else
+		if ! declare -f $1 >/dev/null; then
+			require $1
+		fi
+		$@
+	fi
+fi
+
+
