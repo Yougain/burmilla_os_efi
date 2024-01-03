@@ -1,0 +1,54 @@
+# bash source
+
+
+require trim_indent
+
+function transfer_env_for_grub(){
+	sed -r 's/\\([\\"])/_\\__\1___/g'|sed -r 's/_\\__"___/"'"'"'"'"'"'"/g'|sed -r 's/_\\__\\___/\\\\/g'
+}
+
+
+function write_grub_script(){
+	(set_env ; trim_indent) > $1
+}
+
+
+function write_script(){
+	local mod
+	if [[ $1 =~ ^0[0-9][0-9][0-9]$ ]]; then
+		mod=$1
+		shift
+	fi
+	local first
+	local ln
+	local lns="$(trim_indent | while read -r ln;do
+		echo -E $ln
+		if [ -z "$first" ];then
+			set_env
+			first=1
+		fi
+	done)"
+	while (($#));do
+		echo -E "$lns" > $1
+		if [ -n "$mod" ];then
+			chmod $mod $1
+		fi
+		shift
+	done
+}
+
+
+function set_env(){
+	local ln
+	env_defined | while read ln; do
+		ln="`declare -p $ln`"
+		ln=${ln#declare -* }
+		if [[ ${ln} =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]];then
+			echo "$ln=''"
+		else
+			echo "$ln"
+		fi
+	done
+}
+
+

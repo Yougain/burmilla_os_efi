@@ -1,0 +1,159 @@
+# bash source
+
+
+function col_width(){
+	if [ -z "$TAB_STOP" ];then
+		TAB_STOP=4
+	fi
+	local i=0
+	local len=${#1}
+	local pos=0
+	while [ $i -lt $len ];do
+		case "${1:$i:1}" in
+			"	")
+				pos=$((pos + TAB_STOP - pos % TAB_STOP))
+				;;
+			*)
+				pos=$((pos + 1))
+				;;
+		esac
+		i=$((i + 1))
+	done
+	echo $pos
+}
+
+function putsp(){
+	if [ -z "$TAB_STOP" ];then
+		TAB_STOP=4
+	fi
+	local w=$1
+	local t=$((w / TAB_STOP))
+	local s=$((w % TAB_STOP))
+	local i
+	for ((i = 0; i < t; i++)); do
+		echo -n "\t"
+	done
+	for ((i = 0; i < t; i++)); do
+		echo -n " "
+	done
+}
+
+function trim_indent(){
+	if [ -z "$TAB_STOP" ];then
+		local TAB_STOP=4
+	fi
+	if [ "$#" = 0 ];then
+		local fc
+		local ln
+		local sp
+		local res
+		local IFS=""
+		local preLns=()
+		local preLn
+		while read -r ln; do
+			local lnx="$ln"
+			sp=${lnx%%[![:space:]]*}
+			if [ -z "$fc" ];then
+				res="${ln#$sp}"
+				if [ -n "$res" -a "${res:0:1}" != "#" ];then
+					fc=`col_width "$sp"`
+					for preLn in "${preLns[@]}";do
+						trim_indent  "$preLn" "$fc"
+					done
+					echo -E "$res"
+				else
+					preLns+=("$ln")
+				fi
+			else
+				trim_indent "$ln" "$fc"
+			fi
+		done
+	else
+		local pos=0
+		local i=0
+		local len=${#1}
+		while [ $i -lt $len ];do
+			case "${1:$i:1}" in
+				"	")
+					pos=$((pos + TAB_STOP - pos % TAB_STOP))
+					;;
+				" ")
+					pos=$((pos + 1))
+					;;
+				*)
+					echo -E "${1:$i}"
+					return
+					;;
+			esac
+			if [ $pos -ge $fc ];then
+				putsp $((pos - fc))
+				echo -E "${1:$i + 1}"
+				return
+			fi
+			i=$((i + 1))
+		done
+		putsp $pos
+		echo
+	fi
+}
+
+
+function write_file(){
+	local mod
+	if [[ $1 =~ ^0[0-9][0-9][0-9]$ ]];then
+		mod=$1
+		shift
+	fi
+	local lns="`trim_indent`"
+	while (($#));do
+		echo "$lns" > $1
+		if [ -n "$mod" ];then
+			chmod $mod $1
+		fi
+		shift
+	done
+}
+
+function get_exported(){
+	local ln
+	awk 'BEGIN{for (i in ENVIRON) {print i}}' | while read ln; do
+		if [ "$ln" != "AWKPATH" ];then
+			echo $ln
+		fi
+	done
+}
+
+function env_defined(){
+	(echo "`env_var`
+__ORG_EVAR__
+$__ORG_EVAR__" | sort | uniq -u; get_exported) | sort | uniq
+}
+
+function write_env_file(){
+	local ln
+	local first=0
+	local envreg
+	envreg=`env_defined | while read ln; do
+		if [ "$first" = 0 ];then
+			echo -n $ln
+			first=1
+		else
+			echo -n '|'$ln
+		fi
+	done;`
+	deb "$envreg"
+	local c=$(
+		echo -n "'"
+#		trim_indent | sed 's/'"'"'/'"'"'"'"'"'"'"'"'/g' | sed -r 's/(^|[^\\])\$('$envreg')([^A-Za-z0-9_]|$)/\1'"'"'"$\2"'"'"'\3/g'
+		trim_indent | sed 's/'"'"'/'"'"'"'"'"'"'"'"'/g' | sed -r 's/(^|[^\\])(\$('$envreg')(([^A-Za-z0-9_\\]|)\$('$envreg'))*)([^A-Za-z0-9_]|$)/\1'"'"'"\2"'"'"'\7/g'
+		echo -n "'"
+	)
+	if [ -n "$1" ];then
+		eval echo "$c" > $1
+	else
+		eval echo "$c"
+	fi
+}
+
+
+

@@ -1,0 +1,21 @@
+#!/bin/bash
+
+
+
+source /usr/bin/bashlib_y
+
+
+if [ "`id -u`" != 0 ];then
+	die "not super user"
+fi
+
+
+PATH=/home/rancher/burmilla_os_efi:$PATH require create_initrd_mod
+PATH=/home/rancher/burmilla_os_efi:$PATH require blkid2
+PATH=/home/rancher/burmilla_os_efi:$PATH require do_mount
+
+
+do_install blkid2 /usr/bin
+do_install do_mount /usr/bin
+do_install create_initrd_mod /usr/bin
+

@@ -1,0 +1,7 @@
+# bash source
+
+
+. "`get_calling_func_info_dir args`"
+
+
+

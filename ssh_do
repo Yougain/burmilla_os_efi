@@ -1,0 +1,402 @@
+# bash source
+
+require trim_indent
+
+function ssh_param(){
+	local p
+	local h
+	local port
+	local host
+	local opt_start
+	SSH_OPTS=()
+	while (( "$#" )); do
+		if [ "${1:0:1}" = "-" ];then
+			SSH_OPTS=("$@")
+			break
+		else
+			h="${1%%:*}"
+			p="${1##*:}"
+			if [ "$h" = "$1" ];then # ':' is missing
+				if [ -n "`echo -n $1|egrep -o '^[0-9][0-9]*$'`" ];then
+					if [ -n "$port" ];then
+						die "duplicated port"
+					else
+						port=$p
+					fi
+				else
+					if [ -n "$host" ];then
+						die "duplicated host name, '$1' amd '$host'"
+					else
+						host=$h
+					fi
+				fi
+			else
+				if [ -n "$port" ];then
+					die "duplicated port"
+				else
+					port=$p
+				fi
+				if [ -n "$host" ];then
+					die "duplicated host name"
+				else
+					host=$h
+				fi
+			fi
+		fi
+		shift
+	done
+	local o
+	local on
+	for o in ${SSH_OPTS[@]};do
+		if [ "$o" = "-l" ]; then
+			on=1
+		else
+			if [ -n "$on" ]; then
+				SSH_USER=$o
+				break
+			fi
+		fi
+	done
+	SSH_HOST=$host
+	if [[ "$host" =~ ^(.*)@(.*)$ ]];then
+		SSH_USER=${BASH_REMATCH[1]}
+	fi
+	SSH_SUDO_PREFIX=
+	SSH_CMD=ssh
+	if [ -z "$SSH_USER" ];then
+		if [ -n "$SUDO_USER" ];then
+			SSH_USER=$SUDO_USER
+			SSH_CMD="sudo -u $SUDO_USER ssh"
+		else
+			SSH_USER=$USER
+		fi
+		if [ -z "$SSH_USER" ];then
+			die "cannot find \$USER"
+		fi
+	fi
+	if [ -n "$port" ];then
+		port=" -p $port"
+	fi
+	deb $SSH_CMD "${SSH_OPTS[@]}" $port -v -o "ConnectTimeout=5"  -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" $host
+	$SSH_CMD "${SSH_OPTS[@]}" $port -v -o "ConnectTimeout=5"  -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" $host echo -n > $SCRIPT_TMP_DIR/test_ssh 2>&1
+	if [ -z "`egrep 'debug1: Executing proxy command:' $SCRIPT_TMP_DIR/test_ssh`" ]; then
+		local SSH_CON_LINE=`egrep -o 'debug1: Connecting to .* port [0-9]+' $SCRIPT_TMP_DIR/test_ssh`
+		SSH_PORT=`echo $SSH_CON_LINE| egrep -o '[0-9]+$'`
+		SSH_PORT_OPT=" -p $SSH_PORT"
+		SSH_HOST_IP=`echo $SSH_CON_LINE| egrep -o '\[[0-9/A-Fa-f\.:]+\]'| egrep -o [0-9/A-Fa-f\.:]+`
+	else
+		local pc=`egrep "debug1: channel_connect_stdio_fwd " $SCRIPT_TMP_DIR/test_ssh`
+		if [ -n "$pc" ];then
+			pc=${pc%\\r}
+			local adr=${pc#debug1: channel_connect_stdio_fwd }
+			adr=${adr%[[:space:]]}
+			adr=${adr%[[:space:]]}
+			adr=${adr%[[:space:]]}
+			SSH_PORT=${adr##*:}
+			SSH_HOST_IP=${adr%:*}
+			SSH_PORT_OPT=" -p $SSH_PORT"
+			SSH_PROXY=1
+		fi
+	fi
+	deb $SSH_PORT
+	if [ -n "$SSH_PORT" ];then
+		return 0
+	fi
+	
+	return 1
+}
+
+
+function wait_sshd_start(){
+	if [ -z "$SSH_PORT" -o -z "$SSH_HOST" ];then
+		die "missing ssh paramter variables. Please execute 'ssh_param SERVER_NAME' first."
+	fi
+	local SSH_CON_
+	info_n connecting SSH...
+	for i in $(seq 1 120); do
+		sleep 1
+		blue_n "."
+		if [ -z "$SSH_PROXY" ];then
+			SSH_CON_=`echo | nc $SSH_HOST_IP $SSH_PORT 2>&1`
+			if [ "${SSH_CON_:0:3}" = "SSH" ];then
+				cyanBgBlue connected
+				return
+			fi
+		else
+			echo ssh $SSH_OPTS $port -v -o \"ConnectTimeout=5\"  -o \"PasswordAuthentication no\" -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" $SSH_HOST echo -n|"$SSH_SUDO_PREFIX"bash > $SCRIPT_TMP_DIR/test_ssh 2>&1
+			if [ `grep 'debug1: Remote protocol version 2.0, remote software version OpenSSH' $SCRIPT_TMP_DIR/test_ssh|wc|awk '{print $1}'` = "2" ];then
+				cyanBgBlue connected
+				return
+			fi
+		fi
+	done
+	echo
+	die Tried 120 times. Still cannot connect SSH port "($SSH_PORT)". Exited.
+}
+
+
+function transfer_arguments(){
+	local i
+	local j=-1
+	while IFS= read -r -d $'\0' i; do
+	    if [ $j != "-1" ];then
+	    	TRANSFER_ARGUMENTS="$TRANSFER_ARGUMENTS$1$j='$i'"$'\n'
+	    fi
+	    j=$(( j + 1 ))
+	done < <(cat /proc/$$/cmdline)
+}
+
+transfer_arguments A
+
+function ssh_do(){
+	local sudoing
+	if [ "$1" = "sudo" ];then
+		sudoing=sudo
+		shift
+	fi
+	if [ -z "$SSH_PORT" -o -z "$SSH_HOST" ];then
+		die "missing ssh paramter variables. Please execute 'ssh_param SERVER_NAME' first."
+	fi
+	SSH_TMP=1
+	if [ -z "$SSH_TMP_SUDO" ];then
+		SSH_TMP_SUDO=$sudoing
+	fi
+	local SSH_ID=$RANDOM$RANDOM$RANDOM
+	mkdir -p $SCRIPT_TMP_DIR/$SSH_ID
+	if [ -n "$SUDO_USER" ];then
+		chown $SUDO_USER:$SUDO_USER $SCRIPT_TMP_DIR/$SSH_ID
+	fi
+	local CMD=($SSH_CMD $SSH_PORT_OPT "${SSH_OPTS[@]}" $SSH_HOST $sudoing)
+	deb "${CMD[@]}"
+	if [ "$#" = "0" ];then
+		SSH_PARAM_LIST["$SSH_HOST $SSH_PORT_OPT"]=($SSH_PORT_OPT "${SSH_PORT_OPT[@]}" $SSH_HOST)
+		local set_env_lines="set | awk '!/^(SSH_PARAM_LIST|SUDO_USER|BASH_ARGV|BASH_ARGC|BASH_LINENO|BASH_SOURCE|GROUPS|FUNCNAME|BASHOPTS|BASH_VERSINFO|EUID|PPID|SHELLOPTS|UID)=/ {print \$0}'"
+		local SET_ENV_LINES="`eval $set_env_lines`"
+		local trans_started
+		# preserve host environment
+		(
+			local ln
+			write_env_file << '			__INNER'
+				#!/bin/bash
+
+				mkdir -p $SCRIPT_TMP_DIR/$SSH_ID
+				mkdir -p --mode=0777 $SCRIPT_TMP_DIR/../..
+				if [ -n "$SUDO_USER" ];then
+					chown -R "$SUDO_USER" $SCRIPT_TMP_DIR
+				fi
+				rm -f $SCRIPT_TMP_DIR/../latest
+				if [ -n "$DEBUG" ];then
+					ln -s $SCRIPT_TMP_DIR $SCRIPT_TMP_DIR/../latest
+					if [ -n "$SUDO_USER" ];then
+						chown "$SUDO_USER" $SCRIPT_TMP_DIR/../latest
+					fi
+				fi
+				
+				$set_env_lines > $SCRIPT_TMP_DIR/$SSH_ID/env
+				
+				# set client environment
+				if [ ! -e $SCRIPT_TMP_DIR/$SSH_ID/env.cont ];then # missing previous host environment 
+					# set client command line argument
+					$TRANSFER_ARGUMENTS
+					$SET_ENV_LINES
+				else # found previous host environment 
+					source $SCRIPT_TMP_DIR/$SSH_ID/env.cont
+					rm $SCRIPT_TMP_DIR/$SSH_ID/env.cont
+				fi
+				
+				# restore host environment
+				source $SCRIPT_TMP_DIR/$SSH_ID/env;
+				if [ -z "$DEBUG" ]; then
+					rm $SCRIPT_TMP_DIR/$SSH_ID/env
+				fi
+				# execute script from standard input
+				set_diff_begin
+				# preserve environment after script execution
+				function transfer_new_env$SCRIPT_ID(){
+					echo
+					set_diff_end
+					cat $SCRIPT_TMP_DIR/$SSH_ID/env.diff
+					$set_env_lines > $SCRIPT_TMP_DIR/$SSH_ID/env.cont
+					unset -f transfer_new_env$SCRIPT_ID
+				}
+				function int_exit(){
+					exit 1
+				}
+				trap transfer_new_env$SCRIPT_ID EXIT
+				trap int_exit INT HUP
+				cat <<'__DO_CONTENT' > $SCRIPT_TMP_DIR/$SSH_ID/do_content
+			__INNER
+			trim_indent
+			write_env_file << '			__INNER'
+				__DO_CONTENT
+				source $SCRIPT_TMP_DIR/$SSH_ID/do_content
+			__INNER
+		) | "${CMD[@]}" "$@" | while read -j ln; do
+			if [ -z "$trans_started"]; then
+				if [ "$ln" = "__TRANS_ENV_$SCRIPT_ID$SSH_ID" ];then
+					trans_started=1
+				else
+					echo -j $ln
+				fi
+			else
+				echo -j $ln >> $SCRIPT_TMP_DIR/$SSH_ID/remote_env.diff
+			fi
+		done
+		local res=$?
+		if [ -n "$DEBUG" ];then
+			deb "transfer env ----"
+			cat $SCRIPT_TMP_DIR/$SSH_ID/remote_env.diff >&2
+			deb "-----------------"
+		fi
+		. $SCRIPT_TMP_DIR/$SSH_ID/remote_env.diff
+		return $res
+	else
+		#info "$SSH_PORT_OPT $SSH_OPTS $SSH_HOST $sudoing $@"
+		"${CMD[@]}" $@
+	fi
+}
+
+function ssh_i(){
+	if [ -z "$SSH_PORT" -o -z "$SSH_HOST" ];then
+		die "missing ssh paramter variables. Please execute 'ssh_param SERVER_NAME' first."
+	fi
+	SSH_TMP=1
+	local CMD=($SSH_CMD $SSH_PORT_OPT "${SSH_OPTS[@]}" $SSH_HOST $sudoing)
+	"${CMD[@]}"
+}
+
+function ssh_sudo(){
+	ssh_do sudo $@
+}
+
+
+
+function install_ssh_key(){
+	if [ -z "$KEY" ];then
+		KEY=`cat ~/.ssh/id_ed25519.pub 2>/dev/null`
+		if [ -z "$KEY" ];then
+			die Cannot find public key in ~/.ssh/id_ed25519.pub.
+		fi
+	fi
+	local SET_KEY_CNT=0
+	while ! ssh_do echo; do
+		if [ "$SET_KEY_CNT" = "5" ]; then
+			return 1
+		fi
+		expect -c "
+		set timeout 3
+		spawn ssh -p 22 -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" -l rancher $SSH_HOST
+		expect \"assword:\"
+		send \"rancher\n\"
+		expect \"\$ \"
+		send \"mkdir ~/.ssh\n\"
+		expect \"\$ \"
+		send \"chmod 700 ~/.ssh\n\"
+		expect \"\$ \"
+		send \"echo $KEY >> ~/.ssh/authorized_keys\n\"
+		expect \"\$ \"
+		send \"exit\"
+		"
+		sleep 1
+		SET_KEY_CNT=$(( SET_KEY_CNT + 1 ))
+	done
+	return 0
+}
+
+
+
+function ssh_reboot(){
+	ssh_sudo <<'END'
+		efi_dev=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')2
+		if [ -z "$efi_dev" ]; then die "boot efi device not found."; fi
+		mkdir -p $SCRIPT_TMP_DIR/efi_dev
+		mount /dev/$efi_dev $SCRIPT_TMP_DIR/efi_dev
+		touch $SCRIPT_TMP_DIR/efi_dev/.reboot
+		reboot
+END
+	wait_sshd_start
+	echo try ssh connect
+	ssh_sudo <<'END'
+		efi_dev=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')2
+		if [ -z "$efi_dev" ]; then die "boot efi device not found."; fi
+		mkdir -p $SCRIPT_TMP_DIR/efi_dev
+		mount /dev/$efi_dev $SCRIPT_TMP_DIR/efi_dev
+		rm $SCRIPT_TMP_DIR/efi_dev/.reboot
+		umount $SCRIPT_TMP_DIR/efi_dev
+#		rm -rf $SCRIPT_TMP_DIR/efi_dev
+END
+}
+
+
+function set_diff_begin(){
+	local get_diff=$SCRIPT_TMP_DIR/$SSH_ID/get_diff
+	echo "#/bin/bash" >> $get_diff
+	chmod +x $get_diff
+	_set_diff_save __SET_DIFF_BEGIN_PRESERVE_ $get_diff
+}
+
+
+function set_diff_end(){
+	local get_diff=$SCRIPT_TMP_DIR/$SSH_ID/get_diff
+	_set_diff_save __SET_DIFF_END_PRESERVE_ $get_diff
+	local out
+	echo -E '
+		echo -n
+		echo __TRANS_ENV_$SCRIPT_ID$SSH_ID
+		(echo -E "$__SET_DIFF_BEGIN_PRESERVE_VNAMES";
+		 echo -E "$__SET_DIFF_END_PRESERVE_VNAMES") | sort | uniq -u | while read vn; do
+			if [ -n "$vn" ];then
+				[ "$vn" = __diff_id_set_diff_local__ ] && continue
+				if declare -p __SET_DIFF_BEGIN_PRESERVE_EACH_$vn > /dev/null 2>&1; then
+					echo "unset $vn"
+				fi
+			fi
+		done
+		for vn in $__SET_DIFF_END_PRESERVE_VNAMES; do
+			if declare -p __SET_DIFF_END_PRESERVE_EACH_$vn > /dev/null 2>&1; then
+				[ "$vn" = EPOCHREALTIME ] && continue
+				[ "$vn" = EPOCHSECONDS ] && continue
+				[ "$vn" = SRANDOM ] && continue
+				vname_end=__SET_DIFF_END_PRESERVE_EACH_$vn
+				vname_begin=__SET_DIFF_BEGIN_PRESERVE_EACH_$vn
+				if [ "`eval \"echo $\"\"$vname_begin\"`" != "`eval \"echo $\"\"$vname_end\"`" ];then
+					ln="`declare -p $vname_end`"
+					ln=${ln#declare -* }
+					if [[ ${ln} =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]];then
+						content="''"
+					else
+						content="${ln#*=}"
+					fi
+					echo -E "$vn=$content"
+				fi
+			fi
+		done
+' >>  $get_diff
+	bash -c $get_diff
+}
+
+function _set_diff_save(){
+	echo "$1VNAMES='""`env_defined`""'" >> $2
+	local ln
+	env_defined | while read ln; do
+		local content
+		local vname
+		ln="`declare -p $ln`"
+		ln=${ln#declare -* }
+		if [[ ${ln} =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]];then
+			content="''"
+			vname=${ln}
+		else
+			content="${ln#*=}"
+			vname=${ln%%=*}
+		fi
+		if [ -n "$vname" ];then
+			echo -E "$1EACH_$vname=$content" >> $2
+		fi
+	done
+}
+
+
+
+
+
