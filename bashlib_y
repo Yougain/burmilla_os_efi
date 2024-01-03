@@ -1,20 +1,65 @@
 #!/bin/bash
 
 
+error="\033[41m\033[33mERROR    :\033[m \033[31m"
+warning="\033[43m\033[31mWARNING:\033[m \033[33m"
+info="\033[46m\033[34mINFO     :\033[m \033[36m"
+debug="\033[42m\033[34mDEBUG     :\033[m \033[32m"
+plain="\033[m"
+normal="\033[m"
+
+
 __FILE__() {
-	readlink -f "${BASH_SOURCE[1]}"
+	local f="`readlink -f "${BASH_SOURCE[1]}"`"
+	if [[ "$f" =~ [^\./A-Za-z0-9_] ]]; then
+		echo -e "$error"Cannot use path name, '$f'"$normal". >&2
+		echo -e "$info"Alphabitical/numeric characters and '/', '.', '⧵' are usable for path name when using bashlib_y"$normal" >&2
+		return
+	fi
+	echo "$f"
 }
 
-
-__FILE_PATH__(){
-	realpath "${BASH_SOURCE[1]}"
+__FILE_PATH__() {
+	__FILE__
 }
-
 
 __FILE_NAME__(){
 	local f="`__FILE__`"
 	echo "${f##*/}"
 }
+
+
+__SOURCE_PATH__(){ # path of link if symbolic linked to __FILE__
+	local f="`realpath "${BASH_SOURCE[1]}"`"
+	if [[ "$f" =~ [^\./A-Za-z0-9_] ]]; then
+		echo -e "$error"Cannot use path name, '$f'"$normal". >&2
+		echo -e "$info"Alphabitical/numeric characters and '/', '.', '⧵' are usable for path name when using bashlib_y"$normal" >&2
+		return
+	fi
+	echo "$f"
+}
+
+
+__SOURCE_NAME__(){
+	local f="`__SOURCE_PATH__`"
+	echo "${f##*/}"
+}
+
+
+PATH=/usr/share/$(__FILE_NAME__)/:$PATH
+
+
+case $(__SOURCE_NAME__) in
+	bashlib_y)
+		;;
+	args)
+		. "`get_calling_func_info args`"
+		return
+		;;
+	*)
+		echo -e "$error"Cannot use source name, '$(__SOURCE_NAME__)'. Exiting.$normal >&2
+		return
+esac
 
 
 __CMD_PATH__(){
@@ -38,7 +83,6 @@ function split(){
 }
 
 
-
 initialize_support_lib(){
 
 	if [ -z "$SCRIPT_TMP_DIR" ];then
@@ -46,13 +90,19 @@ initialize_support_lib(){
 		local f="`__FILE_NAME__`"
 		mkdir -p --mode=0777 /tmp/$f
 		SCRIPT_TMP_DIR=/tmp/$f/${0##*/}/`date +"%y-%m-%d_%H:%M:%S.%N%z"`-$$
+		SCRIPT_VAR_DIR=/var/tmp/$f
 		mkdir -p $SCRIPT_TMP_DIR
+		if ! mkdir -p $SCRIPT_VAR_DIR; then
+			echo -e "$error"cannot create script var dir$normal
+			exit 1
+		fi
 		if [ -n "$SUDO_USER" ];then
 			chown -R "$SUDO_USER" $SCRIPT_TMP_DIR
+			chown -R "$SUDO_USER" $SCRIPT_VAR_DIR
 		fi
 		local lnk=$SCRIPT_TMP_DIR/../latest
 		if [ -n "$DEBUG" ];then
-			echo -e "\033[42m\033[34mDEBUG :\033[m \033[32m"\$SCRIPT_TMP_DIR = $SCRIPT_TMP_DIR"\033[m"
+			echo -e "$debug"\$SCRIPT_TMP_DIR = $SCRIPT_TMP_DIR"$normal"
 		fi
 		rm -f $lnk
 		if [ -n "$DEBUG" ];then
@@ -75,9 +125,342 @@ initialize_support_lib(){
 
 if initialize_support_lib; then
 
+
+
+_black="0"
+_red="1"
+_green="2"
+_yellow="3"
+_blue="4"
+_purple="5"
+_magenta="5"
+_cyan="6"
+_white="7"
+
+
+allColors="black red green yellow blue purple magenta cyan white"
+
+function capitalize(){
+	local B
+	local F
+	B=`echo -n "${1:0:1}" | tr "[:lower:]" "[:upper:]"`
+	F="${B}${1:1}"
+	shift
+	echo -n $F $@
+}
+
+function errmsg_n(){
+	echo -en $error"$@"$plain >&2
+}
+
+
+function errmsg(){
+	errmsg_n "$@"
+	if [ -n "$ERRMSG" ];then
+		ERRMSG="$ERRMSG"'
+'"$@"
+	else
+		ERRMSG="$@"
+	fi
+	echo -ne "\n" >&2
+}
+
+
+err(){
+	errmsg "$@"
+}
+error(){
+	errmsg "$@"
+}
+
+
+function info_n(){
+	echo -ne $info$@$plain >&2
+}
+function info(){
+	info_n $@
+	echo -ne "\n" >&2
+}
+
+
+function warning_n(){
+	echo -ne "$warning""$@"  >&2
+}
+function warning(){
+	warning_n "$@"
+	echo -ne "\n" >&2
+}
+
+function warn(){
+	warning_n "$@"
+	echo -ne "\n" >&2
+}
+
+warn_n(){
+	warning_n "$@"
+}
+
+
+function deb(){
+	if [ -n "$DEBUG" ];then
+		echo -e $debug$@$plain >&2
+	fi
+}
+debug(){
+	deb "$@"
+}
+
+
+for col in `echo $allColors`; do
+	eval '
+		'$col'="\033[3$'_$col'""m"
+		function '$col'_n(){
+			echo -ne "\033[3$'_$col'""m''$@''$plain"
+		}
+		function '$col'(){
+			'$col'_n $@"\n"
+		}
+		function bg'`capitalize $col`'_n(){
+			echo -ne "\033[4$'_$col'""m''$@''$plain"
+		}
+		function bg'`capitalize $col`'(){
+			bg'`capitalize $col`'_n $@"\n"
+		}
+	'
+	for bgCol in $allColors; do
+		eval '
+			function '$col'Bg'`capitalize $bgCol`'_n(){
+				echo -ne "\033[3$'_$col'""m\033[4$'_$bgCol'""m''$@''$plain"
+			}
+			function '$col'Bg'`capitalize $bgCol`'(){
+				'$col'Bg'`capitalize $bgCol`'_n $@
+			}
+		'
+	done
+done
+
+
+function exit_if_err(){
+	errmsg "$@"
+	if [ -n "$ERRMSG" ];then
+		exit 1
+	fi
+}
+
+function die(){
+	if [ -n "$1" ]; then
+		errmsg $@
+	fi
+	exit 1
+}
+
+
+
 declare -A LOCAL_FUNCS
 declare -A SCRIPT_FILES
 
+
+emerge_file_content(){
+	local f="$1"
+	if [ -e "$f" ];then
+		if [ -z "${SCRIPT_FILES[$f]}" ];then
+			sid=SCRIPT_FILE_$RANDOM$RANDOM$RANDOM
+			SCRIPT_FILES[$f]=$sid
+			eval "
+				$sid=()
+				while read ln;do
+					$sid+=(\"\$ln\")
+				done < $f
+			"
+		else
+			sid=${SCRIPT_FILES[$f]}
+		fi
+	fi
+}
+
+
+get_calling_line(){
+	local frame=(`caller 1`)
+	local f="${frame[2]}"
+	local lno="${frame[0]}"
+	emerge_file_content f
+	local sid=${SCRIPT_FILES[$f]}
+	$1="`eval 'echo -E ${'"$sid"'['"$((lno - 1))"']}'`"
+}
+
+
+encodeW(){
+	local i
+	local fn
+	for ((i = 0; i < ${#1} ; i++));do
+		c="${1:$i:1}"
+		if [[ "$c" =~ [A-Za-z0-9] ]];then
+			fn="$fn${1:$i:1}"
+		else
+			case "$c" in
+				"/")
+					fn="$fn"_s_
+					;;
+				"_")
+					fn="$fn"__
+					;;
+				"-")
+					fn="$fn"_m_
+					;;
+				*)
+					fn="$fn"_"`LC_CTYPE=C printf '%x' "'$c"`"_
+					;;
+			esac
+		fi
+	done
+	echo -n "$fn"
+}
+
+
+parse_info_d(){
+	echo "$SCRIPT_VAR_DIR"/parse_info/"`encodeW $1`"
+}
+
+
+for_sudo_user(){
+	if [ -n "$SUDO_USER" -a `id -u`=0 ];then
+		local pth
+		local rp
+		local rpe
+		local ac
+		local us
+		local fn=$(__FILE__NAME__)
+		for pth in "$@";do
+			rp="$(realpath "$pth")"
+			if "${rp:0:$((#fn + 6))}" = "/tmp/$fn/"; then
+				while true;do
+					ac="$(stat -c %a "$rp")"
+					us="$(stat -c %u "$rp")"
+					if [ "$us"=0 ];then
+						local acb="${ac:$((#ac - 3)):3}"
+						if [ "$acb"=755 -o "$acb"=644 ];then
+							chown $SUDO_USER:$SUDO_USER $rp
+						else
+							break
+						fi
+					fi
+					rp=$(dirname "$rp")
+					if [ rp="/tmp" ];then
+						break
+					fi
+				done
+			fi
+		done
+	fi
+}
+
+get_calling_func_info(){
+	local frame=(`caller 2`)
+	local func="${frame[1]}"
+	local f="${frame[2]}"
+	local lno="${frame[0]}"
+	local pd
+	for pd in `parse_info_d "$f"`/$func/*; do
+		if [[ "$pd" =~ ^([0-9]+)-([0-9]+)$ ]];then
+			if ((BASH_MATCH[1] <= lno && lno <= BASH_MATCH[2]));then
+				if [ ! -e "$pd/body" -o "$pd/body" -ot $f ];then
+					rm -rf "$pd"
+					pd=$(create_calling_func_info)
+				fi
+				if [ ! -e "$pd/$1" -o "$pd/$1" -ot $f ];then
+					rm -rf "$pd/$1"
+					create_calling_func_info $1
+				else
+					echo "$pd/$1"
+				fi
+				return 0
+			fi
+		fi
+	done
+	pd=
+	create_calling_func_info $1
+	return 0
+}
+
+
+create_calling_func_info(){
+	if [ -z "$1" ];then
+		emerge_file_content f
+		local sid=${SCRIPT_FILES[$f]}
+		local ln
+		local i=$((lno - 1))
+		local j
+		local k=0
+		local lns
+		while true; do
+			ln="`eval 'echo -E ${'"$sid"'['"$((i - 1))"']}'`"
+			for ((j = ${#ln} - 1; j > 0 ; j--)); do
+				case "${ln:j:1}" in
+					"{")
+						k=$((k + 1))
+					;;
+					"}")
+						k=$((k - 1))
+					;;
+				esac
+			done
+			lns="$ln
+$lns"
+			if [ "$k" = "-1" ];then
+				if [[ ln =~ (^|[:space:]|;)$func[:space:]*([:space:]*) ]];then
+					break
+				fi
+			fi
+			i=$((i - 1))
+			if [ "$i" = 0 ];then
+				die "function start of '$func', not found"
+			fi
+		done
+		local start=i
+		i=$((lno + 1))
+		local maxlno=`eval 'echo -E "${#'$sid'}"'`
+		while true; do
+			ln="`eval 'echo -E ${'"$sid"'['"$((i - 1))"']}'`"
+			for ((j = 0; j < ${#ln} - 1 ; j++)); do
+				case "${ln:j:1}" in
+					"{")
+						k=$((k + 1))
+					;;
+					"}")
+						k=$((k - 1))
+					;;
+				esac
+			done
+			lns="$lns
+$ln"
+			if [ "$k" = 1 ];then
+				break
+			fi
+			i=$((i + 1))
+			if [ "$i" = "$maxlno" ];then
+				die "function end of '$func', not found"
+			fi
+		done
+		local pd="`parse_info_d "$f"`/$func/$start-$i"
+		mkdir -p $pd
+		echo -E $lns > "$pd/body"
+		for_sudo_user $pd/body
+		echo $pd
+	else
+		case "$1" in
+			args)
+				echo 'local all_args=("$@")' > $pd/args
+				for_sudo_user $pd/args
+				while read ln;do
+					if [[ ln =~ (^|[^_A-Za-z0-9])opt([:space:]+(-[^\\;{}()[\]\`\"\'\#[:space:]]+))+([:space:]+([_A-Za-z][_A-Za-z0-9]*)) ]];then
+						echo "local ${BASH_REMATCH[5]}" >> $pd/args
+					fi
+				done < "$pd/body"
+				echo $pd/args
+				;;
+		esac
+	fi
+}
 
 dbv(){
 	if [ -n "$DEBUG" ];then
@@ -664,6 +1047,7 @@ SOURCES_LOADED=()
 
 require(){
 	local requireFunc
+	local PATH="./:$PATH"
 	if [ "$1" = "-f" ];then
 		requireFunc=1
 		shift
@@ -671,7 +1055,6 @@ require(){
 			return 0
 		fi
 	fi
-	local PATH=./:$PATH
 	local to_load
 	if [ "${1:0:1}" != "/" ];then
 		local parr
@@ -735,133 +1118,6 @@ trap_int(){
 
 trap cleanup EXIT
 trap trap_int INT
-
-error="\033[41m\033[33mERROR    :\033[m \033[31m"
-warning="\033[43m\033[31mWARNING:\033[m \033[33m"
-info="\033[46m\033[34mINFO     :\033[m \033[36m"
-debug="\033[42m\033[34mDEBUG     :\033[m \033[32m"
-plain="\033[m"
-normal="\033[m"
-
-_black="0"
-_red="1"
-_green="2"
-_yellow="3"
-_blue="4"
-_purple="5"
-_magenta="5"
-_cyan="6"
-_white="7"
-
-
-allColors="black red green yellow blue purple magenta cyan white"
-
-function capitalize(){
-	local B
-	local F
-	B=`echo -n "${1:0:1}" | tr "[:lower:]" "[:upper:]"`
-	F="${B}${1:1}"
-	shift
-	echo -n $F $@
-}
-
-function errmsg_n(){
-	echo -en $error"$@"$plain >&2
-}
-
-
-function errmsg(){
-	errmsg_n "$@"
-	if [ -n "$ERRMSG" ];then
-		ERRMSG="$ERRMSG"'
-'"$@"
-	else
-		ERRMSG="$@"
-	fi
-	echo -ne "\n" >&2
-}
-
-
-alias err=errmsg
-alias error=errmsg
-
-
-function info_n(){
-	echo -ne $info$@$plain >&2
-}
-function info(){
-	info_n $@
-	echo -ne "\n" >&2
-}
-
-
-function warning_n(){
-	echo -ne "$warning""$@"  >&2
-}
-function warning(){
-	warning_n "$@"
-	echo -ne "\n" >&2
-}
-
-function warn(){
-	warning_n "$@"
-	echo -ne "\n" >&2
-}
-
-alias warn_n=warning_n
-
-
-function deb(){
-	if [ -n "$DEBUG" ];then
-		echo -e $debug$@$plain >&2
-	fi
-}
-alias debug=deb
-
-
-for col in `echo $allColors`; do
-	eval '
-		'$col'="\033[3$'_$col'""m"
-		function '$col'_n(){
-			echo -ne "\033[3$'_$col'""m''$@''$plain"
-		}
-		function '$col'(){
-			'$col'_n $@"\n"
-		}
-		function bg'`capitalize $col`'_n(){
-			echo -ne "\033[4$'_$col'""m''$@''$plain"
-		}
-		function bg'`capitalize $col`'(){
-			bg'`capitalize $col`'_n $@"\n"
-		}
-	'
-	for bgCol in $allColors; do
-		eval '
-			function '$col'Bg'`capitalize $bgCol`'_n(){
-				echo -ne "\033[3$'_$col'""m\033[4$'_$bgCol'""m''$@''$plain"
-			}
-			function '$col'Bg'`capitalize $bgCol`'(){
-				'$col'Bg'`capitalize $bgCol`'_n $@
-			}
-		'
-	done
-done
-
-
-function exit_if_err(){
-	errmsg "$@"
-	if [ -n "$ERRMSG" ];then
-		exit 1
-	fi
-}
-
-function die(){
-	if [ -n "$1" ]; then
-		errmsg $@
-	fi
-	exit 1
-}
-
 
 function ssh_param(){
 	local p
@@ -1590,7 +1846,170 @@ END
 }
 
 
+function args(){
+
+	declare -A opt_last_arg # option list with last argument
+
+	__args_cur_opt_arg_list_name(){
+		cur_opt_arg_list_name="${opt_full_args[$sop]}"
+		if [ -z "$cur_opt_arg_list_name" ];then
+			cur_opt_arg_list_name=tmp_list_$RANDOM$RANDOM$RANDOM
+			opt_full_args[$sop]=$cur_opt_arg_list_name
+			eval "$cur_opt_arg_list_name=()"
+		fi
+	}
+
+	args=()
+	declare local -A opt_argnums
+	declare local -A long_opts
+	declare local -A short_opts
+	declare -A opt_counts
+	declare -A opt_full_args
+	local arg_def_finished
+	local sop
+	local lop
+	local op
+	local anum
+	local tmp
+	local opt_arg_left
+	local cur_opt_arg_list_name
+
+	while (( "$#" )); do
+		if [ "${1:0:1}" = "-" ];then
+			if [ -z "$arg_def_finished" ];then
+				if [[ "${1:0:1}" =~ ^(-[^:]*):([^:]*)(:(.+)|)$ ]];then
+					sop="${BASH_REMATCH[1]}"
+					lop="${BASH_REMATCH[2]}"
+					anum="${BASH_REMATCH[4]}"
+					if [ -z "${BASH_REMATCH[3]}" ];then
+						if [ "$lop" =~ ^[0-9]+$ ];then
+							lop=""
+							anum=$((lop))
+						fi
+						if [ "${#sop}" -ge 3 -a "${sop:1:1}" != "-" ];then
+							for ((i = 1 ; i < #sop ; i++)); do
+								short_opts[-${sop:$i:1}]=$sop
+								opt_argnums[-${sop:$i:1}]=$anum
+								continue
+							done
+						fi
+					else
+						if [ "$lop" =~ ^[0-9]+$ ];then
+							if [ "$anum" =~ ^[0-9]+$ ];then
+								die "numeric long option is not allowd '--$lop' or '--$anum'"
+							else
+								local tmp=$anum
+								anum=$lop
+								lop=$tmp
+							fi
+						fi
+					fi
+					if [ "${sop:0:2}" = "--" -a "${#sop}" -gt 2 ];then
+						if [ -z "$lop" ];then
+							lop=${sop:2}
+							sop=
+						else
+							if [ "${#lop}" = 1 -a "$lop" != '-' ];then
+								tmp=${sop:2}
+								lop=$tmp
+								sop=-$lop
+							else
+								die "Cannot define short option, '-$lop'"
+							fi
+						fi
+					fi
+					if [ "$sop" = "--" -o "${#sop}" -gt 2 ];then
+						die "Cannot define short option, '$sop'"
+					fi
+					if [ -n "$lop" ];then
+						if [[ "$lop" =~ [=,] ]];then
+							die "Cannot define long option, '--$lop'"
+						fi
+					fi
+					if [ -n "$sop" ];then
+						op=$sop
+						short_opts[$sop]=$sop
+						if [ -n "$lop" ];then
+							long_opts["--$lop"]=$sop
+						fi
+					else
+						if [ -n "$lop" ];then
+							op=$lop
+							long_opts["--$lop"]=--$lop
+							short_opts["--$lop"]=--$lop
+						fi
+					fi
+					if [ -n "$anum" ];then
+						if [ "$anum" =~ ^[0-9]+$ ];then
+							opt_argnums[$op]=$((anum))
+						else
+							die "'$anum' is not a number"
+						fi
+					else
+						opt_argnums[$op]=0
+					fi
+					continue
+				else
+					arg_def_finished=1
+				fi
+			else
+				if [ "$opt_arg_left" != 0 ];then
+					if [ "${1:0:1}" = "-" ];then
+						warn "'$1' is not an option but an argument of option"
+					fi
+					eval "$cur_opt_arg_list_name+=(\"\$1\")"
+					opt_arg_left=$((opt_arg_left - 1))
+					opt_last_arg[$sop]="$1"
+				else
+					if [ "${1:0:2}" = "--" ];then
+						if [[ $1 =~ ^([^=]+)(=(.*)|)$ ]];then
+							lop=${BASH_REMATCH[1]}
+							sop=${short_opts[$lop]}
+							if [ -z "$sop" ];then
+								die "unknown option, '$lop'."
+							fi
+							opt_counts[$sop]=$((${opt_counts[$sop]} + 1))
+							if [ -n "${BASH_REMATCH[3]}" ];then
+								__args_cur_opt_arg_list_name
+								local tmp_list
+								split tmp_list "${BASH_REMATCH[2]}" ,
+								opt_last_arg[$sop]=$tmp_list[$((#tmp_list - 1))]
+								eval "$cur_opt_arg_list_name+=(\"\$tmp_list[@]\")"
+							fi
+						fi
+					else
+						if [ "${1:0:1}" = "-" ];then
+							for ((i = 1; i < ${#1}; i++)); do
+								sop=${short_opts[-$i]}
+								if [ -n "$sop" ];then
+									opt_counts[$sop]=$((${opt_counts[$sop]} + 1))
+								else
+									die "unknown option, '$1'."
+								fi
+								__args_cur_opt_arg_list_name
+								opt_arg_left="${opt_argnums[$sop]}"
+								if [ -z "$opt_arg_left" ];then
+									opt_arg_left=0
+								fi
+								if [ "$opt_arg_left" != "0" -a $i != $((${#1} - 1)) ];then
+									die "missing argument for '$sop'"
+								fi
+							done
+						else
+							args+=("$1")
+						fi
+					fi
+				fi
+			fi
+		fi
+		shift
+	done
+	
+}
+
+
 fi
+
 
 if [ "$(__FILE_PATH__)" = "$(__CMD_PATH__)" ];then
 	if [[ "$1" =~ / ]]; then
