@@ -6,6 +6,7 @@ if ! PATH="./:$PATH" source bashlib_y;then
 	exit 1
 fi
 
+require ssh_do
 
 if [ -z "`git diff`" ];then
 	warn "Not modified. Exiting."
