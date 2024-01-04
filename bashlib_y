@@ -262,14 +262,19 @@ declare -A SCRIPT_FILES
 
 emerge_file_content(){
 	local f="$1"
+	local sid
 	if [ -e "$f" ];then
 		if [ -z "${SCRIPT_FILES[$f]}" ];then
 			sid=SCRIPT_FILE_$RANDOM$RANDOM$RANDOM
+			dbv $sid
 			SCRIPT_FILES[$f]=$sid
+			local ln
 			eval "
 				$sid=()
+				local i=0
 				while read ln;do
 					$sid+=(\"\$ln\")
+					i=\$((i + 1))
 				done < $f
 			"
 		else
@@ -283,42 +288,9 @@ get_calling_line(){
 	local frame=(`caller 1`)
 	local f="${frame[2]}"
 	local lno="${frame[0]}"
-	emerge_file_content f
+	emerge_file_content "$f"
 	local sid=${SCRIPT_FILES[$f]}
 	$1="`eval 'echo -E ${'"$sid"'['"$((lno - 1))"']}'`"
-}
-
-
-encodeW(){
-	local i
-	local fn
-	for ((i = 0; i < ${#1} ; i++));do
-		c="${1:$i:1}"
-		if [[ "$c" =~ [A-Za-z0-9] ]];then
-			fn="$fn${1:$i:1}"
-		else
-			case "$c" in
-				"/")
-					fn="$fn"_s_
-					;;
-				"_")
-					fn="$fn"__
-					;;
-				"-")
-					fn="$fn"_m_
-					;;
-				*)
-					fn="$fn"_"`LC_CTYPE=C printf '%x' "'$c"`"_
-					;;
-			esac
-		fi
-	done
-	echo -n "$fn"
-}
-
-
-parse_info_d(){
-	echo "$SCRIPT_VAR_DIR"/parse_info/"`encodeW $1`"
 }
 
 
@@ -354,113 +326,6 @@ for_sudo_user(){
 	fi
 }
 
-get_calling_func_info(){
-	local frame=(`caller 2`)
-	local func="${frame[1]}"
-	local f="${frame[2]}"
-	local lno="${frame[0]}"
-	local pd
-	for pd in `parse_info_d "$f"`/$func/*; do
-		if [[ "$pd" =~ ^([0-9]+)-([0-9]+)$ ]];then
-			if ((BASH_MATCH[1] <= lno && lno <= BASH_MATCH[2]));then
-				if [ ! -e "$pd/body" -o "$pd/body" -ot $f ];then
-					rm -rf "$pd"
-					pd=$(create_calling_func_info)
-				fi
-				if [ ! -e "$pd/$1" -o "$pd/$1" -ot $f ];then
-					rm -rf "$pd/$1"
-					create_calling_func_info $1
-				else
-					echo "$pd/$1"
-				fi
-				return 0
-			fi
-		fi
-	done
-	pd=
-	create_calling_func_info $1
-	return 0
-}
-
-
-create_calling_func_info(){
-	if [ -z "$1" ];then
-		emerge_file_content f
-		local sid=${SCRIPT_FILES[$f]}
-		local ln
-		local i=$((lno - 1))
-		local j
-		local k=0
-		local lns
-		while true; do
-			ln="`eval 'echo -E ${'"$sid"'['"$((i - 1))"']}'`"
-			for ((j = ${#ln} - 1; j > 0 ; j--)); do
-				case "${ln:j:1}" in
-					"{")
-						k=$((k + 1))
-					;;
-					"}")
-						k=$((k - 1))
-					;;
-				esac
-			done
-			lns="$ln
-$lns"
-			if [ "$k" = "-1" ];then
-				if [[ ln =~ (^|[:space:]|;)$func[:space:]*([:space:]*) ]];then
-					break
-				fi
-			fi
-			i=$((i - 1))
-			if [ "$i" = 0 ];then
-				die "function start of '$func', not found"
-			fi
-		done
-		local start=i
-		i=$((lno + 1))
-		local maxlno=`eval 'echo -E "${#'$sid'}"'`
-		while true; do
-			ln="`eval 'echo -E ${'"$sid"'['"$((i - 1))"']}'`"
-			for ((j = 0; j < ${#ln} - 1 ; j++)); do
-				case "${ln:j:1}" in
-					"{")
-						k=$((k + 1))
-					;;
-					"}")
-						k=$((k - 1))
-					;;
-				esac
-			done
-			lns="$lns
-$ln"
-			if [ "$k" = 1 ];then
-				break
-			fi
-			i=$((i + 1))
-			if [ "$i" = "$maxlno" ];then
-				die "function end of '$func', not found"
-			fi
-		done
-		local pd="`parse_info_d "$f"`/$func/$start-$i"
-		mkdir -p $pd
-		echo -E $lns > "$pd/body"
-		for_sudo_user $pd/body
-		echo $pd
-	else
-		case "$1" in
-			args)
-				echo 'local all_args=("$@")' > $pd/args
-				for_sudo_user $pd/args
-				while read ln;do
-					if [[ ln =~ (^|[^_A-Za-z0-9])opt([:space:]+(-[^\\;{}()[\]\`\"\'\#[:space:]]+))+([:space:]+([_A-Za-z][_A-Za-z0-9]*)) ]];then
-						echo "local ${BASH_REMATCH[5]}" >> $pd/args
-					fi
-				done < "$pd/body"
-				echo $pd/args
-				;;
-		esac
-	fi
-}
 
 dbv(){
 	if [ -n "$DEBUG" ];then
@@ -483,7 +348,7 @@ dbv(){
 				sid=${SCRIPT_FILES[$f]}
 			fi
 			ln="`eval 'echo -E ${'"$sid"'['"$((lno - 1))"']}'`"
-			deb ${f##*/}:$lno "'$yellow"${ln#*dbv }"$green'" = "'$cyan"$@"$green'"
+			deb ${f##*/}:$lno "'$yellow"${ln#*dbv }"$green'" = "'$cyan""$@""$green'"
 		else
 			deb ${f##*/}:$lno $cyan$@
 		fi

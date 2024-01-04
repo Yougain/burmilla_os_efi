@@ -1,0 +1,90 @@
+# bash source
+
+function do_install(){
+	local to_inst=$1
+	if [ -z "$to_inst" ];then
+		die "missing argument"
+	fi
+	local d
+	shift
+	local newLns
+	function _do_install_each(){
+		local d="$1"
+		if [ ! -d "$d" ];then
+			if [ -e "$d" ];then
+				die "'$d' is not a directory."
+			else
+				if ! mkdir -p "$d";then
+					die "cannot create directory, '$d'"
+				fi
+			fi
+		fi
+		#echo "[ ! -e $d/$SUPPORT_LIB_NAME -o `stat $d/$SUPPORT_LIB_NAME -c %Y` -lt $SUPPORT_LIB_MTIME ]"
+		local do
+		if [ ! -e $d/$SUPPORT_LIB_NAME ]; then
+			do=1
+		else
+			if [ "`stat $d/$SUPPORT_LIB_NAME -c %Y`" -lt $SUPPORT_LIB_MTIME ];then
+				do=1
+			fi
+		fi
+		if [ -n "$do" ];then
+			echo -E "$SUPPORT_LIB_CONTENT" > $d/$SUPPORT_LIB_NAME
+			chmod +x $d/$SUPPORT_LIB_NAME
+		fi
+		if [ -z "$newLns" ];then
+			(
+				trim_indent <<END
+					#!/bin/bash
+					source $SUPPORT_LIB_NAME
+END
+				if ! declare -f $to_inst ;then
+					die "function, '$to_inst' does not exist"
+				fi
+				trim_indent <<'END'
+					eval '
+						THIS_FILE'$SCRIPT_ID'=$(__FILE__)
+						THE_CMD'$SCRIPT_ID'=$(readlink -f $0)
+						if [ "${THE_CMD'$SCRIPT_ID'}" = "${THIS_FILE'$SCRIPT_ID'}" ];then
+							unset THIS_FILE'$SCRIPT_ID'
+							unset THE_CMD'$SCRIPT_ID'
+END
+				echo "
+							'$to_inst' \$@
+						fi
+					'
+"
+			) > $SCRIPT_TMP_DIR/$to_inst
+			newLns="`cat $SCRIPT_TMP_DIR/$to_inst`"
+		fi
+		if [ ! -e "$d/$to_inst" ];then
+			do=1
+		else
+			if [ "$newLns" != "`cat $d/$to_inst`" ]; then
+				do=1
+			fi
+		fi
+		if [ -n "$do" ];then
+			if [ ! -e $d/$to_inst ];then
+				if [ ! -w $d ];then
+					die "cannot write to '$d/$to_inst'"
+				fi
+			else
+				if [ ! -w $d/$to_inst ];then
+					die "cannot write to '$d/$to_inst'"
+				fi
+			fi
+			echo -E "$newLns" > $d/$to_inst
+			chmod +x $d/$to_inst
+		fi
+	}
+	if [ ${#@} = 0 ];then
+		_do_install_each /usr/bin
+	else
+		for d in "$@"; do
+			_do_install_each "$d"
+		done
+	fi
+}
+
+

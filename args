@@ -1,7 +1,266 @@
 # bash source
 
 
-. "`get_calling_func_info_dir args`"
+if [ "${BASH_SOURCE[1]##*/}" = "bashlib_y" ];then
+
+	require parse_func
+	
+	generate_source_for_args(){
+		echo 'local all_args=("$@")'
+		echo 'local args=()'
+		echo 'local pre_scanned'
+		echo 'local -A optPos'
+		echo 'local -A optCount'
+		echo 'local unknown_option_checked'
+		local ln
+		local optId=0
+		echo 'declare -A local longOpts'
+		echo 'declare -A local shortOpts'
+		echo 'declare -A local argVarNames'
+		declare -A local longOpts
+		declare -A local shortOpts
+		declare -A local argVarNames
+		
+		while read ln;do
+			if [[ "$ln" =~ (^|[^_A-Za-z0-9])opt[[:blank:]]+(.*)$ ]];then
+				local m=" ${BASH_REMATCH[2]}"
+				while [[ "$m" =~ ^[[:blank:]]+(-[A-Za-z0-9_/,.#$%+*:^~=%!?]+|--[-A-Za-z0-9_]+|[A-Za-z_][A-Za-z0-9_]*)(.*)$ ]]; do
+					m="${BASH_REMATCH[2]}"
+					local m2="${BASH_REMATCH[1]}"
+					if [ "${m2:0:2}" = "--" ]; then
+						if [ -n "${longOpts[$m2]}" ]; then
+							die "option '$m2' definition found twice."
+						fi
+						longOpts[$m2]=$optId
+					else
+						if [ "${m2:0:1}" = "-" ]; then
+							local i
+							for ((i = 1 ; i < ${#m2} ; i++));do
+								if [ -n "${shortOpts[${m2:i:1}]}" ];then
+									die "option '-${m2:i:1}' definition found twice."
+								fi
+								shortOpts[${m2:i:1}]=$optId
+							done
+						else
+							if [ -n "${argVarNames[$optId]}" ];then
+								die "vairable name defined twice."
+							fi
+							argVarNames[$optId]="$m2"
+							echo "local $m2"
+							echo "local optArgs$optId=()"
+						fi
+					fi
+				done
+				optId=$((optId + 1))
+			fi
+		done
+		local k
+		local n
+		for n in longOpts shortOpts argVarNames; do
+			eval '
+				for k in "${!'$n'[@]}"; do
+					echo "'$n'['"'"'$k'"'"']='"'"'${'$n'[$k]}'"'"'"
+				done
+			'
+		done
+	}
+
+	__pre_scan(){
+		if [ -n "$pre_scanned" ];then
+			return
+		fi
+		pre_scanned=1
+		local a
+		local has_sep
+		local i=0
+		for a in "${all_args[@]}"; do
+			if [ -n "$has_sep" ];then
+				args+=("$a")
+				unset all_args[i]
+			else
+				if [ "$a" = "--" ]; then
+					has_sep=1
+					unset all_args[i]
+				else
+					i=$((i + 1))
+				fi
+			fi
+		done
+		if [ -n "$unknown_option_checked" ];then
+			die "cannot use shift_arg() before opt()"
+		fi
+		local a
+		local b
+		local i
+		declare -A local unsetter
+		local optId
+		local gettingArg
+		for ((i = 0 ; i < ${#all_args[@]} ; i++)); do
+			a="${all_args[$i]}"
+			if [ -n "$gettingArg" ];then
+				eval optArgs$gettingArg'=("$a" "${optArgs'$gettingArg'[@]}")'
+				unsetter[$i]=1
+				gettingArg=
+			else
+				if [ "${a:0:2}" = "--" ];then
+					for b in "${!longOpts[@]}"; do
+						if [ "$a" = "$b" ];then
+							optId="${longOpts[$b]}"
+							optCount[$optId]=$((${optCount[$optId]} + 1))
+							optPos[$optId]=$i
+							unsetter[$i]=1
+							if [ -n "${argVarNames[$optId]}" ];then
+								gettingArg=$optId
+							fi
+							break
+						else
+							if [ "${a:0:$((${#b} + 1))}" = "$b=" ];then
+								optId="${longOpts[$b]}"
+								optCount[$optId]=$((${optCount[$optId]} + 1))
+								optPos[$optId]=$i
+								if [ -n "${argVarNames[$optId]}" ];then
+									eval optArgs$optId'=("${a:$((${#b} + 1))}" "${optArgs'$optId'[@]}")'
+									unsetter[$i]=1
+								else
+									die "option '$b' cannot have argument"
+								fi
+								break
+							fi
+						fi
+					done
+				else
+					if [ "${a:0:1}" = "-" ];then
+						local leftOpt=
+						local hit=
+						for ((j = 1 ; j < ${#a} ; j++));do
+							for b in "${!shortOpts[@]}"; do
+								if [ "${a:$j:1}" = "$b" ];then
+									optId="${shortOpts[$b]}"
+									optCount[$optId]=$((${optCount[$optId]} + 1))
+									optPos[$optId]=$i
+									hit=1
+									if [ -n "${argVarNames[$optId]}" ];then
+										if [ $j = $((${#a} - 1)) ];then
+											gettingArg=$optId
+										else
+											eval optArgs$optId'=("${a:$((j + 1))}" "${optArgs'$optId'[@]}")'
+										fi
+										if [ $j = 1 ];then
+											unsetter[$i]=1
+										else
+											all_args[$i]="${a:0:$j}"
+										fi
+									fi
+									break
+								fi
+							done
+							if [ -n "$hit" ];then
+								hit=
+								if [ -n "${argVarNames[$optId]}" ];then
+									break
+								fi
+							else
+								leftOpt="$leftOpt${a:$j:1}"
+							fi
+						done
+						if [ -z "$leftOpt" ];then
+							unsetter[$i]=1
+						else
+							all_args[$i]="-$leftOpt"
+						fi
+					fi
+				fi
+			fi
+		done
+		local na=()
+		for ((j = 0 ; j < ${#all_args[@]} ; j++));do
+			if ! [ -n "${unsetter[$j]}" ]; then
+				na+=(${all_args[$j]})
+			fi
+		done
+		all_args=("${na[@]}")
+		for a in "${all_args[@]}"; do
+			if [ "${a:0:1}" = "-" ];then
+				die "unknown option '$a'."
+			fi
+		done
+		for optId in "${!argVarNames[@]}";do
+			if [ -n "${optCount[$optId]}" ];then
+				eval ${argVarNames[@]}'=("${optArgs'$optId'[@]}")'
+			fi
+		done
+		all_args+=(${args[@]})
+		local op
+		local optId
+		for op in "${!shortOpts[@]}";do
+			optId=${shortOpts[$op]}
+			optCount[-$op]=${optCount[$optId]}
+			optPos[-$op]=${optPos[$optId]}
+		done
+		for op in "${!longOpts[@]}";do
+			optId=${longOpts[$op]}
+			optCount[$op]=${optCount[$optId]}
+			optPos[$op]=${optPos[$optId]}
+		done
+	}
+
+
+	opt(){
+		if [ -n "$unknown_option_checked" ];then
+			die "cannot use shift_arg() before opt()"
+		fi
+		local varName
+		__pre_scan
+		local a
+		local b
+		local i
+		declare -A local unsetter
+		local oc=0
+		local opos
+		local optId
+		for a in "$@"; do
+			if [ "${a:0:2}" = "--" ];then
+				optId=${longOpts[$a]}
+				break
+			else
+				if [ "${a:0:1}" = "-" ];then
+					optId=${shortOpts[${a:1:1}]}
+					break
+				fi
+			fi
+		done
+		if [ -z "$optId" ];then
+			die "Option missing (maybe parse error)"
+		fi
+		if [ -n "${optCount[$optId]}" ];then
+			return 0
+		else
+			return 1
+		fi
+	}
+	
+	
+	shift_arg(){
+		if [ -z "$1" ];then
+			die "Missing argument."
+		fi
+		local a
+		if [ "${#all_args}" = 0 ];then
+			return 1
+		fi
+		eval $1="${all_args[0]}"
+		all_args=("${all_args[@]:1}")
+	}
+
+else
+	local f="`get_generated_source_for args`"
+	if [ -e "$f" -a "$?" = 0 ];then
+		. $f
+	else
+		exit 1
+	fi
+fi
+
 
 
 

@@ -1,0 +1,61 @@
+# bash source
+
+encodeW(){
+	local i
+	local fn
+	for ((i = 0; i < ${#1} ; i++));do
+		c="${1:$i:1}"
+		if [[ "$c" =~ [A-Za-z0-9] ]];then
+			fn="$fn${1:$i:1}"
+		else
+			case "$c" in
+				"/")
+					fn="$fn"_s_
+					;;
+				"_")
+					fn="$fn"__
+					;;
+				"-")
+					fn="$fn"_m_
+					;;
+				".")
+					fn="$fn"_d_
+					;;
+				*)
+					fn="$fn"_"`LC_CTYPE=C printf '%x' "'$c"`"_
+					;;
+			esac
+		fi
+	done
+	echo -n "$fn"
+}
+
+
+parse_info_d(){
+	echo "$SCRIPT_VAR_DIR"/parse_info/"`encodeW $(realpath $1)`"
+}
+
+get_generated_source_for(){
+	if [ -z "$1" ];then
+		die "Missing argument."
+	fi
+	local frame=(`caller 1`)
+	local func="${frame[1]}"
+	local f="${frame[2]}"
+	local lno="${frame[0]}"
+	local pf="`parse_info_d "$f"`/$func/$1-$lno"
+	if [ ! -e "$pf" -o "$pf" -ot $f ];then
+		rm -f "$pf"
+		declare -f $func | generate_source_for_$1 > $pf
+		if [ $? != 0 ];then
+			exit $?
+		fi
+		for_sudo_user $pf
+	fi
+	dbv $pf
+	dbv "`cat $pf`"
+	echo "$pf"
+	return 0
+}
+
+
