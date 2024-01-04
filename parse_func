@@ -52,8 +52,6 @@ get_generated_source_for(){
 		fi
 		for_sudo_user $pf
 	fi
-	dbv $pf
-	dbv "`cat $pf`"
 	echo "$pf"
 	return 0
 }
