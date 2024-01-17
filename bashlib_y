@@ -396,9 +396,10 @@ function local_fun(){
 	if [ -z "${LOCAL_FUNC_IDS[${FUNCNAME[2]}]}" ];then
 		LOCAL_FUNC_IDS[${FUNCNAME[2]}]=${FUNCNAME[2]}_$RANDOM$RANDOM$RANDOM
 	fi
-	local fName=${LOCAL_FUNC_IDS[${FUNCNAME[2]}]}$1
+	local fName=${LOCAL_FUNC_IDS[${FUNCNAME[2]}]}_$1
 	dbv $fName
 	shift
+	dbv ${LOCAL_FUNC_EACH[$fName]}
 	if [ -z "${LOCAL_FUNC_EACH[$fName]}" ] ;then
 		LOCAL_FUNC_EACH[$fName]=1
 		eval 'function '$fName"(){
@@ -417,7 +418,7 @@ function local_call(){
 	if [ -z "${LOCAL_FUNC_IDS[${FUNCNAME[2]}]}" ];then
 		die "local_call: local function, '$1' in '${FUNCNAME[2]}]' not defined"
 	fi
-	local fName=${LOCAL_FUNC_IDS[${FUNCNAME[2]}]}$1
+	local fName=${LOCAL_FUNC_IDS[${FUNCNAME[2]}]}_$1
 	shift
 	dbv $fName
 	declare -f $fName
