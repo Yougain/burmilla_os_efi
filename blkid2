@@ -109,7 +109,7 @@ function blkid2(){
 		local_fun detectSymbol <<'		}'
 			local _arg=$1
 			shift
-			local _dev=${1%:}
+			local _dev=${1%:*}
 			shift
 			dbv $_dev
 			dbv $_arg
