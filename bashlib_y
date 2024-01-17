@@ -421,7 +421,6 @@ function local_call(){
 	fi
 	local fName=${LOCAL_FUNC_IDS[${FUNCNAME[2]}]}_$1
 	shift
-	dbv "$@"
 	$fName $@
 }
 
