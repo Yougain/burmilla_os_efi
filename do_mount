@@ -144,28 +144,8 @@ function do_mount(){
 	local dst=${args[1]}
 	declare -A to_mount_cand
 	local to_mount
-	if [[ "$src" =~ ^[0-9]*$ ]];then
-		if [ -z "$EFI_UUID_ARG" ];then
-			if grep efi=UUID= /proc/cmdline > /dev/null;then
-				local tmp_uuid_arg="`cat /proc/cmdline|sed -r 's/^.*[[:space:]]efi=UUID=((\\\\|)['"'"'"]|)([0-9a-fA-F-]+)\1.*$/\3/g'`"
-				if [[ "$tmp_uuid_arg" =~ ^[0-9a-fA-F-]+$ ]];then
-					EFI_UUID_ARG=$tmp_uuid_arg
-				fi
-			fi
-		fi
-		if [ -n "$EFI_UUID_ARG" ];then
-			local boot_drive=`readlink -f /dev/disk/by-uuid/$EFI_UUID_ARG|sed -r 's/^\/dev\/([a-z]+)[0-9]+$/\1/g'`
-			if [ -b "/dev/$boot_drive" ];then
-				if [ -b "/dev/$boot_drive"$src ];then
-					to_mount_cand["/dev/$boot_drive"$src]=1
-				else
-					warn "'/dev/$boot_drive"$src"' is not a block device."
-				fi
-			else
-				warn "'/dev/$boot_drive' is not a block device."
-			fi
-		fi
-	fi
+	require partNum2Dev
+	src=$(partNum2Dev $src)
 	if [ -b "$src" ];then
 		to_mount_cand[$src]=1
 	else
