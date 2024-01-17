@@ -87,7 +87,7 @@ function blkid2(){
 	declare -A local uuid_list
 	declare -A local dev2VarNameSibs
 	local varNameSibs # use transformed uuid (tr - _) as variable name for array of siblings
-	for dev in "${blkids[@]}"; do
+	for dev in "${!blkids[@]}"; do
 		dbv $dev
 		dbv ${blkids[$dev]}
 		if [[ "${blkids[$dev]}" =~ ([0-9a-fA-F]+) ]]; then
