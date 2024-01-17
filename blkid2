@@ -111,6 +111,7 @@ function blkid2(){
 			shift
 			local _dev=${1%:}
 			shift
+			dbv $_dev
 			if [ "$_dev" = "$_arg" ];then
 				matched+=($_dev)
 				return 0
