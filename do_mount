@@ -3,6 +3,7 @@
 
 function do_mount(){
 	function _mount(){
+		dbv $@
 		local msg="`/bin/mount $@ 2>&1`"
 		local ret=$?
 		if echo $msg|grep "already mounted";then
