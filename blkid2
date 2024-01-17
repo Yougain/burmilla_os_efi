@@ -12,6 +12,7 @@ function blkid2(){
 	local PATH=/sbin:/usr/sbin:/bin:/usr/bin
 
 	local args=()
+	dbv ${args[@]}
 	local opts=()
 	local get_sibling
 	while (( "$#" )); do
@@ -26,6 +27,7 @@ function blkid2(){
 		shift
 	done
 
+	dbv ${args[@]}
 	if [ ${#args} -ge 2 ];then
 		die "multiple arguments specified"
 	fi
