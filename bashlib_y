@@ -389,6 +389,9 @@ rm_all(){
 }
 
 
+declare -A LOCAL_FUNC_IDS
+declare -A LOCAL_FUNC_EACH
+
 function local_fun(){
 	if [ "$#" = 0 ];then
 		die "local_def: missing argument"
