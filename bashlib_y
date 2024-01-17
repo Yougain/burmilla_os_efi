@@ -401,7 +401,7 @@ function local_fun(){
 	if [ -z "${LOCAL_FUNC_EACH[$fName]}" ] ;then
 		LOCAL_FUNC_EACH[$fName]=1
 		eval 'function '$fName'(){
-			$(while read -j ln;do
+			$(while read -r ln;do
 				echo -E $ln
 			done)
 		}'
