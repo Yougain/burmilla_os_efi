@@ -28,7 +28,7 @@ function blkid2(){
 	done
 
 	dbv ${args[@]}
-	if [ ${#args} -ge 2 ];then
+	if [ ${#args[@]} -ge 2 ];then
 		die "multiple arguments specified"
 	fi
 
