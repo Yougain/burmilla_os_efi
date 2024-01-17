@@ -420,6 +420,7 @@ function local_call(){
 	local fName=${LOCAL_FUNC_IDS[${FUNCNAME[2]}]}$1
 	shift
 	dbv $fName
+	declare -f $fName
 	$fName "$@"
 }
 
