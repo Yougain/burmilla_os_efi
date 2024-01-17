@@ -399,7 +399,7 @@ function local_fun(){
 	local fName=${LOCAL_FUNC_IDS[${FUNCNAME[2]}]}_$1
 	dbv $fName
 	shift
-	dbv ${LOCAL_FUNC_EACH[$fName]}
+	dbv ${LOCAL_FUNC_EACH[@]}
 	if [ -z "${LOCAL_FUNC_EACH[$fName]}" ] ;then
 		LOCAL_FUNC_EACH[$fName]=1
 		eval 'function '$fName"(){
@@ -420,8 +420,6 @@ function local_call(){
 	fi
 	local fName=${LOCAL_FUNC_IDS[${FUNCNAME[2]}]}_$1
 	shift
-	dbv $fName
-	declare -f $fName
 	$fName "$@"
 }
 
