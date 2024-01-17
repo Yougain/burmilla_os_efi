@@ -642,7 +642,9 @@ __ORG_EVAR__="`env_var`"
 
 fi
 
-if [ "${BASH_SOURCE[$((${#BASH_SOURCE[@]} - 1))]}" = "$(__FILE_PATH__)" ];then
+
+
+if [ "`readlink -f ${BASH_SOURCE[$((${#BASH_SOURCE[@]} - 1))]}`" = "$(__FILE_PATH__)" ];then
 	if [ "$(__FILE_NAME__)" = "$(__CMD_NAME__)" ];then
 		if [[ "$1" =~ / ]]; then # with path
 			"$@"
