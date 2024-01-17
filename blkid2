@@ -182,7 +182,6 @@ function blkid2(){
 			done
 			dbv
 		fi
-		return 1
 	fi
 	return 0
 }
