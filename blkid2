@@ -27,7 +27,6 @@ function blkid2(){
 		shift
 	done
 
-	dbv ${args[@]}
 	if [ ${#args[@]} -ge 2 ];then
 		die "multiple arguments specified"
 	fi
@@ -62,12 +61,10 @@ function blkid2(){
 		local dev=$1
 		blkids[$dev]="$@"
 	}
-	dbv ${args[@]}
 	local i
 	for i in "${blkids_arr[@]}"; do
 		local_call add_blist $i
 	done
-	dbv ${args[@]}
 
 	local dev
 	local bc
@@ -87,7 +84,6 @@ function blkid2(){
 			fi
 		done
 	fi
-	dbv ${args[@]}
 	
 	declare -A local uuid_list
 	declare -A local dev2VarNameSibs
@@ -99,9 +95,7 @@ function blkid2(){
 				uuid_list[$varNameSibs]=1
 				eval 'local '$varNameSibs'+=('$dev')'
 			fi
-			dbv $dev
 			eval $varNameSibs'+=('$dev')'
-			dbv ${$varNameSibs[@]}
 			dev2VarNameSibs[$dev]=$varNameSibs
 		fi
 	done
