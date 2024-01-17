@@ -23,9 +23,16 @@ __FILE_PATH__() {
 	__FILE__
 }
 
+
 __FILE_NAME__(){
 	local f="`__FILE__`"
 	echo "${f##*/}"
+}
+
+
+__FILE_DIR__(){
+	local f="`__FILE__`"
+	echo "${f%/*}"
 }
 
 
@@ -124,7 +131,6 @@ initialize_support_lib(){
 }
 
 if initialize_support_lib; then
-
 
 
 _black="0"
@@ -636,15 +642,21 @@ __ORG_EVAR__="`env_var`"
 
 fi
 
-
-if [ "$(__FILE_PATH__)" = "$(__CMD_PATH__)" ];then
-	if [[ "$1" =~ / ]]; then
-		$@
-	else
-		if ! declare -f $1 >/dev/null; then
-			require $1
+if [ "${BASH_SOURCE[$((${#BASH_SOURCE[@]} - 1))]}" = "$(__FILE_PATH__)" ];then
+	if [ "$(__FILE_NAME__)" = "$(__CMD_NAME__)" ];then
+		if [[ "$1" =~ / ]]; then # with path
+			"$@"
+		else
+			if ! declare -f "$1" >/dev/null; then
+				require "$1"
+			fi
+			"$@"
 		fi
-		$@
+	else
+		if ! declare -f "$(__CMD_NAME__)" >/dev/null; then
+			require "$(__CMD_NAME__)"
+		fi
+		"$(__CMD_NAME__)" "$@"
 	fi
 fi
 
