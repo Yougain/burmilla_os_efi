@@ -170,8 +170,11 @@ function blkid2(){
 		else
 			dbv ${!blkids[@]}
 			for mdev in "${matched[@]}"; do
-				dbv $mdev
-				echo ${blkids[$mdev]}
+				if [ "$mdev" == "${args[0]}" ];then
+					echo ${blkids[$mdev]}
+				else
+					echo $mdev
+				fi
 			done
 			dbv
 		fi
