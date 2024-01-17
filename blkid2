@@ -148,7 +148,6 @@ function blkid2(){
 			return 1
 		}
 		for bc in "${blkids[@]}";do
-			dbv $bc
 			local_call detectSymbol "${args[0]}" "$bc"
 		done
 		if [ "${#matched}" = 0 ];then
@@ -174,6 +173,7 @@ function blkid2(){
 			for mdev in "${matched[@]}"; do
 				echo ${blkids[$mdev]}
 			done
+			dbv
 		fi
 		return 1
 	fi
