@@ -171,6 +171,7 @@ function blkid2(){
 			eval echo '${'$varNameSibs'[@]}'
 		else
 			for mdev in "${matched[@]}"; do
+				dbv $mdev
 				echo ${blkids[$mdev]}
 			done
 			dbv
