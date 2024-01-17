@@ -195,7 +195,7 @@ function do_mount(){
 		local res
 		if [ "$type" = "btrfs" ];then
 			local devices=("`blkid2 --get-siblings $to_mount`")
-			if [ "$?" != 0 -o "${#devices}"=0 ];then
+			if [ "$?" != 0 -o "${#devices[@]}"=0 ];then
 				dbv "${#devices}"
 				die "'blkid2 --get-siblings $to_mount' failed"
 			fi
