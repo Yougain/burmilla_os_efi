@@ -3,7 +3,6 @@
 
 function blkid2(){
 	local args=()
-	dbv ${args[@]}
 	info blkid2 $@
 	__readlink(){
 		for i in "$@"; do
