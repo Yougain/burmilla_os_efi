@@ -17,7 +17,7 @@ function create_initrd_mod(){
 		system-docker exec udev find $@ 2> >(egrep -v '/proc.*: Invalid argument')
 	}
 
-	tmpd=`pwd`
+	local tmpd=`pwd`
 	if [ -d $SCRIPT_TMP_DIR/initrd ];then
 		for i in `ls $SCRIPT_TMP_DIR/initrd`;do
 			umount $SCRIPT_TMP_DIR/$i
@@ -270,9 +270,8 @@ $libs"
 		diff
 	END
 	
-	dbv $PATH
+	local PATH="$tmpd:$PATH"
 	require initrd_support
-	dbv $PATH
 	require do_install
 	require chain_bak
 	
