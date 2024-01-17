@@ -524,6 +524,7 @@ function detect(){
 function detect_if(){
 	eval '
 		for '$2' in "${'$1'[@]}"; do
+			echo $'$2'
 			if '$3'; then
 				return 0
 			fi
