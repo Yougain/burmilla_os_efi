@@ -397,6 +397,7 @@ function local_fun(){
 		LOCAL_FUNC_IDS[${FUNCNAME[2]}]=${FUNCNAME[2]}_$RANDOM$RANDOM$RANDOM
 	fi
 	local fName=${LOCAL_FUNC_IDS[${FUNCNAME[2]}]}$1
+	dbv $fName
 	shift
 	if [ -z "${LOCAL_FUNC_EACH[$fName]}" ] ;then
 		LOCAL_FUNC_EACH[$fName]=1
