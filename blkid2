@@ -16,12 +16,12 @@ function blkid2(){
 	local get_sibling
 	while (( "$#" )); do
 		if [ "${1:0:1}" = "-" ];then
-			opts+="$1"
+			opts+=("$1")
 			if [ $1 = "--get-siblings" ];then
 				get_sibling=1
 			fi
 		else
-			args+="$1"
+			args+=("$1")
 		fi
 		shift
 	done
