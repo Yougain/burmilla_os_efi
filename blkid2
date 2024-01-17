@@ -65,6 +65,7 @@ function blkid2(){
 	dbv ${args[@]}
 	local i
 	for i in "${blkids_arr[@]}"; do
+		dbv $i
 		local_call add_blist $i
 	done
 	dbv ${args[@]}
