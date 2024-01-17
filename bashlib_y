@@ -401,11 +401,11 @@ function local_fun(){
 	shift
 	if [ -z "${LOCAL_FUNC_EACH[$fName]}" ] ;then
 		LOCAL_FUNC_EACH[$fName]=1
-		eval 'function '$fName'(){
+		eval 'function '$fName"(){
 			$(while read -r ln;do
 				echo -E $ln
 			done)
-		}'
+		}"
 	fi
 }
 
