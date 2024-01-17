@@ -41,7 +41,7 @@ function blkid2(){
 
 	local i
 
-	
+	dbv ${args[@]}
 	local IDnDEVs_id=(`ls /dev/disk/by-id`)
 	local IDnDEVs_dev=($(__readlink `ls /dev/disk/by-id/*`))
 	local IDnDEVs_n=${#IDnDEVs_id[@]}
