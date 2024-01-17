@@ -98,7 +98,10 @@ initialize_support_lib(){
 		mkdir -p --mode=0777 /tmp/$f
 		SCRIPT_TMP_DIR=/tmp/$f/${0##*/}/`date +"%y-%m-%d_%H:%M:%S.%N%z"`-$$
 		SCRIPT_VAR_DIR=/var/tmp/$f
-		mkdir -p $SCRIPT_TMP_DIR
+		if ! mkdir -p $SCRIPT_TMP_DIR; then
+			echo -e "$error"cannot create script dir$normal
+			exit 1
+		fi
 		if ! mkdir -p $SCRIPT_VAR_DIR; then
 			echo -e "$error"cannot create script var dir$normal
 			exit 1
