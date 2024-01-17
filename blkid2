@@ -90,11 +90,8 @@ function blkid2(){
 	for dev in "${!blkids[@]}"; do
 		dbv $dev
 		dbv ${blkids[$dev]}
-		if [[ "${blkids[$dev]}" =~ ([0-9a-fA-F]+) ]]; then
-			dbv ${BASH_REMATCH[1]}
-		fi
 		if [[ "${blkids[$dev]}" =~ \ UUID=\"([0-9a-fA-F]+(-[0-9a-fA-F]+)*)\"\  ]]; then
-			varNameSibs=UUID_$(echo ${BASH_REMATCH[1]}|tr - _)
+			varNameSibs=UUID_$(echo ${BASH_REMATCH[1]}|tr - _|tr '[:upper:]' '[:lower:]')
 			dbv $varNameSibs
 			dbv ${uuid_list[@]}
 			if [ -z "${uuid_list[$uuid]}" ];then
