@@ -93,10 +93,10 @@ function blkid2(){
 			varNameSibs=UUID_$(echo ${BASH_REMATCH[1]}|tr - _)
 			if [ -z "${uuid_list[$uuid]}" ];then
 				uuid_list[$varNameSibs]=1
-				eval local $varNameSibs+=($dev)
+				eval 'local '$varNameSibs'+=('$dev')'
 			fi
 			dbv $dev
-			eval "$varNameSibs+=($dev)"
+			eval $varNameSibs'+=('$dev')'
 			dbv ${$varNameSibs[@]}
 			dev2VarNameSibs[$dev]=$varNameSibs
 		fi
