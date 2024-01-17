@@ -116,6 +116,7 @@ function blkid2(){
 	else
 		local matched=()
 		local_fun detectSymbol <<'		}'
+			dbv "$@"
 			local _arg=$1
 			shift
 			local _dev=${1%:}
