@@ -83,7 +83,7 @@ function do_mount(){
 							if [ -n "${mopts[ro]}" ];then
 								die "both 'rw' and 'ro' mount option specified"
 							fi
-							opts[rw]=1
+							mopts[rw]=1
 							;;
 						r)
 							if [ -n "${mopts[rw]}" ];then
@@ -222,10 +222,10 @@ function do_mount(){
 			fi
 			if [ -z "$forceDegraded" ];then
 				local i=0
-				while ! _mount $opts $moptsNoDeg $to_mount $dst;do
+				while ! _mount $opts -o $moptsNoDeg $to_mount $dst;do
 					i=$((i + 1))
 					if [ $i = 5 ];then
-						_mount $opts $moptsWithDeg $to_mount $dst
+						_mount $opts -o $moptsWithDeg $to_mount $dst
 						res=$?
 						break
 					fi
@@ -233,11 +233,11 @@ function do_mount(){
 				done
 				res=$?
 			else
-				_mount $opts $moptsWithDeg $to_mount $dst
+				_mount $opts -o $moptsWithDeg $to_mount $dst
 				res=$?
 			fi
 		else
-			_mount $opts $mopts $to_mount $dst
+			_mount $opts -o $mopts $to_mount $dst
 			res=$?
 		fi
 		if [ "$res" != "0" ];then
