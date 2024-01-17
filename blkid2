@@ -95,7 +95,9 @@ function blkid2(){
 				uuid_list[$varNameSibs]=1
 				eval local $varNameSibs+=($dev)
 			fi
-			eval $varNameSibs+=($dev)
+			dbv $dev
+			eval "$varNameSibs+=($dev)"
+			dbv ${$varNameSibs[@]}
 			dev2VarNameSibs[$dev]=$varNameSibs
 		fi
 	done
