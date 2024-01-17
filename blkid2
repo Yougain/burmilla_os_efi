@@ -158,6 +158,7 @@ function blkid2(){
 		if [ -n "$get_sibling" ];then
 			local varNameSibs1
 			for mdev in "${matched[@]}"; do
+				dbv $mdev
 				if [ -z "$varNameSibs1" ]; then
 					varNameSibs1=${dev2VarNameSibs[$mdev]}
 					if [ -z "$varNameSibs1" ];then
