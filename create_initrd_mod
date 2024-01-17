@@ -270,7 +270,9 @@ $libs"
 		diff
 	END
 	
+	dbv $PATH
 	require initrd_support
+	dbv $PATH
 	require do_install
 	require chain_bak
 	
