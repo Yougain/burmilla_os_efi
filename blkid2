@@ -113,6 +113,7 @@ function blkid2(){
 			shift
 			dbv $_dev
 			dbv $_arg
+			dbv "$@"
 			if [ "$_dev" = "$_arg" ];then
 				matched+=($_dev)
 				return 0
