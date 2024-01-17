@@ -96,7 +96,6 @@ function blkid2(){
 			dbv ${!uuid_list[@]}
 			if [ -z "${uuid_list[$varNameSibs]}" ];then
 				uuid_list[$varNameSibs]=1
-				eval 'local '$varNameSibs'+=('$dev')'
 			fi
 			eval $varNameSibs'+=('$dev')'
 			dev2VarNameSibs[$dev]=$varNameSibs
