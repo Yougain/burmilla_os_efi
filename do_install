@@ -42,6 +42,8 @@ function do_install(){
 				die "cannot create file, $sLib"
 			fi
 			$sudo chmod +x $sLib
+			dbv $d
+			dbv ln -sf ../../$sLib $d/usr/bin/$SUPPORT_LIB_NAME
 			$sudo ln -sf ../../$sLib $d/usr/bin/$SUPPORT_LIB_NAME
 		fi
 		local from
