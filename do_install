@@ -64,7 +64,7 @@ function do_install(){
 				from="./$to_inst"
 			fi
 		fi
-		local sCmd="$d/usr/share/$SUPPORT_LIB_NAME/$to_inst"
+		local sCmd="$d/usr/share/$SUPPORT_LIB_NAME/${to_inst##*/}"
 		do=
 		if [ ! -e "$sCmd" ];then
 			do=1
