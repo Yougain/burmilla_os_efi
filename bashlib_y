@@ -375,7 +375,9 @@ rm_all(){
 		fi
 		dlen=${#d}
 		dlen=$((dlen + 1))
+		cat /proc/mounts|awk '{print $3}'| sed '1!G;h;$!d'
 		cat /proc/mounts|awk '{print $3}'| sed '1!G;h;$!d' |while read ln;do
+			dbv $ln
 			if [ "${ln:0:$dlen}" = "$d/" ];then
 				if !umount $ln;then
 					die "cannot unmount '$ln'"
