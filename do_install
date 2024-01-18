@@ -78,7 +78,7 @@ function do_install(){
 		fi
 		if [ -n "$do" ];then
 			$sudo cp -av "$from" "$sCmd"
-			$sudo ln -sf "../../usr/share/$SUPPORT_LIB_NAME/$SUPPORT_LIB_NAME" "$d/usr/bin/$to_inst"
+			$sudo ln -sf "../../usr/share/$SUPPORT_LIB_NAME/$SUPPORT_LIB_NAME" "$d/usr/bin/${to_inst##*/}"
 		fi
 	}
 	if [ ${#@} = 0 ];then
