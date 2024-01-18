@@ -47,18 +47,22 @@ function do_install(){
 			$sudo ln -sf ../../$sLib $d/usr/bin/$SUPPORT_LIB_NAME
 		fi
 		local from
-		if [ ! -e "./$to_inst" ];then
-			if [ ! -e "`__FILE_DIR__`/$to_inst" ];then
-				if [ ! -e "/usr/share/$SUPPORT_LIB_NAME/$to_inst" ];then
-					die "'$to_inst' is found neither in current directory nor in directory, '/usr/share/$SUPPORT_LIB_NAME', nor in directory, '`__FILE_DIR__`'"
+		if [ "${to_inst:0:1}" = "/" ];then
+			from=$to_inst
+		else
+			if [ ! -e "./$to_inst" ];then
+				if [ ! -e "`__FILE_DIR__`/$to_inst" ];then
+					if [ ! -e "/usr/share/$SUPPORT_LIB_NAME/$to_inst" ];then
+						die "'$to_inst' is found neither in current directory nor in directory, '/usr/share/$SUPPORT_LIB_NAME', nor in directory, '`__FILE_DIR__`'"
+					else
+						from="/usr/share/$SUPPORT_LIB_NAME/$to_inst"
+					fi
 				else
-					from="/usr/share/$SUPPORT_LIB_NAME/$to_inst"
+					from="`__FILE_DIR__`/$to_inst"
 				fi
 			else
-				from="`__FILE_DIR__`/$to_inst"
+				from="./$to_inst"
 			fi
-		else
-			from="./$to_inst"
 		fi
 		local sCmd="$d/usr/share/$SUPPORT_LIB_NAME/$to_inst"
 		do=
