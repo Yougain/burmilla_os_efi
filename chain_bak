@@ -320,7 +320,9 @@ chain_bak(){
 		dbv $max
 		dbv $min
 		local startFile=$1
-		_chain_bak_reverse2 $max
+		if [ "$max" != "$min" ];then
+			_chain_bak_reverse2 $max
+		fi
 	}
 	
 	function _chain_bak_set_file(){
@@ -354,7 +356,7 @@ chain_bak(){
 				return 1
 			fi
 		fi
-		if ! _mv_it $force "$f0" "$f1"; then
+		if ! _mv_it $force "$f1" "$f0"; then
 			return 1
 		fi
 	}
