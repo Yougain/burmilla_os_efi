@@ -570,8 +570,11 @@ require(){
 		die "require '$1', failed"
 	fi
 	local f
-	(echo -E "$funcs"; declare -F) | sort | uniq -u | awk '{print $3}'
 	(echo -E "$funcs"; declare -F) | sort | uniq -u | awk '{print $3}' | while read f;do
+		echo $f
+	done
+	(echo -E "$funcs"; declare -F) | sort | uniq -u | awk '{print $3}' | while read f;do
+		dbv $f
 		FUNC_SOURCE["$f"]="$to_load"
 		dbv ${FUNC_SOURCE["$f"]}
 		
