@@ -573,7 +573,9 @@ require(){
 	(echo -E "$funcs"; declare -F) | sort | uniq -u | awk '{print $3}' | while read f;do
 		FUNC_SOURCE["$f"]="$to_load"
 	done
-	dbv "${FUNC_SOURCE[@]}"
+	for x in "${FUNC_SOURCE[@]}"; do
+		echo $x
+	done
 	if [ -n "$requireFunc" ];then
 		if ! declare -F "${1#**/}" > /dev/null ;then
 			die "function '$1', not found in any files of (\$PATH)/$1."
