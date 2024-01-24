@@ -572,6 +572,7 @@ require(){
 	local f
 	(echo -E "$funcs"; declare -F) | sort | uniq -u | awk '{print $3}' | while read f;do
 		FUNC_SOURCE["$f"]="$to_load"
+		echo ${FUNC_SOURCE["$f"]}
 	done
 	dbv
 	for x in "${!FUNC_SOURCE[@]}"; do
