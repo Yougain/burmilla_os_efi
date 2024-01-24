@@ -50,6 +50,7 @@ function do_install(){
 		if [ "${to_inst:0:1}" = "/" ];then
 			from=$to_inst
 		else
+			dbv "${FUNC_SOURCE[@]}"
 			local s="${FUNC_SOURCE[$to_inst]}"
 			if [ -r "$s" ]; then
 				from="$s"
