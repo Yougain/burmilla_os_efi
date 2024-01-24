@@ -573,7 +573,7 @@ require(){
 	(echo -E "$funcs"; declare -F) | sort | uniq -u | awk '{print $3}' | while read f;do
 		FUNC_SOURCE["$f"]="$to_load"
 	done
-	for x in "${FUNC_SOURCE[@]}"; do
+	for x in "${!FUNC_SOURCE[@]}"; do
 		echo $x
 	done
 	if [ -n "$requireFunc" ];then
