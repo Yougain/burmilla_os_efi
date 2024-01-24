@@ -574,9 +574,9 @@ require(){
 		FUNC_SOURCE["$f"]="$to_load"
 		echo ${FUNC_SOURCE["$f"]}
 	done
-	dbv
+	dbv "${!FUNC_SOURCE[@]}"
 	for x in "${!FUNC_SOURCE[@]}"; do
-		echo $x
+		dbv "$x"
 	done
 	dbv
 	if [ -n "$requireFunc" ];then
