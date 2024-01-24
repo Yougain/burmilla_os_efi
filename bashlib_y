@@ -575,11 +575,6 @@ require(){
 		FUNC_SOURCE["$f"]="$to_load"
 		dbv "${!FUNC_SOURCE[@]}"
 	done
-	dbv "${!FUNC_SOURCE[@]}"
-	for x in "${!FUNC_SOURCE[@]}"; do
-		dbv "$x"
-	done
-	dbv
 	if [ -n "$requireFunc" ];then
 		if ! declare -F "${1#**/}" > /dev/null ;then
 			die "function '$1', not found in any files of (\$PATH)/$1."
