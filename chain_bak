@@ -366,6 +366,7 @@ chain_bak(){
 			if [ -n "$cyclicPreserved" ];then
 				_mv_it "$cyclicPreserved" "$theFirst"
 			else
+				dbv
 				_chain_bak_reverse "${argv[0]}"
 			fi
 		fi
