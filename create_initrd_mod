@@ -296,6 +296,7 @@ $libs"
 	if [ -z "$stand_alone" ];then
 		chain_bak -d ../$INITRD_FILE-mod.new /installing/boot_dev/$INITRD_FILE-mod
 	else
+		ls -la ../$INITRD_FILE-mod.new
 		chain_bak -d ../$INITRD_FILE-mod.new $tmpd/$INITRD_FILE-mod
 	fi
 	cd $tmpd
