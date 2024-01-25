@@ -379,7 +379,7 @@ rm_all(){
 		cat /proc/mounts|awk '{print $2}'| sed '1!G;h;$!d' |while read ln;do
 			dbv "${ln:0:$dlen}"
 			dbv "$d"
-			if [ "${ln:0:$dlen}" = "$d/" ];then
+			if [ "${ln:0:$dlen}" = "$d" ];then
 				if ! umount $ln;then
 					die "cannot unmount '$ln'"
 				fi
