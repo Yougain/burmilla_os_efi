@@ -18,7 +18,6 @@ function create_initrd_mod(){
 	}
 
 	local tmpd=`pwd`
-	ls -la $tmpd/$INITRD_FILE-mod
 
 	if [ -d $SCRIPT_TMP_DIR/initrd ];then
 		for i in `ls $SCRIPT_TMP_DIR/initrd`;do
@@ -69,6 +68,7 @@ function create_initrd_mod(){
 			fi
 		else
 			INITRD_FILE=`cd /installing/boot_dev;ls -d initrd-*|egrep -v '\-mod$'`
+			ls -la $tmpd/$INITRD_FILE-mod
 			local INITRD_FILE_COUNT=`echo "$INITRD_FILE" | wc | awk '{print $1}'`
 			if [ "$INITRD_FILE_COUNT" != "1" ];then
 			    die cannot detect initrd in iso image, or multiple initrd detected.
