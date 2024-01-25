@@ -223,8 +223,6 @@ chain_bak(){
 					fi
 				fi
 				dbv "$1"
-				ls -la "$1"
-				dbv
 				if [ -e "$1" ];then
 					dbv "$1"
 					if ! _chain_bak "$1"; then
