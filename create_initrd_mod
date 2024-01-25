@@ -18,6 +18,8 @@ function create_initrd_mod(){
 	}
 
 	local tmpd=`pwd`
+	ls -la $tmpd/$INITRD_FILE-mod
+
 	if [ -d $SCRIPT_TMP_DIR/initrd ];then
 		for i in `ls $SCRIPT_TMP_DIR/initrd`;do
 			umount $SCRIPT_TMP_DIR/$i
@@ -297,6 +299,7 @@ $libs"
 		chain_bak -d ../$INITRD_FILE-mod.new /installing/boot_dev/$INITRD_FILE-mod
 	else
 		ls -la ../$INITRD_FILE-mod.new
+		ls -la $tmpd/$INITRD_FILE-mod
 		chain_bak -d ../$INITRD_FILE-mod.new $tmpd/$INITRD_FILE-mod
 	fi
 	cd $tmpd
