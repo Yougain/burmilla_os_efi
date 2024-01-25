@@ -223,6 +223,11 @@ chain_bak(){
 					fi
 				fi
 				dbv
+				if [ -e "$1" ];then
+					if ! _chain_bak "$1"; then
+						return 1
+					fi
+				fi
 				if ! _mv_it $force "$f" "$1"; then
 					return 1
 				fi
