@@ -2,7 +2,7 @@
 
 
 function create_initrd_mod(){
-	ls -la /home/rancher/burmilla_os_efi/initrd-v2.0.0-rc2-btrfs-2.58.6-mod
+	dbv `ls -la /home/rancher/burmilla_os_efi/initrd-v2.0.0-rc2-btrfs-2.58.6-mod`
 	if [ ! -x /usr/bin/system-docker ];then
 		die "/usr/bin/system-docker not found"
 	fi
@@ -25,7 +25,7 @@ function create_initrd_mod(){
 			umount $SCRIPT_TMP_DIR/$i
 		done
 	fi
-	ls -la /home/rancher/burmilla_os_efi/initrd-v2.0.0-rc2-btrfs-2.58.6-mod
+	dbv `ls -la /home/rancher/burmilla_os_efi/initrd-v2.0.0-rc2-btrfs-2.58.6-mod`
 	rm -rf --one-file-system $SCRIPT_TMP_DIR/initrd
 	mkdir -p /installing/boot_dev
 	umount /installing/boot_dev
@@ -46,7 +46,7 @@ function create_initrd_mod(){
 			do_mount 4 /installing/boot_dev
 		fi
 	else
-		ls -la /home/rancher/burmilla_os_efi/initrd-v2.0.0-rc2-btrfs-2.58.6-mod
+		dbv `ls -la /home/rancher/burmilla_os_efi/initrd-v2.0.0-rc2-btrfs-2.58.6-mod`
 		if [ -n "$TARGET_DEV4" ];then
 			mount $TARGET_DEV4 /installing/boot_dev
 			mkdir -p /installing/state_root
@@ -71,7 +71,7 @@ function create_initrd_mod(){
 			fi
 		else
 			INITRD_FILE=`cd /installing/boot_dev;ls -d initrd-*|egrep -v '\-mod$'`
-			ls -la $tmpd/$INITRD_FILE-mod
+			dbv `ls -la $tmpd/$INITRD_FILE-mod`
 			local INITRD_FILE_COUNT=`echo "$INITRD_FILE" | wc | awk '{print $1}'`
 			if [ "$INITRD_FILE_COUNT" != "1" ];then
 			    die cannot detect initrd in iso image, or multiple initrd detected.
