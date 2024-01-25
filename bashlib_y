@@ -366,6 +366,7 @@ dbv(){
 
 
 rm_all(){
+	dbv $@
 	local d
 	local dlen
 	if [ -d $1 -a ! -L $1 ];then
@@ -376,6 +377,8 @@ rm_all(){
 		dlen=${#d}
 		dlen=$((dlen + 1))
 		cat /proc/mounts|awk '{print $2}'| sed '1!G;h;$!d' |while read ln;do
+			dbv "${ln:0:$dlen}"
+			dbv "$d"
 			if [ "${ln:0:$dlen}" = "$d/" ];then
 				if ! umount $ln;then
 					die "cannot unmount '$ln'"
