@@ -224,6 +224,7 @@ chain_bak(){
 				fi
 				dbv
 				if [ -e "$1" ];then
+					dbv "$1"
 					if ! _chain_bak "$1"; then
 						return 1
 					fi
