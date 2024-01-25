@@ -222,6 +222,7 @@ chain_bak(){
 						fi
 					fi
 				fi
+				dbv
 				if ! _mv_it $force "$f" "$1"; then
 					return 1
 				fi
