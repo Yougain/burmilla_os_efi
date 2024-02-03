@@ -106,7 +106,7 @@ initialize_support_lib(){
 			echo -e "$error"cannot create script var dir$normal
 			exit 1
 		fi
-		if [ -n "$SUDO_USER" ];then
+		if [ -n "$SUDO_USER" -a -e "/etc/passwd" ];then
 			chown -R "$SUDO_USER" $SCRIPT_TMP_DIR
 			chown -R "$SUDO_USER" $SCRIPT_VAR_DIR
 		fi
@@ -117,7 +117,7 @@ initialize_support_lib(){
 		rm -f $lnk
 		if [ -n "$DEBUG" ];then
 			ln -s $SCRIPT_TMP_DIR $lnk
-			if [ -n "$SUDO_USER" ];then
+			if [ -n "$SUDO_USER" -a -e "/etc/passwd" ];then
 				chown "$SUDO_USER" $lnk
 			fi
 		fi

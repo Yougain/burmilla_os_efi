@@ -292,7 +292,7 @@ $libs"
 			do_install $f $d
 		done
 	done
-	
+	chown root:root usr/bin/busybox
 	find | cpio -o -H newc  | gzip -c > ../$INITRD_FILE-mod.new
 	if [ -z "$stand_alone" ];then
 		chain_bak -d ../$INITRD_FILE-mod.new /installing/boot_dev/$INITRD_FILE-mod
