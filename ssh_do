@@ -167,14 +167,16 @@ function ssh_do(){
 		chown $SUDO_USER:$SUDO_USER $SCRIPT_TMP_DIR/$SSH_ID
 	fi
 	local CMD=($SSH_CMD $SSH_PORT_OPT "${SSH_OPTS[@]}" $SSH_HOST $sudoing)
-	deb "${CMD[@]}"
+	dbv "${CMD[@]} $@"
 	if [ "$#" = "0" ];then
-		SSH_PARAM_LIST["$SSH_HOST $SSH_PORT_OPT"]=($SSH_PORT_OPT "${SSH_PORT_OPT[@]}" $SSH_HOST)
-		local set_env_lines="set | awk '!/^(SSH_PARAM_LIST|SUDO_USER|BASH_ARGV|BASH_ARGC|BASH_LINENO|BASH_SOURCE|GROUPS|FUNCNAME|BASHOPTS|BASH_VERSINFO|EUID|PPID|SHELLOPTS|UID)=/ {print \$0}'"
+		SSH_PARAM_LIST["$SSH_HOST $SSH_PORT_OPT"]="$SSH_PORT_OPT ""${SSH_PORT_OPT[@]}"" $SSH_HOST"
+		local set_env_lines="(declare -p|egrep -o '^declare -A [^=]*';set) | awk '!/^(SSH_PARAM_LIST|SUDO_USER|BASH_ARGV|BASH_ARGC|BASH_LINENO|BASH_SOURCE|GROUPS|FUNCNAME|BASHOPTS|BASH_VERSINFO|EUID|PPID|SHELLOPTS|UID)=/ {print \$0}'"
 		local SET_ENV_LINES="`eval $set_env_lines`"
 		local trans_started
+		dbv $SCRIPT_TMP_DIR
 		# preserve host environment
 		(
+			dbv $SCRIPT_TMP_DIR
 			local ln
 			write_env_file << '			__INNER'
 				#!/bin/bash
@@ -231,7 +233,7 @@ function ssh_do(){
 				__DO_CONTENT
 				source $SCRIPT_TMP_DIR/$SSH_ID/do_content
 			__INNER
-		) | "${CMD[@]}" "$@" | while read -j ln; do
+		) | "${CMD[@]}" "$@" | while read -r ln; do
 			if [ -z "$trans_started"]; then
 				if [ "$ln" = "__TRANS_ENV_$SCRIPT_ID$SSH_ID" ];then
 					trans_started=1
@@ -244,9 +246,9 @@ function ssh_do(){
 		done
 		local res=$?
 		if [ -n "$DEBUG" ];then
-			deb "transfer env ----"
+			dbv "transfer env ----"
 			cat $SCRIPT_TMP_DIR/$SSH_ID/remote_env.diff >&2
-			deb "-----------------"
+			dbv "-----------------"
 		fi
 		. $SCRIPT_TMP_DIR/$SSH_ID/remote_env.diff
 		return $res

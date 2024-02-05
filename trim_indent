@@ -141,7 +141,7 @@ function write_env_file(){
 			echo -n '|'$ln
 		fi
 	done;`
-	deb "$envreg"
+	dbv "$envreg"
 	local c=$(
 		echo -n "'"
 #		trim_indent | sed 's/'"'"'/'"'"'"'"'"'"'"'"'/g' | sed -r 's/(^|[^\\])\$('$envreg')([^A-Za-z0-9_]|$)/\1'"'"'"$\2"'"'"'\3/g'

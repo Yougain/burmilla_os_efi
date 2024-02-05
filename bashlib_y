@@ -1,5 +1,21 @@
 #!/bin/bash
 
+function env_var(){
+	local ln
+	local tmp
+	declare -p |egrep '^declare -[A-Za-z-]* [A-Za-z_][A-Za-z0-9_]*'| while read ln; do
+		ln=${ln#declare -* }
+		ln=${ln%%=*}
+		tmp="`declare -p $ln 2>/dev/null`"
+		if [ "$?" = "0" ];then
+			echo $ln
+		fi
+	done|sort|uniq
+}
+
+
+__ORG_EVAR__="`env_var`"
+
 
 error="\033[41m\033[33mERROR    :\033[m \033[31m"
 warning="\033[43m\033[31mWARNING:\033[m \033[33m"
@@ -91,9 +107,11 @@ function split(){
 
 
 initialize_support_lib(){
-
-	if [ -z "$SCRIPT_TMP_DIR" ];then
+	if [ -z "$SSH_PARAM_LIST" ];then
 		declare -A SSH_PARAM_LIST
+		if [ -n "$DEBUG" ];then
+			declare -p SSH_PARAM_LIST
+		fi
 		local f="`__FILE_NAME__`"
 		mkdir -p --mode=0777 /tmp/$f
 		SCRIPT_TMP_DIR=/tmp/$f/${0##*/}/`date +"%y-%m-%d_%H:%M:%S.%N%z"`-$$
@@ -116,12 +134,15 @@ initialize_support_lib(){
 		fi
 		rm -f $lnk
 		if [ -n "$DEBUG" ];then
-			ln -s $SCRIPT_TMP_DIR $lnk
+			ln -sf $SCRIPT_TMP_DIR $lnk
 			if [ -n "$SUDO_USER" -a -e "/etc/passwd" ];then
 				chown "$SUDO_USER" $lnk
 			fi
 		fi
 		SCRIPT_ID=$RANDOM$RANDOM$RANDOM
+		if [ -n "$DEBUG" ];then
+			declare -p SCRIPT_ID
+		fi
 		SUPPORT_LIB_CONTENT="`cat $(__FILE__)`"
 		SUPPORT_LIB_MTIME="`stat $(__FILE__) -c %Y`"
 		SUPPORT_LIB_NAME=$f
@@ -134,8 +155,16 @@ initialize_support_lib(){
 }
 
 if initialize_support_lib; then
-
-
+	if [ -n "$DEBUG" ];then
+		echo "initializing support lib ..."
+		declare -p SCRIPT_ID
+	fi
+	if ! declare -p SSH_PARAM_LIST 2>/dev/null; then
+		declare -A SSH_PARAM_LIST
+		if [ -n "$DEBUG" ];then
+			declare -p SSH_PARAM_LIST
+		fi
+	fi
 _black="0"
 _red="1"
 _green="2"
@@ -270,13 +299,13 @@ declare -A SCRIPT_FILES
 
 
 emerge_file_content(){
-	local f="$1"
+	local f="`readlink -f $1`"
 	local sid
 	if [ -e "$f" ];then
 		if [ -z "${SCRIPT_FILES[$f]}" ];then
 			sid=SCRIPT_FILE_$RANDOM$RANDOM$RANDOM
 			dbv $sid
-			SCRIPT_FILES[$f]=$sid
+			SCRIPT_FILES["$f"]=$sid
 			local ln
 			eval "
 				$sid=()
@@ -339,14 +368,14 @@ for_sudo_user(){
 dbv(){
 	if [ -n "$DEBUG" ];then
 		local frame=(`caller 0`)
-		local f="${frame[2]}"
+		local f="`readlink -f "${frame[2]}"`"
 		local lno="${frame[0]}"
 		local ln
 		local sid
 		if [ -e "$f" ];then
 			if [ -z "${SCRIPT_FILES[$f]}" ];then
 				sid=SCRIPT_FILE_$RANDOM$RANDOM$RANDOM
-				SCRIPT_FILES[$f]=$sid
+				SCRIPT_FILES["$f"]=$sid
 				eval "
 					$sid=()
 					while read ln;do
@@ -354,7 +383,7 @@ dbv(){
 					done < $f
 				"
 			else
-				sid=${SCRIPT_FILES[$f]}
+				sid=${SCRIPT_FILES["$f"]}
 			fi
 			ln="`eval 'echo -E ${'"$sid"'['"$((lno - 1))"']}'`"
 			deb ${f##*/}:$lno "'$yellow"${ln#*dbv }"$green'" = "'$cyan""$@""$green'"
@@ -637,27 +666,17 @@ function ask_yes_no {
 }
 
 
-function env_var(){
-	local ln
-	declare -p |egrep '^declare -[A-Za-z-]* [A-Za-z_][A-Za-z0-9_]*'| while read ln; do
-		ln=${ln#declare -* }
-		ln=${ln%%=*}
-		tmp="`declare -p $ln 2>/dev/null`"
-		if [ "$?" = "0" ];then
-			echo $ln
-		fi
-	done|sort|uniq
-}
-
-
-__ORG_EVAR__="`env_var`"
-
-
+else
+	if [ -n "$DEBUG" ];then
+		echo "support lib already initialized ..."
+		declare -p SSH_PARAM_LIST
+	fi
 
 
 fi
 
-
+dbv ${BASH_SOURCE[@]}
+dbv `declare -p SSH_PARAM_LIST`
 
 if [ "`readlink -f ${BASH_SOURCE[$((${#BASH_SOURCE[@]} - 1))]}`" = "$(__FILE_PATH__)" ];then
 	if [ "$(__FILE_NAME__)" = "$(__CMD_NAME__)" ];then

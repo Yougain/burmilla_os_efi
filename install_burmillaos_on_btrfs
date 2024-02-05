@@ -6,6 +6,7 @@ source $(dirname "$(realpath -s "$0")")/bashlib_y
 PATH=./:$PATH require create_initrd_mod
 PATH=./:$PATH require blkid2
 PATH=./:$PATH require do_mount
+PATH=./:$PATH require ssh_do
 
 
 # argument analysis
@@ -115,6 +116,7 @@ if [ -z "$INST_IP" ]; then
 		if [ -n "$CTMP" ];then
 			INST_IP=${CTMP//:*}
 			INSTALLED_PORT=${CTMP##*:}
+			dbv ssh $INST_IP -p $INSTALLED_PORT -l rancher -o ConnectTimeout=3 -o ConnectionAttempts=3 echo -n
 			if ssh $INST_IP -p $INSTALLED_PORT -l rancher -o ConnectTimeout=3 -o ConnectionAttempts=3 echo -n; then
 				whiteBgRed_n "Server "
 				cyanBgRed_n "'$CMD_HNAME'"
@@ -223,6 +225,7 @@ fi
 
 # get network parameters from target server booted by installer
 NET_DEV=`ssh_do ip route show|grep default|awk '{print $5}'|head -1`
+dbv $NET_DEV
 if [ -z "$NET_DEV" ]; then
 	die Cannot find net device for default route.
 fi
@@ -653,7 +656,7 @@ if ! ssh_do sudo apt-get -qq -y install fdisk util-linux; then
 	die cannot install fdisk, util-linux
 fi
 
-deb first apt-get checked.
+dbv first apt-get checked.
 
 
 function install_vim(){
