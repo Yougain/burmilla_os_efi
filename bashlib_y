@@ -571,45 +571,66 @@ declare -A FUNC_SOURCE
 
 require(){
 	local requireFunc
+	local requireSource
 	local PATH="./:$PATH"
-	if [ "$1" = "-f" ];then
-		requireFunc=1
-		shift
-		if declare -F "${1#**/}" > /dev/null ;then
-			return 0
-		fi
-	fi
 	local to_load
-	if [ "${1:0:1}" != "/" ];then
-		local parr
-		split parr "$PATH" :
-		local p
-		if detect_if parr p '[ -e "$p/'$1'" ]';then
-			to_load="$p/$1"
-		else
-			die "'$1' not found in PATH"
-		fi
-	else
-		to_load="$1"
-	fi
-	to_load="$(readlink -f "$to_load")"
-	if detect SOURCES_LOADED "$to_load";then
-		return 0
-	fi
-	SOURCES_LOADED+="$to_load"
-	local funcs="$(declare -F)"
-	if ! source "$to_load";then
-		die "require '$1', failed"
-	fi
-	local f
-	for f in `(echo -E "$funcs"; declare -F) | sort | uniq -u | awk '{print $3}'`; do
-		FUNC_SOURCE["$f"]="$to_load"
+	while (( "$#" )); do
+		case "$1" in
+			"-f")
+				requireFunc=1
+				;;
+			"-s")
+				requireSource=1
+				;;
+			*)
+				if [ -n "$requireFunc" ];then
+					if declare -F "${1#**/}" > /dev/null ;then
+						return 0
+					fi
+				fi
+				if [ "${1:0:1}" != "/" ];then
+					local parr
+					split parr "$PATH" :
+					local p
+					if detect_if parr p '[ -e "$p/'$1'" ]';then
+						to_load="$p/$1"
+					else
+						dbv $1
+						dbv ${SOURCES_LOADED[@]}
+						if ! detect_if SOURCES_LOADED s '[ "${s##*/}" = '$1' ]';then
+							die "'$1' not found in PATH"
+						else
+							return 0
+						fi
+					fi
+				else
+					to_load="$1"
+				fi
+				to_load="$(readlink -f "$to_load")"
+				if [ -n "$requireSource" ];then
+					emerge_file_content "$to_load"
+				fi
+				if detect SOURCES_LOADED "$to_load";then
+					return 0
+				fi
+				SOURCES_LOADED+=("$to_load")
+				local funcs="$(declare -F)"
+				if ! source "$to_load";then
+					die "require '$1', failed"
+				fi
+				local f
+				for f in `(echo -E "$funcs"; declare -F) | sort | uniq -u | awk '{print $3}'`; do
+					FUNC_SOURCE["$f"]="$to_load"
+				done
+				if [ -n "$requireFunc" ];then
+					if ! declare -F "${1#**/}" > /dev/null ;then
+						die "function '$1', not found in any files of (\$PATH)/$1."
+					fi
+				fi
+				;;
+		esac
+		shift
 	done
-	if [ -n "$requireFunc" ];then
-		if ! declare -F "${1#**/}" > /dev/null ;then
-			die "function '$1', not found in any files of (\$PATH)/$1."
-		fi
-	fi
 }
 
 

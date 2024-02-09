@@ -2,6 +2,11 @@
 
 
 function create_initrd_mod(){
+	local PATH="$tmpd:$PATH"
+	require initrd_support
+	require do_install
+	require chain_bak
+
 	if [ ! -x /usr/bin/system-docker ];then
 		die "/usr/bin/system-docker not found"
 	fi
@@ -271,18 +276,13 @@ $libs"
 		diff
 	END
 	
-	local PATH="$tmpd:$PATH"
-	require initrd_support
-	require do_install
-	require chain_bak
-	
 	for d in . $for_state; do
 		system-docker cp udev:/lib/udev $d/lib
 #		ln -sf /dev/null $d/lib/udev/rules.d/75-net-description.rules
 #		ln -sf /dev/null $d/lib/udev/rules.d/80-net-name-slot.rules
 		local f
-		for f in $tmpd/blkid2                      \
-				$tmpd/do_mount                     \
+		for f in blkid2                      \
+				do_mount                     \
 				after_save_cmd_line                \
 				__paste_init_log_at_exit_magic_num \
 				before_sysinit                     \

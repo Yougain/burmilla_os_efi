@@ -4,7 +4,7 @@
 source $(dirname "$(realpath -s "$0")")/bashlib_y
 
 require create_initrd_mod
-
+require ssh_do
 
 KEY=`cat ~/.ssh/id_ed25519.pub 2>/dev/null`
 if [ -z "$KEY" ];then

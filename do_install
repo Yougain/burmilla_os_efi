@@ -14,7 +14,7 @@ function do_install(){
 	fi
 	function _do_install_each(){
 		local d="$1"
-		if [ ! -d "$d" ];then
+		if [ -n "$d" -a ! -d "$d" ];then
 			if [ -e "$d" ];then
 				die "'$d' is not a directory."
 			else
@@ -22,6 +22,9 @@ function do_install(){
 					die "cannot create directory, '$d'"
 				fi
 			fi
+		fi
+		if [ "$d" = "/" ];then
+			d=""
 		fi
 		#echo "[ ! -e $d/$SUPPORT_LIB_NAME -o `stat $d/$SUPPORT_LIB_NAME -c %Y` -lt $SUPPORT_LIB_MTIME ]"
 		local do
@@ -33,6 +36,8 @@ function do_install(){
 				do=1
 			fi
 		fi
+		dbv $d
+		dbv "${!SCRIPT_FILES[@]}"
 		if [ -n "$do" ];then
 			if ! $sudo mkdir -p $d/usr/share/$SUPPORT_LIB_NAME;then
 				die "cannot create directory, $d/usr/share/$SUPPORT_LIB_NAME"
@@ -46,27 +51,60 @@ function do_install(){
 			dbv ln -sf ../../$sLib $d/usr/bin/$SUPPORT_LIB_NAME
 			$sudo ln -sf ../../$sLib $d/usr/bin/$SUPPORT_LIB_NAME
 		fi
+		dbv `ls -la $sLib`
+		dbv `ls -la $d/usr/bin/bashlib_y`
 		local from
 		if [ "${to_inst:0:1}" = "/" ];then
 			from=$to_inst
+			dbv $from
 		else
-			dbv "${FUNC_SOURCE[@]}"
+			dbv "${!FUNC_SOURCE[@]}"
 			local s="${FUNC_SOURCE[$to_inst]}"
 			if [ -r "$s" ]; then
 				from="$s"
+				dbv $from
 			else
 				if [ ! -e "./$to_inst" ];then
 					if [ ! -e "`__FILE_DIR__`/$to_inst" ];then
 						if [ ! -e "/usr/share/$SUPPORT_LIB_NAME/$to_inst" ];then
-							die "'$to_inst' is found neither in current directory nor in directory, '/usr/share/$SUPPORT_LIB_NAME', nor in directory, '`__FILE_DIR__`'"
+							local f
+							while true; do
+								for f in ${!SCRIPT_FILES[@]};do
+									if [ "${f##*/}" = "$to_inst" ];then
+										local sid="${SCRIPT_FILES["$f"]}"
+										eval "echo -E \"${sid[@]}\"" | $sudo tee "$d/usr/share/$SUPPORT_LIB_NAME/$to_inst" > /dev/null
+										$sudo ln -sf "../../usr/share/$SUPPORT_LIB_NAME/$SUPPORT_LIB_NAME" "$d/usr/bin/${to_inst##*/}"
+										return 0
+									fi
+								done
+								for fn in ${!FUNC_SOURCE[@]}; do
+									if [ "$fn" = "$to_inst" ];then
+										from=${FUNC_SOURCE[$to_inst]}
+										dbv $from
+										break
+									fi
+								done
+								if [ ! -e "$from" ];then
+									to_inst=${from##*/}
+									dbv $to_inst
+									continue
+								fi
+								break
+							done
+							if [ -z "$from" ];then
+								die "'$to_inst' is found neither in current directory nor in directory, '/usr/share/$SUPPORT_LIB_NAME', nor in directory, '`__FILE_DIR__`'"
+							fi
 						else
 							from="/usr/share/$SUPPORT_LIB_NAME/$to_inst"
+							dbv $from
 						fi
 					else
 						from="`__FILE_DIR__`/$to_inst"
+						dbv $from
 					fi
 				else
 					from="./$to_inst"
+					dbv $from
 				fi
 			fi
 		fi
@@ -76,19 +114,21 @@ function do_install(){
 			do=1
 		else
 			if [ "`readlink -f "$from"`" = "`readlink -f "$sCmd"`" ];then
-				die "'$from' and '$sCmd' is a same file."
+				deb "'$from' and '$sCmd' is a same file."
+				return 1
 			fi
 			if [ "`stat "$from" -c %Y`" -lt "`stat "$sCmd" -c %Y`" ];then
 				do=1
 			fi
 		fi
 		if [ -n "$do" ];then
+			dbv $from
 			$sudo cp -av "$from" "$sCmd"
 			$sudo ln -sf "../../usr/share/$SUPPORT_LIB_NAME/$SUPPORT_LIB_NAME" "$d/usr/bin/${to_inst##*/}"
 		fi
 	}
 	if [ ${#@} = 0 ];then
-		_do_install_each /usr/bin
+		_do_install_each /
 	else
 		for d in "$@"; do
 			_do_install_each "$d"

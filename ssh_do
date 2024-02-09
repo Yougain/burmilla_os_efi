@@ -169,6 +169,9 @@ function ssh_do(){
 	local CMD=($SSH_CMD $SSH_PORT_OPT "${SSH_OPTS[@]}" $SSH_HOST $sudoing)
 	dbv "${CMD[@]} $@"
 	if [ "$#" = "0" ];then
+		if [ -n "$sudoing" ];then
+			CMD+=(bash)
+		fi
 		SSH_PARAM_LIST["$SSH_HOST $SSH_PORT_OPT"]="$SSH_PORT_OPT ""${SSH_PORT_OPT[@]}"" $SSH_HOST"
 		local set_env_lines="(declare -p|egrep -o '^declare -A [^=]*';set) | awk '!/^(SSH_PARAM_LIST|SUDO_USER|BASH_ARGV|BASH_ARGC|BASH_LINENO|BASH_SOURCE|GROUPS|FUNCNAME|BASHOPTS|BASH_VERSINFO|EUID|PPID|SHELLOPTS|UID)=/ {print \$0}'"
 		local SET_ENV_LINES="`eval $set_env_lines`"
@@ -217,7 +220,7 @@ function ssh_do(){
 				function transfer_new_env$SCRIPT_ID(){
 					echo
 					set_diff_end
-					cat $SCRIPT_TMP_DIR/$SSH_ID/env.diff
+					#cat $SCRIPT_TMP_DIR/$SSH_ID/env.diff
 					$set_env_lines > $SCRIPT_TMP_DIR/$SSH_ID/env.cont
 					unset -f transfer_new_env$SCRIPT_ID
 				}
@@ -228,20 +231,23 @@ function ssh_do(){
 				trap int_exit INT HUP
 				cat <<'__DO_CONTENT' > $SCRIPT_TMP_DIR/$SSH_ID/do_content
 			__INNER
+			if [ -n "$DEBUG" ];then
+				echo DEBUG=\"$DEBUG\"
+			fi
 			trim_indent
 			write_env_file << '			__INNER'
 				__DO_CONTENT
 				source $SCRIPT_TMP_DIR/$SSH_ID/do_content
 			__INNER
 		) | "${CMD[@]}" "$@" | while read -r ln; do
-			if [ -z "$trans_started"]; then
+			if [ -z "$trans_started" ]; then
 				if [ "$ln" = "__TRANS_ENV_$SCRIPT_ID$SSH_ID" ];then
 					trans_started=1
 				else
-					echo -j $ln
+					echo -E $ln
 				fi
 			else
-				echo -j $ln >> $SCRIPT_TMP_DIR/$SSH_ID/remote_env.diff
+				echo -E $ln >> $SCRIPT_TMP_DIR/$SSH_ID/remote_env.diff
 			fi
 		done
 		local res=$?
@@ -251,6 +257,7 @@ function ssh_do(){
 			dbv "-----------------"
 		fi
 		. $SCRIPT_TMP_DIR/$SSH_ID/remote_env.diff
+		dbv $INITRD_FILE
 		return $res
 	else
 		#info "$SSH_PORT_OPT $SSH_OPTS $SSH_HOST $sudoing $@"
@@ -269,6 +276,7 @@ function ssh_i(){
 
 function ssh_sudo(){
 	ssh_do sudo $@
+	dbv $INITRD_FILE
 }
 
 
@@ -335,6 +343,11 @@ function set_diff_begin(){
 	echo "#/bin/bash" >> $get_diff
 	chmod +x $get_diff
 	_set_diff_save __SET_DIFF_BEGIN_PRESERVE_ $get_diff
+	#if [ -n "$DEBUG" ];then
+	#	dbv start $get_diff
+	#	cat -n $get_diff >&2
+	#	dbv end $get_diff
+	#fi
 }
 
 
@@ -344,7 +357,8 @@ function set_diff_end(){
 	local out
 	echo -E '
 		echo -n
-		echo __TRANS_ENV_$SCRIPT_ID$SSH_ID
+		echo __TRANS_ENV_'$SCRIPT_ID$SSH_ID'
+		echo
 		(echo -E "$__SET_DIFF_BEGIN_PRESERVE_VNAMES";
 		 echo -E "$__SET_DIFF_END_PRESERVE_VNAMES") | sort | uniq -u | while read vn; do
 			if [ -n "$vn" ];then
@@ -355,25 +369,40 @@ function set_diff_end(){
 			fi
 		done
 		for vn in $__SET_DIFF_END_PRESERVE_VNAMES; do
-			if declare -p __SET_DIFF_END_PRESERVE_EACH_$vn > /dev/null 2>&1; then
+			dec="`declare -p __SET_DIFF_END_PRESERVE_EACH_$vn 2>/dev/null`"
+			if [ -n "$dec" ]; then
 				[ "$vn" = EPOCHREALTIME ] && continue
 				[ "$vn" = EPOCHSECONDS ] && continue
 				[ "$vn" = SRANDOM ] && continue
 				vname_end=__SET_DIFF_END_PRESERVE_EACH_$vn
+				vname_end_dec="`declare -p $vname_end`"
+				vname_end_content=${vname_end_dec#declare -* __SET_DIFF_END_PRESERVE_EACH_}
+				vname_end_head=${vname_end_dec:0:$((${#vname_end_dec} - ${#vname_end_content} - 30))}
+				if [ "${vname_end_head:$((${#vname_end_head} - 2)):2}" = "--" ];then
+					vname_end_head="declare -g"
+				else
+					vname_end_head="$vname_end_head"g
+				fi
 				vname_begin=__SET_DIFF_BEGIN_PRESERVE_EACH_$vn
-				if [ "`eval \"echo $\"\"$vname_begin\"`" != "`eval \"echo $\"\"$vname_end\"`" ];then
-					ln="`declare -p $vname_end`"
-					ln=${ln#declare -* }
-					if [[ ${ln} =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]];then
-						content="''"
-					else
-						content="${ln#*=}"
-					fi
-					echo -E "$vn=$content"
+				vname_begin_dec="`declare -p $vname_begin 2>/dev/null`"
+				vname_begin_content=${vname_begin_dec#declare -* __SET_DIFF_BEGIN_PRESERVE_EACH_}
+				if [ "$vname_end_content" != "$vname_begin_content" ];then
+					#if [ -n "$DEBUG" ];then
+						#echo -E "$vname_end_dec" >&2
+					#fi
+					echo -E "$vname_end_head $vname_end_content"
+				#else
+					#if [ -n "$DEBUG" ];then
+						#echo "$vname_end_dec" >&2
+						#echo "$vname_begin_dec" >&2
+					#fi
 				fi
 			fi
 		done
 ' >>  $get_diff
+	#if [ -n "$DEBUG" ];then
+	#	cat -n $get_diff >&2
+	#fi
 	bash -c $get_diff
 }
 
@@ -383,17 +412,20 @@ function _set_diff_save(){
 	env_defined | while read ln; do
 		local content
 		local vname
+		local dec
+		local dag
 		ln="`declare -p $ln`"
-		ln=${ln#declare -* }
-		if [[ ${ln} =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]];then
+		dag=${ln#declare -* }
+		dec=${ln:0:$((${#ln} - ${#dag}))}
+		if [[ ${dag} =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]];then
 			content="''"
-			vname=${ln}
+			vname=${dag}
 		else
-			content="${ln#*=}"
-			vname=${ln%%=*}
+			content="${dag#*=}"
+			vname=${dag%%=*}
 		fi
 		if [ -n "$vname" ];then
-			echo -E "$1EACH_$vname=$content" >> $2
+			echo -E "$dec$1EACH_$vname=$content" >> $2
 		fi
 	done
 }

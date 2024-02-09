@@ -9,7 +9,7 @@ function transfer_env_for_grub(){
 
 
 function write_grub_script(){
-	(set_env ; trim_indent) > $1
+	(set_env 1024; trim_indent) > $1
 }
 
 
@@ -40,13 +40,26 @@ function write_script(){
 
 function set_env(){
 	local ln
+	local do
 	env_defined | while read ln; do
+		dbv $ln
 		ln="`declare -p $ln`"
+		dbv $ln
 		ln=${ln#declare -* }
-		if [[ ${ln} =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]];then
-			echo "$ln=''"
+		dbv $ln
+		if [ -z "$1" ];then
+			do=1
 		else
-			echo "$ln"
+			if [ "${#ln}" -le "$1" ];then
+				do=1
+			fi
+		fi
+		if [ -n "$do" ];then
+			if [[ ${ln} =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]];then
+				echo "$ln=''"
+			else
+				echo "$ln"
+			fi
 		fi
 	done
 }

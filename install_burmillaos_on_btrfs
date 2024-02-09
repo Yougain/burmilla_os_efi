@@ -3,11 +3,8 @@
 
 source $(dirname "$(realpath -s "$0")")/bashlib_y
 
-PATH=./:$PATH require create_initrd_mod
-PATH=./:$PATH require blkid2
-PATH=./:$PATH require do_mount
-PATH=./:$PATH require ssh_do
-
+require create_initrd_mod ssh_do write_script
+require -s blkid2 do_mount initrd_support do_install chain_bak partNum2Dev
 
 # argument analysis
 while (( "$#" )); do
@@ -903,6 +900,9 @@ ssh_sudo <<'FINAL'
 	fi
 	# install btrfs mount tool for best mounting for maybe degraded drive.
 	do_install do_mount
+	dbv `ls -la /usr/bin/bashlib_y`
+	dbv `ls -la /usr/bin/do_mount`
+	dbv `ls -la /usr/share/bashlib_y`
 	# initialize oem drive if it does not exists, or remain contact
 	if [ ! -e /dev/disk/by-label/RANCHER_OEM_SIBLING -o -n "$INITIALIZE_OEM" ]; then
 		mkfs.btrfs -L RANCHER_OEM_SIBLING -f $TARGET_DEV7
@@ -1253,6 +1253,9 @@ ssh_sudo <<'FINAL'
 	cp /installing/efipart/.grubenv_empty /installing/efipart/.installing_3rd_phase
 FINAL
 
+dbv $INITRD_FILE
+
+
 if [ "$?" = "1" ];then
 	exit 1
 fi
@@ -1317,8 +1320,8 @@ if [ "$TARGET_DEV" = "$TARGET_DEV_S" ]; then
 		umount /efipart
 		rmdir /efipart
 		rm /var/lib/rancher/conf/cloud-config.d/user_config.yml
-		do_install do_mount /usr/bin
-		do_install blkid2 /usr/bin
+		do_install do_mount
+		do_install blkid2
 		green Switch to boot by installer
 		reboot
 	END
@@ -1354,7 +1357,7 @@ ssh_sudo <<'FINAL'
 	#!/bin/bash
 
  	create_initrd_mod
- 	
+
 	# patching os-config file
 	if [ ! -x /usr/bin/yq ]; then
 		if [ -n "`uname -a|grep armv7`" ]; then
@@ -1656,8 +1659,10 @@ ssh_sudo <<'FINAL'
 
 	# preserve user setting for grub
 	mkdir -p /installing/oem_part/opt/rancher/conf/grub
-	if [ "$USER_SETTINGS_FOR_GRUB_SOURCE" != "`cat /installing/oem_part/opt/rancher/conf/grub/grub_env_for_installer`" ]; then
-		chain_bak /installing/oem_part/opt/rancher/conf/grub/grub_env_for_installer
+	if [ "$USER_SETTINGS_FOR_GRUB_SOURCE" != "`cat /installing/oem_part/opt/rancher/conf/grub/grub_env_for_installer 2> /dev/null`" ]; then
+		if [ -e /installing/oem_part/opt/rancher/conf/grub/grub_env_for_installer ];then
+			chain_bak /installing/oem_part/opt/rancher/conf/grub/grub_env_for_installer
+		fi
 		echo -n "$USER_SETTINGS_FOR_GRUB_SOURCE" > /installing/oem_part/opt/rancher/conf/grub/grub_env_for_installer
 		chmod +x /installing/oem_part/opt/rancher/conf/grub/grub_env_for_installer
 	fi
