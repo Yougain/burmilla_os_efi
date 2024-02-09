@@ -40,25 +40,15 @@ function write_script(){
 
 function set_env(){
 	local ln
-	local do
 	env_defined | while read ln; do
-		dbv $ln
 		ln="`declare -p $ln`"
-		dbv $ln
 		ln=${ln#declare -* }
-		dbv $ln
-		if [ -z "$1" ];then
-			do=1
-		else
-			if [ "${#ln}" -le "$1" ];then
-				do=1
-			fi
-		fi
-		if [ -n "$do" ];then
+		if [ -z "$1" -o ${#ln} -le "$1" ];then
 			if [[ ${ln} =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]];then
 				echo "$ln=''"
 			else
 				echo "$ln"
+				dbv $ln
 			fi
 		fi
 	done

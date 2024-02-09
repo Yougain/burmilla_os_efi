@@ -257,11 +257,11 @@ $libs"
 		strace
 		killall
 		readlink
+		realpath
 		awk
 		sed
 		blkid
 		udevd
-		rm
 		ln
 		cat
 		stat
@@ -275,6 +275,8 @@ $libs"
 		mknod
 		diff
 	END
+	cp -av /bin/rm ./usr/bin
+	cp -av /bin/rm $for_state/usr/bin
 	
 	for d in . $for_state; do
 		system-docker cp udev:/lib/udev $d/lib
