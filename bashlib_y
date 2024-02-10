@@ -27,7 +27,7 @@ normal="\033[m"
 
 __FILE__() {
 	local f="`readlink -f "${BASH_SOURCE[1]}"`"
-	if [[ "${f##*/}" =~ [^\./A-Za-z0-9_] ]]; then
+	if [[ "${f##*/}" =~ [^\-\./A-Za-z0-9_] ]]; then
 		echo -e "$error"Cannot use path name, $f"$normal". >&2
 		echo -e "$info"Alphabitical/numeric characters and '/', '.', '⧵' are usable for path name when using bashlib_y"$normal" >&2
 		return
@@ -54,9 +54,9 @@ __FILE_DIR__(){
 
 __SOURCE_PATH__(){ # path of link if symbolic linked to __FILE__
 	local f="`realpath "${BASH_SOURCE[1]}"`"
-	if [[ "$f" =~ [^\./A-Za-z0-9_] ]]; then
-		echo -e "$error"Cannot use path name, '$f'"$normal". >&2
-		echo -e "$info"bitical/numeric characters and '/', '.', '⧵' are usable for path name when using bashlib_y"$normal" >&2
+	if [[ "$f" =~ [^\-\./A-Za-z0-9_] ]]; then
+		echo -e "$error"Cannot use path name, $f"$normal". >&2
+		echo -e "$info"Alphabitical/numeric characters and '/', '.', '⧵' are usable for path name when using bashlib_y"$normal" >&2
 		return
 	fi
 	echo "$f"
@@ -80,7 +80,7 @@ case $(__SOURCE_NAME__) in
 		return
 		;;
 	*)
-		echo -e "$error"Cannot use source name, '$(__SOURCE_NAME__)'. Exiting.$normal >&2
+		echo -e "$error"Cannot use source name, "'"$(__SOURCE_NAME__)"'". Exiting.$normal >&2
 		return
 esac
 

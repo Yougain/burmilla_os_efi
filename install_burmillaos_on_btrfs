@@ -900,6 +900,7 @@ ssh_sudo <<'FINAL'
 	fi
 	# install btrfs mount tool for best mounting for maybe degraded drive.
 	do_install do_mount
+	do_install partNum2Dev
 	dbv `ls -la /usr/bin/bashlib_y`
 	dbv `ls -la /usr/bin/do_mount`
 	dbv `ls -la /usr/share/bashlib_y`
@@ -1322,6 +1323,8 @@ if [ "$TARGET_DEV" = "$TARGET_DEV_S" ]; then
 		rm /var/lib/rancher/conf/cloud-config.d/user_config.yml
 		do_install do_mount
 		do_install blkid2
+		do_install chain_bak
+		do_install partNum2Dev
 		green Switch to boot by installer
 		reboot
 	END

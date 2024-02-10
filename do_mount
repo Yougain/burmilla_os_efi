@@ -211,21 +211,21 @@ function do_mount(){
 				fi
 			done
 			if [ -z "$moptsNoDeg" ];then
-				moptsNoDeg=$devOptArgs
+				moptsNoDeg="-o "$devOptArgs
 			else
 				moptsNoDeg="$moptsNoDeg,$devOptArgs"
 			fi
 			if [ -z "$moptsWithDeg" ];then
-				moptsWithDeg=$devOptArgs
+				moptsWithDeg="-o "$devOptArgs
 			else
 				moptsWithDeg="$moptsWithDeg,$devOptArgs"
 			fi
 			if [ -z "$forceDegraded" ];then
 				local i=0
-				while ! _mount $opts -o $moptsNoDeg $to_mount $dst;do
+				while ! _mount $opts $moptsNoDeg $to_mount $dst;do
 					i=$((i + 1))
 					if [ $i = 5 ];then
-						_mount $opts -o $moptsWithDeg $to_mount $dst
+						_mount $opts $moptsWithDeg $to_mount $dst
 						res=$?
 						break
 					fi
@@ -233,11 +233,11 @@ function do_mount(){
 				done
 				res=$?
 			else
-				_mount $opts -o $moptsWithDeg $to_mount $dst
+				_mount $opts $moptsWithDeg $to_mount $dst
 				res=$?
 			fi
 		else
-			_mount $opts -o $mopts $to_mount $dst
+			_mount $opts $mopts $to_mount $dst
 			res=$?
 		fi
 		if [ "$res" != "0" ];then

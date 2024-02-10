@@ -285,6 +285,8 @@ $libs"
 		local f
 		for f in blkid2                      \
 				do_mount                     \
+				chain_bak					\
+				partNum2Dev					\
 				after_save_cmd_line                \
 				__paste_init_log_at_exit_magic_num \
 				before_sysinit                     \
