@@ -756,10 +756,10 @@ sudo xorriso -as mkisofs \
 
 echo Iso created.
 
-sudo umount $UD $RD $PD
+#sudo umount $UD $RD $PD
 sudo losetup -D $LDEVH
-rmdir $UD $RD $PD
-rm -rf $ED2
+#rmdir $UD $RD $PD
+#rm -rf $ED2
 rm $P_IMG
 
 if [ -n "$OVERWRITE_USB" ];then
