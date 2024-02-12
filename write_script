@@ -21,8 +21,9 @@ function write_script(){
 	fi
 	local first
 	local ln
+	local IFS=""
 	local lns="$(trim_indent | while read -r ln;do
-		echo -E $ln
+		echo -E "$ln"
 		if [ -z "$first" ];then
 			set_env
 			first=1
@@ -40,14 +41,27 @@ function write_script(){
 
 function set_env(){
 	local ln
+	local lim
+	local d
+	local dec
+	if [ -z "$1" ];then
+		lim=2147483647
+	else
+		lim=$1
+	fi
 	env_defined | while read ln; do
-		ln="`declare -p $ln`"
-		ln=${ln#declare -* }
-		if [ -z "$1" -o ${#ln} -le "$1" ];then
-			if [[ ${ln} =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]];then
-				echo "$ln=''"
+		dec="`declare -p $ln`"
+		ln=${dec#declare -* }
+		if [ ${#ln} -le "$lim" ];then
+			if [ "${dec:0:11}" = "declare -A " ];then
+				d="declare -A "
 			else
-				echo "$ln"
+				d=""
+			fi
+			if [[ ${ln} =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]];then
+				echo "$d$ln=''"
+			else
+				echo -E "$d$ln"
 				dbv $ln
 			fi
 		fi

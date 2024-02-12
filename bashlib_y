@@ -26,7 +26,13 @@ normal="\033[m"
 
 
 __FILE__() {
-	local f="`readlink -f "${BASH_SOURCE[1]}"`"
+	local sn
+	if [ -n "$1" ];then
+		sn=$((1 + $1))
+	else
+		sn=1
+	fi
+	local f="`readlink -f "${BASH_SOURCE[$sn]}"`"
 	if [[ "${f##*/}" =~ [^\-\./A-Za-z0-9_] ]]; then
 		echo -e "$error"Cannot use path name, $f"$normal". >&2
 		echo -e "$info"Alphabitical/numeric characters and '/', '.', '⧵' are usable for path name when using bashlib_y"$normal" >&2
@@ -41,13 +47,13 @@ __FILE_PATH__() {
 
 
 __FILE_NAME__(){
-	local f="`__FILE__`"
+	local f="`__FILE__ 1`"
 	echo "${f##*/}"
 }
 
 
 __FILE_DIR__(){
-	local f="`__FILE__`"
+	local f="`__FILE__ 1`"
 	echo "${f%/*}"
 }
 
@@ -647,17 +653,21 @@ cleanup (){
 		rm_all $SCRIPT_TMP_DIR
 		local k
 		for k in "${SSH_PARAM_LIST[@]}"; do
-			ssh "${SSH_PARAM_LIST[$k]}" <<END
-				rm_all $SCRIPT_TMP_DIR
+			if [ -n "$k" ];then
+				ssh "${SSH_PARAM_LIST[$k]}" <<END
+					rm_all $SCRIPT_TMP_DIR
 END
+			fi
 		done
 	fi
 	if [[ "$DEBUG" =~ erase|ERASE|delete|DELETE ]];then
 		rm_all /tmp/yougain/${0##*/}
 		for k in "${SSH_PARAM_LIST[@]}"; do
-			ssh "${SSH_PARAM_LIST[$k]}" <<END
-				rm_all $SCRIPT_TMP_DIR/..
+			if [ -n "$k" ];then
+				ssh "${SSH_PARAM_LIST[$k]}" <<END
+					rm_all $SCRIPT_TMP_DIR/..
 END
+			fi
 		done
 	fi
 }

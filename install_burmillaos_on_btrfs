@@ -135,7 +135,7 @@ if [ -z "$INST_IP" ]; then
 							exit 4
 						fi
 						sudo touch -d @$((`date +%s` + 300)) /boot/efi/.grub_env_for_installing
-						sudo reboot
+						sudo reboot >/dev/null
 					else
 						exit 3
 					fi
@@ -965,6 +965,12 @@ ssh_sudo <<'FINAL'
 	echo APPEND $VGA_ARGS $KERNEL_ARGS > /installing/global.cfg
 	ROOT_ARGS="rancher.state.boot_dev=$BOOT_UUID_SUB rancher.state.oem_dev=$OEM_UUID_SUB rancher.state.dev=$STATE_UUID_SUB efi=$EFI_UUID"
 
+	echo -n "$USER_SETTINGS_FOR_GRUB_SOURCE_FOR_INSTALLING" > /installing/efipart/.grub_env_for_installing
+	echo -n '# GRUB Environment Block
+#######################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################' > /installing/efipart/.grubenv_empty
+	cp /installing/efipart/.grubenv_empty /installing/efipart/.grubenv_booting
+	cp /installing/efipart/.grubenv_empty /installing/efipart/.installing_2nd_phase
+	cp /installing/efipart/.grubenv_empty /installing/efipart/.installing_3rd_phase
 	write_grub_script /installing/efipart/EFI/BOOT/grub.cfg <<'END'
 
 		set timeout=5
@@ -973,16 +979,21 @@ ssh_sudo <<'FINAL'
 		set gfxmode=$VGA_SIZE
 		set gfxpayload=keep
 
-
+		echo EFI_UUID_ARG=$EFI_UUID_ARG
 		if ! search --no-floppy --fs-uuid --set=efi $EFI_UUID_ARG; then
 			echo "Sorry, no installation found or corrupted. Please reinstall by installer."
 			sleep 3000000
 		fi
+		echo cat ($efi)/.installing_2nd_phase
+		cat ($efi)/.installing_2nd_phase
+		echo cat ($efi)/.installing_3rd_phase
+		cat ($efi)/.installing_3rd_phase
 		if ! regexp --set 1:this_hd (.*),(.*) $efi ;then
 			echo "Sorry, no installation found or corrupted. Please reinstall by installer."
 			sleep 3000000
 		fi
 
+		echo efi=$efi
 		boot=$this_hd,gpt4
 		state=$this_hd,gpt5
 		oem=$this_hd,gpt7
@@ -1245,13 +1256,6 @@ ssh_sudo <<'FINAL'
 		fi
 		disp_menu
 	END
-
-	echo -n "$USER_SETTINGS_FOR_GRUB_SOURCE_FOR_INSTALLING" > /installing/efipart/.grub_env_for_installing
-	echo -n '# GRUB Environment Block
-#######################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################' > /installing/efipart/.grubenv_empty
-	cp /installing/efipart/.grubenv_empty /installing/efipart/.grubenv_booting
-	cp /installing/efipart/.grubenv_empty /installing/efipart/.installing_2nd_phase
-	cp /installing/efipart/.grubenv_empty /installing/efipart/.installing_3rd_phase
 FINAL
 
 dbv $INITRD_FILE
@@ -1266,6 +1270,8 @@ if [ -z "$INITRD_FILE" ];then
 fi
 
 ssh_sudo <<'FINAL'
+	cat /installing/efipart/.installing_2nd_phase
+	sleep 5
 	echo -e $green"rebooting by target disk ...."
 	reboot
 FINAL
@@ -1553,110 +1559,116 @@ ssh_sudo <<'FINAL'
 
 
 	# create startup script
-	if [ ! -e /installing/oem_part/opt/rancher/bin/start.sh ];then
-		mkdir -p /installing/oem_part/opt/rancher/bin
-		write_script 0755 /installing/oem_part/opt/rancher/bin/start.sh <<'	START_UP'
-			#!/bin/bash
-			source bashlib_y
-			chain_bak /var/log/init.log /var/log/init.log.0
-			if [ ! -L /etc/ssh ];then
-				info symlink /usr/share/ros/oem/etc/ssh /etc/ssh
-				rm -rf /etc/ssh
-				ln -sf /usr/share/ros/oem/etc/ssh /etc/ssh
-				kill -HUP $(ps ax |grep 'sshd -D' | grep -v grep | awk '{ print $1 }')
-			fi
-			if [ ! -L /root ];then
-				info symlink /usr/share/ros/oem/root /root
-				rm -rf /root
-				ln -sf /usr/share/ros/oem/root /root
-			fi
-			if [  ! -e /bin/env ];then
-				ln -s /usr/bin/env /bin/env
-			fi
-			if [ ! -e /etc/profile.d/lang.sh ]; then
-				echo export LANG=$LANG > /etc/profile.d/lang.sh
-				echo export LC_CTYPE=$LC_CTYPE >> /etc/profile.d/lang.sh
-				echo export LC_ALL=$LC_ALL >> /etc/profile.d/lang.sh
-			fi
-			if [ ! -e /etc/profile.d/timezone.sh ]; then
-				echo export TZ=$TZL > /etc/profile.d/timezone.sh
-			fi
-			# get network parameters from target server booted by installer
-			NET_DEV=`ip route show|grep default|awk '{print $5}'|head -1`
-			if [ -z "$NET_DEV" ]; then
-				die Cannot find net device for default route.
-			fi
-			DS=`cat /etc/resolv.conf| sed -e 's/[ \t]*#.*//' | grep "nameserver" | sed -e 's/^[ \t]*//' | awk '{print $2}'`
-			DNS_SETTINGS=`echo "$DS" | sed -e 's/^/      - /'`
-			DSX=""
-			DSX2=""
-			for i in $DS; do
-				if [ -z "$DSX" ]; then
-					DSX='"'$i'"'
-					DSX2='\"'$i'\"'
-				else
-					DSX="$DSX",'"'$i'"'
-					DSX2="$DSX2",'\"'$i'\"'
-				fi
-			done
-			DNS_SETTINGS_YQ="[$DSX]"
-			DNS_SETTINGS_YQ2="[$DSX2]"
-			if [ -z "$DNS_SETTINGS" ]; then
-				die Cannot find DNS setting.
-			fi
-
-			NETMASK=`ip address show dev $NET_DEV | grep 'inet ' | grep global | awk '{print $2}'| sed -e 's/.*\///'|head -1`
-			IP=`ip address show dev $NET_DEV | grep 'inet ' | grep global | awk '{print $2}'| sed -e 's/\/.*//'|head -1`
-			if [ -z "$NETMASK" ]; then
-				die Cannot find net mask.
-			else
-				for i in 8 16 24; do
-					if [ "$NETMASK" = "$i" ]; then
-						netmask_ok=1
-					fi
-				done
-				if [ -z "$netmask_ok" ];then
-					die Unsupported netmask, $NETMASK
-				fi
-			fi
-			GATEWAY=`ip route |egrep '^default via'|awk '{print $3}'|head -1`
-			if [ -z "$GATEWAY" ]; then
-				die Cannot find default gateway.
-			fi
-
-			USER_SETTINGS_FOR_GRUB_SOURCE="USER_SETTINGS='rancher.network.interfaces.$NET_DEV.address=$IP/$NETMASK rancher.network.interfaces.$NET_DEV.gateway=$GATEWAY rancher.network.dns.nameservers=$DNS_SETTINGS_YQ'"
-			mkdir -p /oem_top_lvl/oem_root/opt/rancher/conf/grub
-			kpF=/oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer
-			if [ ! -e $kpF ];then
-				noKernelParam=1
-			else
-				if [ "$USER_SETTINGS_FOR_GRUB_SOURCE" != "`cat $kpF`" ]; then
-					noKernelParam=1
-				fi
-			fi
-			if [ -n "$noKernelParam" ];then
-				chain_bak $kpF
-				echo -n "$USER_SETTINGS_FOR_GRUB_SOURCE" > $kpF
-				chmod +x $kpF
-			fi
-
-			mkdir -p /mnt_efi_test
-			# clear booting flags on all sibling drives
-			/sbin/blkid | grep LABEL=\"EFI\" | awk '{print substr($1, 1, length($1) - 1)}' | while read efi; do
-				mount $efi /mnt_efi_test
-				rm -f /mnt_efi_test/.last_booted
-				umount /mnt_efi_test
-			done
-			do_mount 2 /mnt_efi_test
-			touch /mnt_efi_test/.last_booted
-			umount /mnt_efi_test
-			rmdir /mnt_efi_test
-		START_UP
-		deb wc start.sh=`wc /installing/oem_part/opt/rancher/bin/start.sh`
-		deb wc start.sh\(awk 1\)=`wc /installing/oem_part/opt/rancher/bin/start.sh|awk '{print $1}'`
-		if [ "`wc /installing/oem_part/opt/rancher/bin/start.sh|awk '{print $1}'`" = 1 ];then
-			die "failed to create start.sh"
+	mkdir -p /installing/oem_part/opt/rancher/bin
+	write_script 0755 /installing/oem_part/opt/rancher/bin/start.sh <<'START_UP'
+		#!/bin/bash
+		# Do not edit this file
+		# 
+		source bashlib_y
+		chain_bak /var/log/boot/init.log /var/log/boot/init.log.0
+		if [ ! -L /etc/ssh ];then
+			info symlink /usr/share/ros/oem/etc/ssh /etc/ssh
+			rm -rf /etc/ssh
+			ln -sf /usr/share/ros/oem/etc/ssh /etc/ssh
+			kill -HUP $(ps ax |grep 'sshd -D' | grep -v grep | awk '{ print $1 }')
 		fi
+		if [ ! -L /root ];then
+			info symlink /usr/share/ros/oem/root /root
+			rm -rf /root
+			ln -sf /usr/share/ros/oem/root /root
+		fi
+		if [  ! -e /bin/env ];then
+			ln -s /usr/bin/env /bin/env
+		fi
+		if [ ! -e /etc/profile.d/lang.sh ]; then
+			echo export LANG=$LANG > /etc/profile.d/lang.sh
+			echo export LC_CTYPE=$LC_CTYPE >> /etc/profile.d/lang.sh
+			echo export LC_ALL=$LC_ALL >> /etc/profile.d/lang.sh
+		fi
+		if [ ! -e /etc/profile.d/timezone.sh ]; then
+			echo export TZ=$TZL > /etc/profile.d/timezone.sh
+		fi
+		# get network parameters from target server booted by installer
+		NET_DEV=`ip route show|grep default|awk '{print $5}'|head -1`
+		if [ -z "$NET_DEV" ]; then
+			die Cannot find net device for default route.
+		fi
+		DS=`cat /etc/resolv.conf| sed -e 's/[ \t]*#.*//' | grep "nameserver" | sed -e 's/^[ \t]*//' | awk '{print $2}'`
+		DNS_SETTINGS=`echo "$DS" | sed -e 's/^/      - /'`
+		DSX=""
+		DSX2=""
+		for i in $DS; do
+			if [ -z "$DSX" ]; then
+				DSX='"'$i'"'
+				DSX2='\"'$i'\"'
+			else
+				DSX="$DSX",'"'$i'"'
+				DSX2="$DSX2",'\"'$i'\"'
+			fi
+		done
+		DNS_SETTINGS_YQ="[$DSX]"
+		DNS_SETTINGS_YQ2="[$DSX2]"
+		if [ -z "$DNS_SETTINGS" ]; then
+			die Cannot find DNS setting.
+		fi
+
+		NETMASK=`ip address show dev $NET_DEV | grep 'inet ' | grep global | awk '{print $2}'| sed -e 's/.*\///'|head -1`
+		IP=`ip address show dev $NET_DEV | grep 'inet ' | grep global | awk '{print $2}'| sed -e 's/\/.*//'|head -1`
+		if [ -z "$NETMASK" ]; then
+			die Cannot find net mask.
+		else
+			for i in 8 16 24; do
+				if [ "$NETMASK" = "$i" ]; then
+					netmask_ok=1
+				fi
+			done
+			if [ -z "$netmask_ok" ];then
+				die Unsupported netmask, $NETMASK
+			fi
+		fi
+		GATEWAY=`ip route |egrep '^default via'|awk '{print $3}'|head -1`
+		if [ -z "$GATEWAY" ]; then
+			die Cannot find default gateway.
+		fi
+
+		USER_SETTINGS_FOR_GRUB_SOURCE="USER_SETTINGS='rancher.network.interfaces.$NET_DEV.address=$IP/$NETMASK rancher.network.interfaces.$NET_DEV.gateway=$GATEWAY rancher.network.dns.nameservers=$DNS_SETTINGS_YQ'"
+		mkdir -p /oem_top_lvl/oem_root/opt/rancher/conf/grub
+		kpF=/oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer
+		if [ ! -e $kpF ];then
+			noKernelParam=1
+		else
+			if [ "$USER_SETTINGS_FOR_GRUB_SOURCE" != "`cat $kpF`" ]; then
+				noKernelParam=1
+			fi
+		fi
+		if [ -n "$noKernelParam" ];then
+			chain_bak $kpF
+			echo -n "$USER_SETTINGS_FOR_GRUB_SOURCE" > $kpF
+			chmod +x $kpF
+		fi
+
+		mkdir -p /mnt_efi_test
+		# clear booting flags on all sibling drives
+		/sbin/blkid | grep LABEL=\"EFI\" | awk '{print substr($1, 1, length($1) - 1)}' | while read efi; do
+			mount $efi /mnt_efi_test
+			rm -f /mnt_efi_test/.last_booted
+			umount /mnt_efi_test
+		done
+		do_mount 2 /mnt_efi_test
+		touch /mnt_efi_test/.last_booted
+		umount /mnt_efi_test
+		rmdir /mnt_efi_test
+		mkdir -p $(__FILE_DIR__)/startup.d
+		ls $(__FILE_DIR__)/startup.d/*.sh 2>/dev/null|sort|while read sh;do
+			if [ -n "$sh" ];then
+				. $sh
+			fi
+		done
+	START_UP
+	deb wc start.sh=`wc /installing/oem_part/opt/rancher/bin/start.sh`
+	deb wc start.sh\(awk 1\)=`wc /installing/oem_part/opt/rancher/bin/start.sh|awk '{print $1}'`
+	if [ "`wc /installing/oem_part/opt/rancher/bin/start.sh|awk '{print $1}'`" = 1 ];then
+		die "failed to create start.sh"
 	fi
 
 
