@@ -22,7 +22,7 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2023-11-28 19:46:24.176064000 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2024-02-13 14:11:37.866102000 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2024-02-13 14:16:26.526102000 +0900
 @@ -1,9 +1,12 @@
  package fsmount
  
@@ -127,7 +127,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  
 +	cmd := exec.Command("/sbin/do_mount", "-o", option, dname, target)
 +	cmd.Stderr = os.Stderr
-+	out, err := cmd.Output()
++	_, err := cmd.Output()
  	if err != nil {
 +		log.Infof("exec /sbin/do_mount, failed.")
 +		log.Infof("Mouting %s failed", display)
