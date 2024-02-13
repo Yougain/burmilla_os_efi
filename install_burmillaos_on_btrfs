@@ -945,7 +945,7 @@ ssh_sudo <<'FINAL'
 	if [ "$VMLINUZ_FILE_COUNT" != "1" ];then
 	    die cannot detect linux kernel in iso image, or multiple kernel detected.
 	fi
-	INITRD_FILE=`cd /installing/boot_dev;ls -d initrd-*`
+	INITRD_FILE=`cd /installing/boot_dev;ls -d initrd-*-mod`
 	INITRD_FILE_COUNT=`echo "$INITRD_FILE" | wc | awk '{print $1}'`
 	if [ "$INITRD_FILE_COUNT" != "1" ];then
 	    die cannot detect initrd in iso image, or multiple initrd detected.
@@ -1089,14 +1089,20 @@ ssh_sudo <<'FINAL'
 
 		echo 3
 		if [ -n "$chosen" ];then
-			if ! regexp menu "$chosen";then
+			if ! regexp menu "$chosen";then 
 				# chain loaded from other drive's grub
 				boot_default_kernel
-			else
+			else # menu selection has been chosen by previous menu
 				set menu_chained=1
 				timeout=
 			fi
+		else # no previous menu
+			if [ "$cmdpath" != "($efi)/EFI/BOOT" ];then  # chained from grub booted by other drive
+				boot_default_kernel
+			fi
 		fi
+		
+
 
 		echo 4
 
