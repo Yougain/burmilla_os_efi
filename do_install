@@ -48,8 +48,8 @@ function do_install(){
 			fi
 			$sudo chmod +x $sLib
 			dbv $d
-			dbv ln -sf ../../$sLib $d/usr/bin/$SUPPORT_LIB_NAME
-			$sudo ln -sf ../../$sLib $d/usr/bin/$SUPPORT_LIB_NAME
+			dbv ln -sf ../share/$SUPPORT_LIB_NAME/$SUPPORT_LIB_NAME $d/usr/bin/$SUPPORT_LIB_NAME
+			$sudo ln -sf ../share/$SUPPORT_LIB_NAME/$SUPPORT_LIB_NAME $d/usr/bin/$SUPPORT_LIB_NAME
 		fi
 		dbv `ls -la $sLib`
 		dbv `ls -la $d/usr/bin/bashlib_y`
@@ -75,7 +75,7 @@ function do_install(){
 									sid="${SCRIPT_FILES["$f"]}"
 									local IFS=""
 									eval 'echo -E "${'$sid'[*]}"' | $sudo tee "$d/usr/share/$SUPPORT_LIB_NAME/$to_inst" > /dev/null
-									$sudo ln -sf "../../usr/share/$SUPPORT_LIB_NAME/$SUPPORT_LIB_NAME" "$d/usr/bin/${to_inst##*/}"
+									$sudo ln -sf "../share/$SUPPORT_LIB_NAME/$SUPPORT_LIB_NAME" "$d/usr/bin/${to_inst##*/}"
 									return 0
 								fi
 							done
@@ -87,7 +87,7 @@ function do_install(){
 										if [ -n "$sid" ];then
 											local IFS=""
 											eval 'echo -E "${'$sid'[*]}"'  | $sudo tee "$d/usr/share/$SUPPORT_LIB_NAME/${f##*/}" > /dev/null
-											$sudo ln -sf "../../usr/share/$SUPPORT_LIB_NAME/$SUPPORT_LIB_NAME" "$d/usr/bin/${to_inst##*/}"
+											$sudo ln -sf "../share/$SUPPORT_LIB_NAME/$SUPPORT_LIB_NAME" "$d/usr/bin/${to_inst##*/}"
 											return 0
 										fi
 									fi
@@ -125,7 +125,7 @@ function do_install(){
 		if [ -n "$do" ];then
 			dbv $from
 			$sudo cp -av "$from" "$sCmd"
-			$sudo ln -sf "../../usr/share/$SUPPORT_LIB_NAME/$SUPPORT_LIB_NAME" "$d/usr/bin/${to_inst##*/}"
+			$sudo ln -sf "../share/$SUPPORT_LIB_NAME/$SUPPORT_LIB_NAME" "$d/usr/bin/${to_inst##*/}"
 		fi
 	}
 	if [ ${#@} = 0 ];then

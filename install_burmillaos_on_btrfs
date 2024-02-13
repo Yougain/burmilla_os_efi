@@ -945,7 +945,7 @@ ssh_sudo <<'FINAL'
 	if [ "$VMLINUZ_FILE_COUNT" != "1" ];then
 	    die cannot detect linux kernel in iso image, or multiple kernel detected.
 	fi
-	INITRD_FILE=`cd /installing/boot_dev;ls -d initrd-*-mod`
+	INITRD_FILE=`cd /installing/boot_dev;ls -d initrd-*|grep -v mod`
 	INITRD_FILE_COUNT=`echo "$INITRD_FILE" | wc | awk '{print $1}'`
 	if [ "$INITRD_FILE_COUNT" != "1" ];then
 	    die cannot detect initrd in iso image, or multiple initrd detected.
@@ -1098,7 +1098,9 @@ ssh_sudo <<'FINAL'
 			fi
 		else # no previous menu
 			if [ "$cmdpath" != "($efi)/EFI/BOOT" ];then  # chained from grub booted by other drive
-				boot_default_kernel
+				chained=1
+			else
+				chained=
 			fi
 		fi
 		
@@ -1135,6 +1137,9 @@ ssh_sudo <<'FINAL'
 									echo ($state)/state_root/home found
 									boot_installer
 								else # 2nd phase of installation : boot by target disk
+									if [ -n "$chained" ];then
+										boot_default_kernel
+									fi
 									if ! check_installation_terminated 2nd; then
 										break
 									fi
