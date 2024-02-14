@@ -682,6 +682,7 @@ require(){
 				fi
 				local f
 				for f in `(echo -E "$funcs"; declare -F) | sort | uniq -u | awk '{print $3}'`; do
+					dbv FUNC_SOURCE["$f"]="$to_load"
 					FUNC_SOURCE["$f"]="$to_load"
 				done
 				if [ -n "$requireFunc" ];then

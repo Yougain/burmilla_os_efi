@@ -3,7 +3,7 @@
 
 function create_initrd_mod(){
 	local PATH="$tmpd:$PATH"
-	require initrd_support
+	require -s initrd_support
 	require do_install
 	require chain_bak
 
