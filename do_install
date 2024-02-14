@@ -87,7 +87,14 @@ function do_install(){
 										if [ -n "$sid" ];then
 											local IFS=""
 											eval 'echo -E "${'$sid'[*]}"'  | $sudo tee "$d/usr/share/$SUPPORT_LIB_NAME/${f##*/}" > /dev/null
-											$sudo ln -sf "../share/$SUPPORT_LIB_NAME/$SUPPORT_LIB_NAME" "$d/usr/bin/${to_inst##*/}"
+											echo "#!/bin/bash
+source /usr/share/bashlib_y/bashlib_y
+source /usr/share/bashlib_y/${f##*/}
+
+${f##*/} \$@
+
+" > "$d/usr/bin/${to_inst##*/}"
+											chmod +x "$d/usr/bin/${to_inst##*/}"
 											return 0
 										fi
 									fi
