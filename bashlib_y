@@ -445,12 +445,12 @@ _rm_all(){
 		dbv "$ln"
 		dln="`echo $ln | awk '{print $1}'`"
 		lnLen1=$((${#dln} + 1))
-		dbv "${dln:0:$lnLen1}"
+		dbv "${d:0:$lnLen1}"
 		dbv "$dln/"
 		dbv "$d"
 		dbv "$dln"
-		if [ "${dln:0:$lnLen1}" = "$ln/" -o "$d" = "$ln" ];then
-			fsType="`echo "$ln" | awk '{print $2}'`"
+		if [ "${d:0:$lnLen1}" = "$dln/" -o "$d" = "$dln" ];then
+			fsType="`echo $ln | awk '{print $2}'`"
 			if [ "$fsType" = "overlay" ];then
 				doRm=1
 			else
