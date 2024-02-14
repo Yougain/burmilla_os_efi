@@ -417,9 +417,9 @@ _rm_all(){
 		dbv $f
 		l="`readlink -f $f`"
 		dbv $l
-		dbv "${l:0:3}"
-		if [ "${l:0:3}" = "../" ];then
-			blockDevs+=("${l#../}")
+		dbv "${l:0:5}"
+		if [ "${l:0:5}" = "/dev/" ];then
+			blockDevs+=("${l#/dev/}")
 		fi
 	done
 	d=$(realpath $1)
