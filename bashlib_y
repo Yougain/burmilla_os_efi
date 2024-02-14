@@ -454,8 +454,9 @@ _rm_all(){
 			if [ "$fsType" = "overlay" ];then
 				doRm=1
 			else
-				if ["${fsType:0:5}" = "/dev/" ];then
-					for b in $bockDevs[@]; do
+				if [ "${fsType:0:5}" = "/dev/" ];then
+					for b in $blockDevs[@]; do
+						dbv $b
 						if [ "$b" = "${fsType#/dev/}" ];then
 							doRm=1
 							break
@@ -466,7 +467,7 @@ _rm_all(){
 			if [ -n "$doRm" ];then
 				rm --one-file-system -rf "$d"
 			else
-				die "cannot delete '#d'"
+				die "cannot delete '$d'"
 			fi
 			break
 		fi
