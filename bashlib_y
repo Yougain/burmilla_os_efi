@@ -403,7 +403,6 @@ dbv(){
 
 
 _rm_all(){
-	dbv $@
 	if [ ! -e "$1" ];then
 		err "'$1' does not exist."
 		return 1
@@ -414,15 +413,8 @@ _rm_all(){
 	local blockDevs
 	local f
 	local l
-	if [ ! -d /dev/block ];then
-		die "directory /dev/block is missing"
-		return 1
-	fi
 	for f in /dev/block/*;do
-		dbv $f
 		l="`readlink -f $f`"
-		dbv $l
-		dbv "${l:0:5}"
 		if [ "${l:0:5}" = "/dev/" ];then
 			blockDevs+=("${l#/dev/}")
 		fi
@@ -434,12 +426,8 @@ _rm_all(){
 	fi
 	dlen=${#d}
 	dlen=$((dlen + 1))
-	if [ ! -r /proc/mounts ];then
-		die "cannot read /proc/mounts"
-	fi
 	cat /proc/mounts|awk '{print $2}'| sort -r |while read ln;do
 		if [ "${ln:0:$dlen}" = "$d/" ];then
-			dbv "umount $ln"
 			if ! umount $ln;then
 				err "cannot unmount '$ln'"
 				return 1
@@ -452,13 +440,8 @@ _rm_all(){
 	local doRm
 	local dln
 	cat /proc/mounts|awk '{print $2 " " $1}'| sort -r |while read ln;do
-		dbv "$ln"
 		dln="`echo $ln | awk '{print $1}'`"
 		lnLen1=$((${#dln} + 1))
-		dbv "${d:0:$lnLen1}"
-		dbv "$dln/"
-		dbv "$d"
-		dbv "$dln"
 		if [ "${d:0:$lnLen1}" = "$dln/" -o "$d" = "$dln" ];then
 			fsType="`echo $ln | awk '{print $2}'`"
 			if [ "$fsType" = "overlay" ];then
@@ -466,7 +449,6 @@ _rm_all(){
 			else
 				if [ "${fsType:0:5}" = "/dev/" ];then
 					for b in ${blockDevs[@]}; do
-						dbv $b
 						if [ "$b" = "${fsType#/dev/}" ];then
 							doRm=1
 							break
@@ -475,7 +457,7 @@ _rm_all(){
 				fi
 			fi
 			if [ -n "$doRm" ];then
-				rm --one-file-system -rf "$d"
+				/bin/rm --one-file-system -rf "$d"
 			else
 				err "cannot delete '$d'"
 				return 1
@@ -487,6 +469,14 @@ _rm_all(){
 
 
 rm_all(){
+	if [ ! -d /dev/block ];then
+		err "directory, '/dev/block' is missing"
+		return 1
+	fi
+	if [ ! -r /proc/mounts ];then
+		err "cannot read /proc/mounts"
+		return 1
+	fi
 	local f
 	for f in $@;do
 		_rm_all "$f"
