@@ -6,13 +6,10 @@ if ! PATH="./:$PATH" source bashlib_y;then
 	exit 1
 fi
 
-require ssh_do
-
 if [ -z "`git diff`" ];then
 	warn "Not modified. Exiting."
 	exit 1
 fi
-
 
 if [ ! -e ./version ];then
 	echo 0 > version
@@ -58,6 +55,7 @@ function commit(){
 	git commit -a -m "`v` $*"
 	git push
 	if [ -e .git/.ssh_clone ]; then
+		require ssh_do
 		local url=`git config --get remote.origin.url`
 		url=https://github.com/${url#*:}
 		url=${url%%.git}

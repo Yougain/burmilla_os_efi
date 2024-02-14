@@ -634,7 +634,7 @@ declare -A FUNC_SOURCE
 require(){
 	local requireFunc
 	local requireSource
-	local PATH="./:$PATH"
+	local PATH="./:/usr/share/bashlib_y:$PATH"
 	local to_load
 	while (( "$#" )); do
 		case "$1" in
