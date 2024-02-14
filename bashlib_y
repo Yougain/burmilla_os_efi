@@ -404,6 +404,10 @@ dbv(){
 
 _rm_all(){
 	dbv $@
+	if [ ! -e "$1" ];then
+		err "'$1' does not exist."
+		return 1
+	fi
 	local d
 	local dlen
 	local ln
@@ -412,6 +416,7 @@ _rm_all(){
 	local l
 	if [ ! -d /dev/block ];then
 		die "directory /dev/block is missing"
+		return 1
 	fi
 	for f in /dev/block/*;do
 		dbv $f
@@ -424,7 +429,8 @@ _rm_all(){
 	done
 	d=$(realpath $1)
 	if [ "$d" = "/" ];then
-		die "cannot use rm_all to '/'"
+		err "cannot use rm_all to '/'"
+		return 1
 	fi
 	dlen=${#d}
 	dlen=$((dlen + 1))
@@ -435,7 +441,8 @@ _rm_all(){
 		if [ "${ln:0:$dlen}" = "$d/" ];then
 			dbv "umount $ln"
 			if ! umount $ln;then
-				die "cannot unmount '$ln'"
+				err "cannot unmount '$ln'"
+				return 1
 			fi
 		fi
 	done
@@ -470,7 +477,8 @@ _rm_all(){
 			if [ -n "$doRm" ];then
 				rm --one-file-system -rf "$d"
 			else
-				die "cannot delete '$d'"
+				err "cannot delete '$d'"
+				return 1
 			fi
 			break
 		fi
