@@ -414,7 +414,10 @@ _rm_all(){
 		die "directory /dev/block is missing"
 	fi
 	for f in /dev/block/*;do
+		dbv $f
 		l="`readlink -f $f`"
+		dbv $l
+		dbv "${l:0:3}"
 		if [ "${l:0:3}" = "../" ];then
 			blockDevs+=("${l#../}")
 		fi
