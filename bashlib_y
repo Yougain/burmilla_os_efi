@@ -414,7 +414,7 @@ _rm_all(){
 		die "directory /dev/block is missing"
 	fi
 	for f in /dev/block/*;do
-		l="`readlink f`"
+		l="`readlink -f $f`"
 		if [ "${l:0:3}" = "../" ];then
 			blockDevs+=("${l#../}")
 		fi
