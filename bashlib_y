@@ -430,12 +430,15 @@ _rm_all(){
 	fi
 	cat /proc/mounts|awk '{print $2}'| sort -r |while read ln;do
 		dbv "${ln:0:$dlen}"
-		dbv "$d"
-		if [ "${ln:0:$dlen}" = "$d" ];then
+		dbv "$d/"
+		dbv "$ln"
+		if [ "${ln:0:$dlen}" = "$d/" ];then
 			dbv "umount $ln"
 			if ! umount $ln;then
 				die "cannot unmount '$ln'"
 			fi
+		else
+			dbv "failed"
 		fi
 	done
 	local lnLen1
