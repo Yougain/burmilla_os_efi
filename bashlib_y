@@ -441,7 +441,8 @@ _rm_all(){
 	local b
 	local doRm
 	local dln
-	cat /proc/mounts|awk '{print $2 $1}'| sort -r |while read ln;do
+	cat /proc/mounts|awk '{print $2 " " $1}'| sort -r |while read ln;do
+		dbv "$ln"
 		dln="`echo $ln | awk '{print $1}'`"
 		lnLen1=$((${#dln} + 1))
 		dbv "${dln:0:$lnLen1}"
