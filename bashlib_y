@@ -455,7 +455,7 @@ _rm_all(){
 				doRm=1
 			else
 				if [ "${fsType:0:5}" = "/dev/" ];then
-					for b in $blockDevs[@]; do
+					for b in ${blockDevs[@]}; do
 						dbv $b
 						if [ "$b" = "${fsType#/dev/}" ];then
 							doRm=1
