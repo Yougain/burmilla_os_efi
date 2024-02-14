@@ -429,24 +429,25 @@ _rm_all(){
 		die "cannot read /proc/mounts"
 	fi
 	cat /proc/mounts|awk '{print $2}'| sort -r |while read ln;do
-		dbv "${ln:0:$dlen}"
-		dbv "$d/"
-		dbv "$ln"
 		if [ "${ln:0:$dlen}" = "$d/" ];then
 			dbv "umount $ln"
 			if ! umount $ln;then
 				die "cannot unmount '$ln'"
 			fi
-		else
-			dbv "failed"
 		fi
 	done
 	local lnLen1
 	local fsType
 	local b
 	local doRm
+	local dln
 	cat /proc/mounts|awk '{print $2 $1}'| sort -r |while read ln;do
-		lnLen1=$((${#ln} + 1))
+		dln="`echo "$ln" | awk '{print $1}'`"
+		lnLen1=$((${#dln} + 1))
+		dbv "${d:0:$lnLen1}"
+		dbv "$ln/"
+		dbv "$d"
+		dbv "$ln"
 		if [ "${d:0:$lnLen1}" = "$ln/" -o "$d" = "$ln" ];then
 			fsType="`echo "$ln" | awk '{print $2}'`"
 			if [ "$fsType" = "overlay" ];then
