@@ -34,12 +34,12 @@ function create_initrd_mod(){
 	umount /installing/boot_dev
 	if [ -z "$INITRD_FILE" ];then
 		local stand_alone
-		if [ "$1" = for_installer ];then
+		if [ -n "$1" ];then
 			require blkid2
 			require do_mount
 			stand_alone=for_installer
 			mkdir -p /installing/installer
-			if ! mount LABEL=RANCHEROS /installing/installer;then
+			if ! mount /home/$SUDO_USER/burmilla_os_iso/burmillaos-$1.iso /installing/installer;then
 				die "installer disk not found"
 			fi
 			mount --bind /installing/installer/boot /installing/boot_dev
