@@ -22,7 +22,7 @@ diff -Naur '--exclude=.git' /home/yougain/os.prev/config/types.go /home/yougain/
  
 diff -Naur '--exclude=.git' /home/yougain/os.prev/pkg/init/fsmount/fsmount.go /home/yougain/os.new/pkg/init/fsmount/fsmount.go
 --- /home/yougain/os.prev/pkg/init/fsmount/fsmount.go	2024-02-15 15:45:46.760000000 +0900
-+++ /home/yougain/os.new/pkg/init/fsmount/fsmount.go	2024-02-15 16:40:03.260000000 +0900
++++ /home/yougain/os.new/pkg/init/fsmount/fsmount.go	2024-02-15 16:55:13.590000000 +0900
 @@ -1,9 +1,14 @@
  package fsmount
  
@@ -63,15 +63,15 @@ diff -Naur '--exclude=.git' /home/yougain/os.prev/pkg/init/fsmount/fsmount.go /h
 -func mountConfigured(display, dev, fsType, target string) error {
 +
 +func blkid2GetSiblings(dev string) (resLn string, err error) {
-+	cmd := exec.Command("/sbin/blkid2", "--get-sibling", dev)
++	cmd := exec.Command("/sbin/blkid2", "--get-siblings", dev)
 +	cmd.Stderr = os.Stderr
 +	out, err := cmd.Output()
 +	if err != nil {
-+		log.Infof("exec /sbin/blkid2 --get-sibling, failed.")
++		log.Infof("exec /sbin/blkid2 --get-siblings, failed.")
 +		return
 +	}
 +	resLn = out
-+	log.Infof("'/sbin/blkid2 --get-sibling %s' result, '%s'", dev, resLn)
++	log.Infof("'/sbin/blkid2 --get-siblings %s' result, '%s'", dev, resLn)
 +}
 +
 +
