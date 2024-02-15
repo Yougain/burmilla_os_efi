@@ -679,7 +679,7 @@ write_grub_script "$T"/grub.cfg <<'END'
 		menuentry 'Test memory' {
 		    linux16 /boot/memtest86+.bin
 		}
-		karg_add="vga=ask rancher.debug=true"
+		karg_add="vga=ask rancher.debug=true DEBUG=1"
 		disp_all_setting_menu # for debug
 		menuentry ' ' {
 			false

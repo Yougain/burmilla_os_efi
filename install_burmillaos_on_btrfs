@@ -1253,7 +1253,7 @@ ssh_sudo <<'FINAL'
 			fi
 			disp_efi_menu "$EFI_LIST"
 			eval "menuentry \"Burmilla OS $INITRD_VER $KERNEL_VER (debug)$this_disk\" {
-			    linux    /$VMLINUZ_FILE vga=ask rancher.debug=true $KERNEL_ARGS $console $ROOT_ARGS ---
+			    linux    /$VMLINUZ_FILE vga=ask DEBUG=1 rancher.debug=true $KERNEL_ARGS $console $ROOT_ARGS ---
 				if [ -e /$INITRD_FILE-mod ];then
 					initrd   /$INITRD_FILE-mod
 				else

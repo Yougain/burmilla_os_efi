@@ -22,7 +22,7 @@ diff -Naur '--exclude=.git' /home/yougain/os.prev/config/types.go /home/yougain/
  
 diff -Naur '--exclude=.git' /home/yougain/os.prev/pkg/init/fsmount/fsmount.go /home/yougain/os.new/pkg/init/fsmount/fsmount.go
 --- /home/yougain/os.prev/pkg/init/fsmount/fsmount.go	2024-02-15 15:45:46.760000000 +0900
-+++ /home/yougain/os.new/pkg/init/fsmount/fsmount.go	2024-02-15 15:47:10.100000000 +0900
++++ /home/yougain/os.new/pkg/init/fsmount/fsmount.go	2024-02-15 16:40:03.260000000 +0900
 @@ -1,9 +1,14 @@
  package fsmount
  
@@ -56,11 +56,25 @@ diff -Naur '--exclude=.git' /home/yougain/os.prev/pkg/init/fsmount/fsmount.go /h
  		log.Debugf("Not mounting BOOT: %v", err)
  	} else {
  		log.Infof("Mounted BOOT: %s", cfg.Rancher.State.BootDev)
-@@ -54,17 +59,69 @@
+@@ -54,17 +59,83 @@
  	return cfg, nil
  }
  
 -func mountConfigured(display, dev, fsType, target string) error {
++
++func blkid2GetSiblings(dev string) (resLn string, err error) {
++	cmd := exec.Command("/sbin/blkid2", "--get-sibling", dev)
++	cmd.Stderr = os.Stderr
++	out, err := cmd.Output()
++	if err != nil {
++		log.Infof("exec /sbin/blkid2 --get-sibling, failed.")
++		return
++	}
++	resLn = out
++	log.Infof("'/sbin/blkid2 --get-sibling %s' result, '%s'", dev, resLn)
++}
++
++
 +func blkid2MatchStr(matchStr string) (deviceName, deviceType string, err error) {
 +	if ! strings.Contains(matchStr, `="`) {
 +		if strings.Contains(matchStr, `='`) {
@@ -130,7 +144,7 @@ diff -Naur '--exclude=.git' /home/yougain/os.prev/pkg/init/fsmount/fsmount.go /h
  	if fsType == "auto" {
  		fsType, err = util.GetFsType(dev)
  	}
-@@ -74,12 +131,50 @@
+@@ -74,12 +145,56 @@
  	}
  
  	log.Debugf("FsType has been set to %s", fsType)
@@ -161,10 +175,16 @@ diff -Naur '--exclude=.git' /home/yougain/os.prev/pkg/init/fsmount/fsmount.go /h
 +		if nodg != "" {
 +			dg += "," + nodg
 +		}
++		sibln := blkid2GetSiblings(dev)
++		sibs := strings.Split(sibln, " ")
++		for _, s := range sibs {
++			nodg += ",device=" + s
++			dg += ",device=" + s
++		}
 +		for i := 0; i < 5; i++ {
 +			log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, nodg)
 +			if err2 := util.Mount(dev, target, fsType, nodg) ; err2 != nil {
-+				log.Infof("Mouting %s faled", display)
++				log.Infof("Mouting %s failed", display)
 +				time.Sleep(2 * time.Second)
 +			} else {
 +				return nil
