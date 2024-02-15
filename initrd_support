@@ -34,7 +34,7 @@ before_sysinit(){
 	info killall udevd: result = $?
 	info udev stopped
 	local mnum=`__paste_init_log_at_exit_magic_num`
-	kill `ps ax | grep $mnum | awk '{print $1}'`
+	kill `ps ax | grep $mnum | grep -v grep | awk '{print $1}'`
 }
 
 
