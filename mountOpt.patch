@@ -1,6 +1,6 @@
-diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
---- os.prev/config/types.go	2023-11-28 19:46:24.166064000 +0900
-+++ os.new/config/types.go	2023-11-28 19:48:15.766064000 +0900
+diff -Naur '--exclude=.git' /home/yougain/os.prev/config/types.go /home/yougain/os.new/config/types.go
+--- /home/yougain/os.prev/config/types.go	2024-02-15 15:45:46.750000000 +0900
++++ /home/yougain/os.new/config/types.go	2024-02-15 15:47:10.100000000 +0900
 @@ -210,6 +210,7 @@
  type StateConfig struct {
  	Directory  string   `yaml:"directory,omitempty"`
@@ -20,24 +20,25 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
  	BootDev    string   `yaml:"boot_dev,omitempty"`
  }
  
-diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
---- os.prev/pkg/init/fsmount/fsmount.go	2023-11-28 19:46:24.176064000 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2024-02-13 14:27:33.676102000 +0900
-@@ -1,9 +1,12 @@
+diff -Naur '--exclude=.git' /home/yougain/os.prev/pkg/init/fsmount/fsmount.go /home/yougain/os.new/pkg/init/fsmount/fsmount.go
+--- /home/yougain/os.prev/pkg/init/fsmount/fsmount.go	2024-02-15 15:45:46.760000000 +0900
++++ /home/yougain/os.new/pkg/init/fsmount/fsmount.go	2024-02-15 15:47:10.100000000 +0900
+@@ -1,9 +1,14 @@
  package fsmount
  
  import (
--	"fmt"
 +	"bufio"
 +	"bytes"
+ 	"fmt"
  	"strings"
  	"syscall"
 +	"os"
 +	"os/exec"
++	"time"
  
  	"github.com/burmilla/os/config"
  	"github.com/burmilla/os/config/cmdline"
-@@ -22,7 +25,7 @@
+@@ -22,7 +27,7 @@
  )
  
  func MountOem(cfg *config.CloudConfig) (*config.CloudConfig, error) {
@@ -46,7 +47,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  		log.Debugf("Not mounting OEM: %v", err)
  	} else {
  		log.Infof("Mounted OEM: %s", cfg.Rancher.State.OemDev)
-@@ -45,7 +48,7 @@
+@@ -45,7 +50,7 @@
  		}
  	}
  
@@ -55,7 +56,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  		log.Debugf("Not mounting BOOT: %v", err)
  	} else {
  		log.Infof("Mounted BOOT: %s", cfg.Rancher.State.BootDev)
-@@ -54,32 +57,76 @@
+@@ -54,17 +59,69 @@
  	return cfg, nil
  }
  
@@ -117,28 +118,64 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  	}
  
 -	dev = util.ResolveDevice(dev)
--	if dev == "" {
++	dev, _, err := blkid2MatchStr(dname)
+ 	if dev == "" {
 -		return fmt.Errorf("Could not resolve device %q", dev)
--	}
--	if fsType == "auto" {
--		fsType, err = util.GetFsType(dev)
--	}
-+	log.Infof("Mounting %s device %s to %s (option = '%s')", display, dname, target, option)
- 
--	if err != nil {
-+	cmd := exec.Command("/sbin/do_mount", "-o", option, dname, target)
-+	cmd.Stderr = os.Stderr
-+	_, errb := cmd.Output()
-+	if errb != nil {
-+		log.Infof("exec /sbin/do_mount, failed.")
-+		log.Infof("Mouting %s failed", display)
- 		return err
++		dev = util.ResolveDevice(dname)
++		if dev == "" {
++			return fmt.Errorf("Could not resolve device %q", dev)
++		}
  	}
--
--	log.Debugf("FsType has been set to %s", fsType)
++
+ 	if fsType == "auto" {
+ 		fsType, err = util.GetFsType(dev)
+ 	}
+@@ -74,12 +131,50 @@
+ 	}
+ 
+ 	log.Debugf("FsType has been set to %s", fsType)
 -	log.Infof("Mounting %s device %s to %s", display, dev, target)
 -	return util.Mount(dev, target, fsType, "")
-+	return nil
++	if fsType == "btrfs" {
++		opts := strings.Split(option, ",")
++		nodg := ""
++		fst := true
++		rw := 0
++		for _, s := range opts {
++			if s == "rw" {
++				rw = 1
++			}
++			if s != "degraded" {
++				if fst {
++					nodg = s
++				} else {
++					nodg += "," + s
++				}
++				fst = false
++			}
++		}
++		dg := "degraded"
++		if rw == 1 {
++			dg += ",rw"
++		}
++		if nodg != "" {
++			dg += "," + nodg
++		}
++		for i := 0; i < 5; i++ {
++			log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, nodg)
++			if err2 := util.Mount(dev, target, fsType, nodg) ; err2 != nil {
++				log.Infof("Mouting %s faled", display)
++				time.Sleep(2 * time.Second)
++			} else {
++				return nil
++			}
++		}
++		log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, dg)
++		return util.Mount(dev, target, fsType, dg)
++	} else {
++		log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, option)
++		return util.Mount(dev, target, fsType, option)
++	}
  }
  
  func mountState(cfg *config.CloudConfig) error {
@@ -147,9 +184,9 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  }
  
  func tryMountState(cfg *config.CloudConfig) error {
-diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/prepare/prepare.go
---- os.prev/pkg/init/prepare/prepare.go	2023-11-28 19:46:24.176064000 +0900
-+++ os.new/pkg/init/prepare/prepare.go	2024-02-13 14:10:45.206102000 +0900
+diff -Naur '--exclude=.git' /home/yougain/os.prev/pkg/init/prepare/prepare.go /home/yougain/os.new/pkg/init/prepare/prepare.go
+--- /home/yougain/os.prev/pkg/init/prepare/prepare.go	2024-02-15 15:45:46.760000000 +0900
++++ /home/yougain/os.new/pkg/init/prepare/prepare.go	2024-02-13 14:10:45.206102000 +0900
 @@ -3,6 +3,7 @@
  import (
  	"os"
@@ -172,9 +209,9 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
 +
  	return cfg, nil
  }
-diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg/init/switchroot/switchroot.go
---- os.prev/pkg/init/switchroot/switchroot.go	2023-11-28 19:46:24.176064000 +0900
-+++ os.new/pkg/init/switchroot/switchroot.go	2024-02-13 14:29:38.286102000 +0900
+diff -Naur '--exclude=.git' /home/yougain/os.prev/pkg/init/switchroot/switchroot.go /home/yougain/os.new/pkg/init/switchroot/switchroot.go
+--- /home/yougain/os.prev/pkg/init/switchroot/switchroot.go	2024-02-15 15:45:46.760000000 +0900
++++ /home/yougain/os.new/pkg/init/switchroot/switchroot.go	2024-02-13 14:29:38.286102000 +0900
 @@ -4,6 +4,7 @@
  	"fmt"
  	"io/ioutil"
@@ -199,9 +236,9 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	if err := syscall.Chroot("."); err != nil {
  		return err
  	}
-diff -Naur '--exclude=.git' os.prev/pkg/sysinit/sysinit.go os.new/pkg/sysinit/sysinit.go
---- os.prev/pkg/sysinit/sysinit.go	2023-11-28 19:46:24.186064000 +0900
-+++ os.new/pkg/sysinit/sysinit.go	2023-12-26 15:29:02.123348900 +0900
+diff -Naur '--exclude=.git' /home/yougain/os.prev/pkg/sysinit/sysinit.go /home/yougain/os.new/pkg/sysinit/sysinit.go
+--- /home/yougain/os.prev/pkg/sysinit/sysinit.go	2024-02-15 15:45:46.760000000 +0900
++++ /home/yougain/os.new/pkg/sysinit/sysinit.go	2023-12-26 15:29:02.123348900 +0900
 @@ -93,6 +93,14 @@
  }
  
@@ -217,9 +254,9 @@ diff -Naur '--exclude=.git' os.prev/pkg/sysinit/sysinit.go os.new/pkg/sysinit/sy
  	cfg := config.LoadConfig()
  
  	if err := control.PreloadImages(docker.NewSystemClient, systemImagesPreloadDirectory); err != nil {
-diff -Naur '--exclude=.git' os.prev/scripts/version os.new/scripts/version
---- os.prev/scripts/version	2023-11-28 19:46:24.196064000 +0900
-+++ os.new/scripts/version	2023-11-28 19:48:15.766064000 +0900
+diff -Naur '--exclude=.git' /home/yougain/os.prev/scripts/version /home/yougain/os.new/scripts/version
+--- /home/yougain/os.prev/scripts/version	2024-02-15 15:45:46.770000000 +0900
++++ /home/yougain/os.new/scripts/version	2024-02-15 15:47:10.100000000 +0900
 @@ -1,18 +1,26 @@
  #!/bin/bash
  
