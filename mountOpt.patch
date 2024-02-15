@@ -22,7 +22,7 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2024-02-15 17:36:44.920000000 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2024-02-15 21:58:49.550000000 +0900
 @@ -1,9 +1,14 @@
  package fsmount
  
@@ -70,7 +70,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +		log.Infof("exec /sbin/blkid2 --get-siblings, failed.")
 +		return
 +	}
-+	resLn = string(out)
++	resLn = strings.TrimSuffix(string(out), "\n")
 +	log.Infof("'/sbin/blkid2 --get-siblings %s' result, '%s'", dev, resLn)
 +	return
 +}
