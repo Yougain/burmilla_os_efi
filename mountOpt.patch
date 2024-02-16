@@ -22,7 +22,7 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2024-02-16 13:05:51.560000000 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2024-02-16 16:28:02.190000000 +0900
 @@ -1,9 +1,14 @@
  package fsmount
  
@@ -193,7 +193,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +		}
 +		for i := 0; i < 5; i++ {
 +			log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, dg)
-+			if err3 := util.Mount(dev, target, fsType, nodg) ; err3 != nil {
++			if err3 := util.Mount(dev, target, fsType, dg) ; err3 != nil {
 +				log.Infof("Mouting %s by %s (%s), failed", display, dg, fsType)
 +				time.Sleep(2 * time.Second)
 +			} else {
@@ -202,7 +202,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +		}
 +		for i := 0; i < 5; i++ {
 +			log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, option)
-+			if err4 := util.Mount(dev, target, fsType, '') ; err4 != nil {
++			if err4 := util.Mount(dev, target, fsType, option) ; err4 != nil {
 +				log.Infof("Mouting %s by %s (%s), failed", display, option, fsType)
 +				time.Sleep(2 * time.Second)
 +			} else {
@@ -210,8 +210,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +			}
 +		}
 +		for i := 0; i < 5; i++ {
-+			log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, '')
-+			if err4 := util.Mount(dev, target, fsType, '') ; err5 != nil {
++			log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, "")
++			if err5 := util.Mount(dev, target, fsType, "") ; err5 != nil {
 +				log.Infof("Mouting %s by '' (%s), failed", display, fsType)
 +				time.Sleep(2 * time.Second)
 +			} else {
