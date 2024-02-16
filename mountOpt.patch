@@ -22,7 +22,7 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2024-02-15 21:58:49.550000000 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2024-02-16 13:05:51.560000000 +0900
 @@ -1,9 +1,14 @@
  package fsmount
  
@@ -145,7 +145,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  	if fsType == "auto" {
  		fsType, err = util.GetFsType(dev)
  	}
-@@ -74,12 +146,56 @@
+@@ -74,12 +146,84 @@
  	}
  
  	log.Debugf("FsType has been set to %s", fsType)
@@ -185,13 +185,41 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +		for i := 0; i < 5; i++ {
 +			log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, nodg)
 +			if err2 := util.Mount(dev, target, fsType, nodg) ; err2 != nil {
-+				log.Infof("Mouting %s failed", display)
++				log.Infof("Mouting %s by %s (%s), failed", display, nodg, fsType)
 +				time.Sleep(2 * time.Second)
 +			} else {
 +				return nil
 +			}
 +		}
-+		log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, dg)
++		for i := 0; i < 5; i++ {
++			log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, dg)
++			if err3 := util.Mount(dev, target, fsType, nodg) ; err3 != nil {
++				log.Infof("Mouting %s by %s (%s), failed", display, dg, fsType)
++				time.Sleep(2 * time.Second)
++			} else {
++				return nil
++			}
++		}
++		for i := 0; i < 5; i++ {
++			log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, option)
++			if err4 := util.Mount(dev, target, fsType, '') ; err4 != nil {
++				log.Infof("Mouting %s by %s (%s), failed", display, option, fsType)
++				time.Sleep(2 * time.Second)
++			} else {
++				return nil
++			}
++		}
++		for i := 0; i < 5; i++ {
++			log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, '')
++			if err4 := util.Mount(dev, target, fsType, '') ; err5 != nil {
++				log.Infof("Mouting %s by '' (%s), failed", display, fsType)
++				time.Sleep(2 * time.Second)
++			} else {
++				return nil
++			}
++		}
++		exec.Command("bash").Run()
++		log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, option)
 +		return util.Mount(dev, target, fsType, dg)
 +	} else {
 +		log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, option)
