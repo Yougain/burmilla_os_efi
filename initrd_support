@@ -38,6 +38,7 @@ before_sysinit(){
 }
 
 
+
 paste_init_log_at_exit(){
 	sleep `__paste_init_log_at_exit_magic_num`
 	echo -E "$BOO_INIT_LOG" > /var/log/boot/__init_until_switch_root.log
