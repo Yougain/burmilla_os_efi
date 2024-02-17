@@ -1,6 +1,7 @@
 # bash source
 
 
+
 function blkid2(){
 	local args=()
 	info blkid2 $@
