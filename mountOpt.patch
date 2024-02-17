@@ -22,18 +22,16 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/cloudinit/cloudinit.go os.new/pkg/init/cloudinit/cloudinit.go
 --- os.prev/pkg/init/cloudinit/cloudinit.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/cloudinit/cloudinit.go	2024-02-18 08:14:34.683339300 +0900
-@@ -4,6 +4,9 @@
++++ os.new/pkg/init/cloudinit/cloudinit.go	2024-02-18 08:18:59.583339300 +0900
+@@ -4,6 +4,7 @@
  	"io/ioutil"
  	"path/filepath"
  	"strings"
 +	"os"
-+	"os/exec"
-+	"path/filepath"
  
  	"github.com/burmilla/os/config"
  	"github.com/burmilla/os/pkg/compose"
-@@ -14,6 +17,17 @@
+@@ -14,6 +15,17 @@
  )
  
  func CloudInit(cfg *config.CloudConfig) (*config.CloudConfig, error) {
@@ -51,7 +49,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/cloudinit/cloudinit.go os.new/pkg/i
  	stateConfig := config.LoadConfigWithPrefix(config.StateDir)
  	cfg.Rancher.CloudInit.Datasources = stateConfig.Rancher.CloudInit.Datasources
  
-@@ -116,6 +130,19 @@
+@@ -116,6 +128,19 @@
  			{Name: "cloudinit loadImages", Func: sysinit.LoadBootstrapImages},
  			{Name: "cloudinit Services", Func: runCloudInitServiceSet},
  		})
