@@ -63,7 +63,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/cloudinit/cloudinit.go os.new/pkg/i
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2024-02-17 21:50:12.903369600 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2024-02-17 21:57:29.723369600 +0900
 @@ -1,9 +1,14 @@
  package fsmount
  
@@ -79,24 +79,34 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  
  	"github.com/burmilla/os/config"
  	"github.com/burmilla/os/config/cmdline"
-@@ -22,7 +27,7 @@
+@@ -22,8 +27,8 @@
  )
  
  func MountOem(cfg *config.CloudConfig) (*config.CloudConfig, error) {
 -	if err := mountConfigured("oem", cfg.Rancher.State.OemDev, cfg.Rancher.State.OemFsType, config.OemDir); err != nil {
+-		log.Debugf("Not mounting OEM: %v", err)
 +	if err := mountConfigured("oem", cfg.Rancher.State.OemDev, cfg.Rancher.State.OemFsType, config.OemDir, cfg.Rancher.State.OemMountOpt); err != nil {
- 		log.Debugf("Not mounting OEM: %v", err)
++		log.Infof("Not mounting OEM: %v", err)
  	} else {
  		log.Infof("Mounted OEM: %s", cfg.Rancher.State.OemDev)
-@@ -45,7 +50,7 @@
+ 	}
+@@ -40,13 +45,13 @@
+ 
+ 	if rootDevice != "" && strings.Contains(rootDevice, "mmcblk") {
+ 		if err := util.Mount("/dev/mmcblk0p1", config.BootDir, "vfat", ""); err != nil {
+-			log.Debugf("Not mounting BOOT: %v", err)
++			log.Infof("Not mounting BOOT: %v", err)
+ 			return cfg, nil
  		}
  	}
  
 -	if err := mountConfigured("boot", cfg.Rancher.State.BootDev, cfg.Rancher.State.BootFsType, config.BootDir); err != nil {
+-		log.Debugf("Not mounting BOOT: %v", err)
 +	if err := mountConfigured("boot", cfg.Rancher.State.BootDev, cfg.Rancher.State.BootFsType, config.BootDir, cfg.Rancher.State.BootMountOpt); err != nil {
- 		log.Debugf("Not mounting BOOT: %v", err)
++		log.Infof("Not mounting BOOT: %v", err)
  	} else {
  		log.Infof("Mounted BOOT: %s", cfg.Rancher.State.BootDev)
+ 	}
 @@ -54,17 +59,84 @@
  	return cfg, nil
  }
@@ -186,12 +196,14 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  	if fsType == "auto" {
  		fsType, err = util.GetFsType(dev)
  	}
-@@ -74,12 +146,83 @@
+@@ -73,13 +145,86 @@
+ 		return err
  	}
  
- 	log.Debugf("FsType has been set to %s", fsType)
+-	log.Debugf("FsType has been set to %s", fsType)
 -	log.Infof("Mounting %s device %s to %s", display, dev, target)
 -	return util.Mount(dev, target, fsType, "")
++	log.Infof("FsType has been set to %s", fsType)
 +	if fsType == "btrfs" {
 +		opts := strings.Split(option, ",")
 +		nodg := ""
@@ -218,45 +230,47 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +			dg += "," + nodg
 +		}
 +		sibln := blkid2GetSiblings(dev)
-+		sibs := strings.Split(sibln, " ")
-+		for _, s := range sibs {
-+			nodg += ",device=" + s
-+			dg += ",device=" + s
-+		}
-+		for i := 0; i < 5; i++ {
-+			log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, nodg)
-+			if err2 := util.Mount(dev, target, fsType, nodg) ; err2 != nil {
-+				log.Infof("Mouting %s by %s (%s), failed", display, nodg, fsType)
-+				time.Sleep(2 * time.Second)
-+			} else {
-+				return nil
++		if sibln != "" {
++			sibs := strings.Split(sibln, " ")
++			for _, s := range sibs {
++				nodg += ",device=" + s
++				dg += ",device=" + s
 +			}
-+		}
-+		for i := 0; i < 5; i++ {
-+			log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, dg)
-+			if err3 := util.Mount(dev, target, fsType, dg) ; err3 != nil {
-+				log.Infof("Mouting %s by %s (%s), failed", display, dg, fsType)
-+				time.Sleep(2 * time.Second)
-+			} else {
-+				return nil
++			for i := 0; i < 5; i++ {
++				log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, nodg)
++				if err2 := util.Mount(dev, target, fsType, nodg) ; err2 != nil {
++					log.Infof("Mouting %s by %s (%s), failed", display, nodg, fsType)
++					time.Sleep(2 * time.Second)
++				} else {
++					return nil
++				}
 +			}
-+		}
-+		for i := 0; i < 5; i++ {
-+			log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, option)
-+			if err4 := util.Mount(dev, target, fsType, option) ; err4 != nil {
-+				log.Infof("Mouting %s by %s (%s), failed", display, option, fsType)
-+				time.Sleep(2 * time.Second)
-+			} else {
-+				return nil
++			for i := 0; i < 5; i++ {
++				log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, dg)
++				if err3 := util.Mount(dev, target, fsType, dg) ; err3 != nil {
++					log.Infof("Mouting %s by %s (%s), failed", display, dg, fsType)
++					time.Sleep(2 * time.Second)
++				} else {
++					return nil
++				}
 +			}
-+		}
-+		for i := 0; i < 5; i++ {
-+			log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, "")
-+			if err5 := util.Mount(dev, target, fsType, "") ; err5 != nil {
-+				log.Infof("Mouting %s by '' (%s), failed", display, fsType)
-+				time.Sleep(2 * time.Second)
-+			} else {
-+				return nil
++			for i := 0; i < 5; i++ {
++				log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, option)
++				if err4 := util.Mount(dev, target, fsType, option) ; err4 != nil {
++					log.Infof("Mouting %s by %s (%s), failed", display, option, fsType)
++					time.Sleep(2 * time.Second)
++				} else {
++					return nil
++				}
++			}
++			for i := 0; i < 5; i++ {
++				log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, "")
++				if err5 := util.Mount(dev, target, fsType, "") ; err5 != nil {
++					log.Infof("Mouting %s by '' (%s), failed", display, fsType)
++					time.Sleep(2 * time.Second)
++				} else {
++					return nil
++				}
 +			}
 +		}
 +		log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, option)
@@ -273,7 +287,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  }
  
  func tryMountState(cfg *config.CloudConfig) error {
-@@ -119,7 +262,29 @@
+@@ -119,7 +264,29 @@
  
  func MountStateAndBootstrap(cfg *config.CloudConfig) (*config.CloudConfig, error) {
  	var err error
