@@ -22,7 +22,7 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2024-02-16 16:28:02.190000000 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2024-02-17 15:12:57.293369600 +0900
 @@ -1,9 +1,14 @@
  package fsmount
  
@@ -63,15 +63,15 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 -func mountConfigured(display, dev, fsType, target string) error {
 +
 +func blkid2GetSiblings(dev string) (resLn string) {
-+	cmd := exec.Command("/sbin/blkid2", "--get-siblings", dev)
++	cmd := exec.Command("/usr/bin/blkid2", "--get-siblings", dev)
 +	cmd.Stderr = os.Stderr
 +	out, err := cmd.Output()
 +	if err != nil {
-+		log.Infof("exec /sbin/blkid2 --get-siblings, failed.")
++		log.Infof("exec /usr/bin/blkid2 --get-siblings, failed.")
 +		return
 +	}
 +	resLn = strings.TrimSuffix(string(out), "\n")
-+	log.Infof("'/sbin/blkid2 --get-siblings %s' result, '%s'", dev, resLn)
++	log.Infof("'/usr/bin/blkid2 --get-siblings %s' result, '%s'", dev, resLn)
 +	return
 +}
 +
@@ -92,11 +92,11 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +			matchStr = s0[0] + `="` + s0[1] + `"`
 +		}
 +	}
-+	cmd := exec.Command("/sbin/blkid2")
++	cmd := exec.Command("/usr/bin/blkid2")
 +	cmd.Stderr = os.Stderr
 +	out, err := cmd.Output()
 +	if err != nil {
-+		log.Infof("exec /sbin/blkid2, failed.")
++		log.Infof("exec /usr/bin/blkid2, failed.")
 +		return
 +	}
 +	r := bytes.NewReader(out)
@@ -117,7 +117,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +		log.Infof(deviceType)
 +		return
 +	}
-+	log.Infof("extract output from /sbin/blkid2, failed.")
++	log.Infof("extract output from /usr/bin/blkid2, failed.")
 +	log.Infof(matchStr)
 +	log.Infof(string(out))
 +	return
@@ -235,7 +235,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  func tryMountState(cfg *config.CloudConfig) error {
 diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/prepare/prepare.go
 --- os.prev/pkg/init/prepare/prepare.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/prepare/prepare.go	2024-02-13 14:10:45.206102000 +0900
++++ os.new/pkg/init/prepare/prepare.go	2024-02-17 15:14:06.583369600 +0900
 @@ -3,6 +3,7 @@
  import (
  	"os"
@@ -248,19 +248,19 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
  		log.SetLevel(log.InfoLevel)
  	}
  
-+	log.Infof("executing /sbin/after_save_cmd_line")
-+	cmd := exec.Command("/sbin/after_save_cmd_line")
++	log.Infof("executing /usr/bin/after_save_cmd_line")
++	cmd := exec.Command("/usr/bin/after_save_cmd_line")
 +	cmd.Stderr = os.Stderr
 +	_, errb := cmd.Output()
 +	if errb != nil {
-+		log.Infof("exec /sbin/after_save_cmd_line failed.")
++		log.Infof("exec /usr/bin/after_save_cmd_line failed.")
 +	}
 +
  	return cfg, nil
  }
 diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg/init/switchroot/switchroot.go
 --- os.prev/pkg/init/switchroot/switchroot.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/switchroot/switchroot.go	2024-02-13 14:29:38.286102000 +0900
++++ os.new/pkg/init/switchroot/switchroot.go	2024-02-17 15:14:59.993369600 +0900
 @@ -4,6 +4,7 @@
  	"fmt"
  	"io/ioutil"
@@ -275,11 +275,11 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	log.Debug("chroot .")
 +
 +	log.Infof("executing before_switch_root")
-+	cmd := exec.Command("/sbin/before_switch_root")
++	cmd := exec.Command("/usr/bin/before_switch_root")
 +	cmd.Stderr = os.Stderr
 +	_, errb := cmd.Output()
 +	if errb != nil {
-+		log.Infof("exec /sbin/before_switch_root failed.")
++		log.Infof("exec /usr/bin/before_switch_root failed.")
 +	}
 +
  	if err := syscall.Chroot("."); err != nil {
@@ -287,17 +287,17 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/sysinit/sysinit.go os.new/pkg/sysinit/sysinit.go
 --- os.prev/pkg/sysinit/sysinit.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/sysinit/sysinit.go	2023-12-26 15:29:02.123348900 +0900
++++ os.new/pkg/sysinit/sysinit.go	2024-02-17 15:16:56.553369600 +0900
 @@ -93,6 +93,14 @@
  }
  
  func SysInit() error {
-+	log.Infof("executing /sbin/before_sysinit")
-+	cmd := exec.Command("/sbin/before_sysinit")
++	log.Infof("executing /usr/bin/before_sysinit")
++	cmd := exec.Command("/usr/bin/before_sysinit")
 +	cmd.Stderr = os.Stderr
 +	_, errb := cmd.Output()
 +	if errb != nil {
-+		log.Infof("exec /sbin/before_sysinit failed.")
++		log.Infof("exec /usr/bin/before_sysinit failed.")
 +	}
 +
  	cfg := config.LoadConfig()
