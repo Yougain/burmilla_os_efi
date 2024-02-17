@@ -22,8 +22,18 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/cloudinit/cloudinit.go os.new/pkg/init/cloudinit/cloudinit.go
 --- os.prev/pkg/init/cloudinit/cloudinit.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/cloudinit/cloudinit.go	2024-02-17 21:47:55.373369600 +0900
-@@ -14,6 +14,17 @@
++++ os.new/pkg/init/cloudinit/cloudinit.go	2024-02-18 08:14:34.683339300 +0900
+@@ -4,6 +4,9 @@
+ 	"io/ioutil"
+ 	"path/filepath"
+ 	"strings"
++	"os"
++	"os/exec"
++	"path/filepath"
+ 
+ 	"github.com/burmilla/os/config"
+ 	"github.com/burmilla/os/pkg/compose"
+@@ -14,6 +17,17 @@
  )
  
  func CloudInit(cfg *config.CloudConfig) (*config.CloudConfig, error) {
@@ -41,7 +51,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/cloudinit/cloudinit.go os.new/pkg/i
  	stateConfig := config.LoadConfigWithPrefix(config.StateDir)
  	cfg.Rancher.CloudInit.Datasources = stateConfig.Rancher.CloudInit.Datasources
  
-@@ -116,6 +127,19 @@
+@@ -116,6 +130,19 @@
  			{Name: "cloudinit loadImages", Func: sysinit.LoadBootstrapImages},
  			{Name: "cloudinit Services", Func: runCloudInitServiceSet},
  		})
@@ -63,8 +73,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/cloudinit/cloudinit.go os.new/pkg/i
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2024-02-17 21:57:29.723369600 +0900
-@@ -1,9 +1,14 @@
++++ os.new/pkg/init/fsmount/fsmount.go	2024-02-18 08:15:46.763339300 +0900
+@@ -1,9 +1,15 @@
  package fsmount
  
  import (
@@ -76,10 +86,11 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +	"os"
 +	"os/exec"
 +	"time"
++	"path/filepath"
  
  	"github.com/burmilla/os/config"
  	"github.com/burmilla/os/config/cmdline"
-@@ -22,8 +27,8 @@
+@@ -22,8 +28,8 @@
  )
  
  func MountOem(cfg *config.CloudConfig) (*config.CloudConfig, error) {
@@ -90,7 +101,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  	} else {
  		log.Infof("Mounted OEM: %s", cfg.Rancher.State.OemDev)
  	}
-@@ -40,13 +45,13 @@
+@@ -40,13 +46,13 @@
  
  	if rootDevice != "" && strings.Contains(rootDevice, "mmcblk") {
  		if err := util.Mount("/dev/mmcblk0p1", config.BootDir, "vfat", ""); err != nil {
@@ -107,7 +118,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  	} else {
  		log.Infof("Mounted BOOT: %s", cfg.Rancher.State.BootDev)
  	}
-@@ -54,17 +59,84 @@
+@@ -54,17 +60,84 @@
  	return cfg, nil
  }
  
@@ -196,7 +207,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  	if fsType == "auto" {
  		fsType, err = util.GetFsType(dev)
  	}
-@@ -73,13 +145,86 @@
+@@ -73,13 +146,86 @@
  		return err
  	}
  
@@ -287,7 +298,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  }
  
  func tryMountState(cfg *config.CloudConfig) error {
-@@ -119,7 +264,29 @@
+@@ -119,7 +265,29 @@
  
  func MountStateAndBootstrap(cfg *config.CloudConfig) (*config.CloudConfig, error) {
  	var err error
