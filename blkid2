@@ -103,6 +103,7 @@ function blkid2(){
 		fi
 	done
 
+
 	if [ "${#args}" = 0 ];then
 		for bc in "${blkids[@]}";do
 			echo "${bc}"
