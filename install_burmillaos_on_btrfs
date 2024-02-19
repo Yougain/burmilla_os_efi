@@ -1282,6 +1282,11 @@ fi
 
 ssh_sudo <<'FINAL'
 	cat /installing/efipart/.installing_2nd_phase
+	umount /installing/installer
+	umount /installing/boot_dev
+	umount /installing/state_top
+	umount /installing/installer
+	umount /installing/efipart
 	sleep 5
 	echo -e $green"rebooting by target disk ...."
 	reboot
@@ -1696,7 +1701,8 @@ ssh_sudo <<'FINAL'
 	mkdir -p /installing/efipart
 	mount $TARGET_DEV2  /installing/efipart
 	rm -f /installing/efipart/.grub_env_for_installing
-
+	umount /installing/efipart
+	umount /installing/oem_part
 	reboot
 
 FINAL
