@@ -295,7 +295,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
  }
 diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg/init/switchroot/switchroot.go
 --- os.prev/pkg/init/switchroot/switchroot.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/switchroot/switchroot.go	2024-02-17 20:12:33.163369600 +0900
++++ os.new/pkg/init/switchroot/switchroot.go	2024-02-19 11:11:28.932499700 +0900
 @@ -4,9 +4,11 @@
  	"fmt"
  	"io/ioutil"
@@ -453,23 +453,11 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	if err := syscall.Chroot("."); err != nil {
  		return err
  	}
-@@ -167,7 +200,19 @@
+@@ -167,7 +200,7 @@
  		return err
  	}
  
 -	log.Debugf("Successfully moved to new root at %s", path.Join(rootfs, subdir))
-+	filepath.Walk("/", func(path string, info os.FileInfo, err error) error {
-+		if err != nil {
-+			return err
-+		}
-+		if info.IsDir() {
-+			log.Infof("\n%s\n", path + "/")
-+		} else {
-+			log.Infof("\n%s\n", path)
-+		}
-+		return nil
-+	})
-+	
 +	log.Infof("Successfully moved to new root at %s", path.Join(rootfs, subdir))
  	os.Unsetenv("DOCKER_RAMDISK")
  
