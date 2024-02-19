@@ -6,10 +6,46 @@ if ! PATH="./:$PATH" source bashlib_y;then
 	exit 1
 fi
 
-if [ -z "`git diff`" ];then
-	warn "Not modified. Exiting."
-	exit 1
+
+function ssh_clone(){
+ 	if [ -e .git/.ssh_clone ]; then
+		require ssh_do
+		local url=`git config --get remote.origin.url`
+		url=https://github.com/${url#*:}
+		url=${url%%.git}
+		local tdir=`pwd`
+		tdir=${tdir##*/}
+		while read ln; do
+			deb $DEBUG
+			deb $ln
+			ssh_param $ln -x -q
+			ssh_do git-force-clone $url $tdir
+		done < .git/.ssh_clone
+	fi
+}
+
+
+if [ "$1" = "-s" ];then
+	ssh_clone
+	exit 0
 fi
+
+
+if [ "$1" = "-f" ];then
+	force=1
+else
+	Emsg=" Exiting"
+fi
+
+
+if [ -z "`git diff`" ];then
+	warn "Not modified.$Emsg."
+	if [ -z "$force" ];then
+		exit 1
+	fi
+fi
+
+
 
 if [ ! -e ./version ];then
 	echo 0 > version
@@ -49,25 +85,11 @@ function v(){
 }
 
 
-
 function commit(){
 	echo -E "`v` $*" > version
 	git commit -a -m "`v` $*"
 	git push
-	if [ -e .git/.ssh_clone ]; then
-		require ssh_do
-		local url=`git config --get remote.origin.url`
-		url=https://github.com/${url#*:}
-		url=${url%%.git}
-		local tdir=`pwd`
-		tdir=${tdir##*/}
-		while read ln; do
-			deb $DEBUG
-			deb $ln
-			ssh_param $ln -x -q
-			ssh_do git-force-clone $url $tdir
-		done < .git/.ssh_clone
-	fi
+	ssh_clone
 }
 
 
