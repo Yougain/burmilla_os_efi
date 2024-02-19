@@ -1,6 +1,6 @@
 diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
 --- os.prev/config/types.go	2024-02-15 15:45:46.750000000 +0900
-+++ os.new/config/types.go	2024-02-15 15:47:10.100000000 +0900
++++ os.new/config/types.go	2024-02-19 10:23:58.902499700 +0900
 @@ -210,6 +210,7 @@
  type StateConfig struct {
  	Directory  string   `yaml:"directory,omitempty"`
@@ -9,7 +9,7 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
  	Dev        string   `yaml:"dev,omitempty"`
  	Wait       bool     `yaml:"wait,omitempty"`
  	Required   bool     `yaml:"required,omitempty"`
-@@ -220,8 +221,10 @@
+@@ -220,9 +221,12 @@
  	Rngd       bool     `yaml:"rngd,omitempty"`
  	Script     string   `yaml:"script,omitempty"`
  	OemFsType  string   `yaml:"oem_fstype,omitempty"`
@@ -18,11 +18,13 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
  	BootFsType string   `yaml:"boot_fstype,omitempty"`
 +	BootMountOpt string   `yaml:"boot_mountopt,omitempty"`
  	BootDev    string   `yaml:"boot_dev,omitempty"`
++	UseUdev    bool     `yaml:"use_udev,omitempty"`
  }
  
+ type CloudInit struct {
 diff -Naur '--exclude=.git' os.prev/pkg/init/cloudinit/cloudinit.go os.new/pkg/init/cloudinit/cloudinit.go
 --- os.prev/pkg/init/cloudinit/cloudinit.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/cloudinit/cloudinit.go	2024-02-18 08:18:59.583339300 +0900
++++ os.new/pkg/init/cloudinit/cloudinit.go	2024-02-19 10:41:35.342499700 +0900
 @@ -4,6 +4,7 @@
  	"io/ioutil"
  	"path/filepath"
@@ -31,47 +33,17 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/cloudinit/cloudinit.go os.new/pkg/i
  
  	"github.com/burmilla/os/config"
  	"github.com/burmilla/os/pkg/compose"
-@@ -14,6 +15,17 @@
- )
- 
- func CloudInit(cfg *config.CloudConfig) (*config.CloudConfig, error) {
-+	filepath.Walk("/", func(path string, info os.FileInfo, err error) error {
-+		if err != nil {
-+			return err
-+		}
-+		if info.IsDir() {
-+			log.Infof("\n%s\n", path + "/")
-+		} else {
-+			log.Infof("\n%s\n", path)
-+		}
-+		return nil
-+	})
- 	stateConfig := config.LoadConfigWithPrefix(config.StateDir)
- 	cfg.Rancher.CloudInit.Datasources = stateConfig.Rancher.CloudInit.Datasources
- 
-@@ -116,6 +128,19 @@
+@@ -116,6 +117,7 @@
  			{Name: "cloudinit loadImages", Func: sysinit.LoadBootstrapImages},
  			{Name: "cloudinit Services", Func: runCloudInitServiceSet},
  		})
-+
-+	filepath.Walk("/", func(path string, info os.FileInfo, err error) error {
-+		if err != nil {
-+			return err
-+		}
-+		if info.IsDir() {
-+			log.Infof("\n%s\n", path + "/")
-+		} else {
-+			log.Infof("\n%s\n", path)
-+		}
-+		return nil
-+	})
 +
  	return err
  }
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2024-02-18 08:15:46.763339300 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2024-02-19 11:07:45.132499700 +0900
 @@ -1,9 +1,15 @@
  package fsmount
  
@@ -116,7 +88,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  	} else {
  		log.Infof("Mounted BOOT: %s", cfg.Rancher.State.BootDev)
  	}
-@@ -54,17 +60,84 @@
+@@ -54,17 +60,98 @@
  	return cfg, nil
  }
  
@@ -184,15 +156,29 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +}
 +
 +
-+func mountConfigured(display, dname, fsType, target, option string) error {
++
++func _mountConfigured(display, dev, fsType, target, op string) error {
  	var err error
  
 -	if dev == "" {
-+	if dname == "" {
++	log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, op)
++	if err := util.Mount(dev, target, fsType, op) ; err != nil {
++		log.Infof("Mouting %s failed", dev)
++		return err
++	} else {
++		log.Infof("Mouted %s successful, dev)
  		return nil
  	}
++}
  
 -	dev = util.ResolveDevice(dev)
++func mountConfigured(display, dname, fsType, target, option string) error {
++	var err error
++
++	if dname == "" {
++		return nil
++	}
++
 +	dev, _, err := blkid2MatchStr(dname)
  	if dev == "" {
 -		return fmt.Errorf("Could not resolve device %q", dev)
@@ -205,7 +191,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  	if fsType == "auto" {
  		fsType, err = util.GetFsType(dev)
  	}
-@@ -73,13 +146,86 @@
+@@ -73,13 +160,62 @@
  		return err
  	}
  
@@ -245,48 +231,24 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +				nodg += ",device=" + s
 +				dg += ",device=" + s
 +			}
++		}
++		var ops[3]string
++		ops[0] = nodg
++		ops[1] = dg
++		ops[2] = option
++		ops[3] = ""
++		
++		for _, op := range opts {
 +			for i := 0; i < 5; i++ {
-+				log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, nodg)
-+				if err2 := util.Mount(dev, target, fsType, nodg) ; err2 != nil {
-+					log.Infof("Mouting %s by %s (%s), failed", display, nodg, fsType)
-+					time.Sleep(2 * time.Second)
-+				} else {
-+					return nil
-+				}
-+			}
-+			for i := 0; i < 5; i++ {
-+				log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, dg)
-+				if err3 := util.Mount(dev, target, fsType, dg) ; err3 != nil {
-+					log.Infof("Mouting %s by %s (%s), failed", display, dg, fsType)
-+					time.Sleep(2 * time.Second)
-+				} else {
-+					return nil
-+				}
-+			}
-+			for i := 0; i < 5; i++ {
-+				log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, option)
-+				if err4 := util.Mount(dev, target, fsType, option) ; err4 != nil {
-+					log.Infof("Mouting %s by %s (%s), failed", display, option, fsType)
-+					time.Sleep(2 * time.Second)
-+				} else {
-+					return nil
-+				}
-+			}
-+			for i := 0; i < 5; i++ {
-+				log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, "")
-+				if err5 := util.Mount(dev, target, fsType, "") ; err5 != nil {
-+					log.Infof("Mouting %s by '' (%s), failed", display, fsType)
++				if err2 := _mountConfigured(display, dev, target, fsType, op) ; err2 != nil {
 +					time.Sleep(2 * time.Second)
 +				} else {
 +					return nil
 +				}
 +			}
 +		}
-+		log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, option)
-+		return util.Mount(dev, target, fsType, option)
 +	} else {
-+		log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, option)
-+		return util.Mount(dev, target, fsType, option)
++		return _mountConfigured(display, dev, target, fsType, option)
 +	}
  }
  
@@ -296,39 +258,17 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  }
  
  func tryMountState(cfg *config.CloudConfig) error {
-@@ -119,7 +265,29 @@
+@@ -119,6 +255,7 @@
  
  func MountStateAndBootstrap(cfg *config.CloudConfig) (*config.CloudConfig, error) {
  	var err error
-+	filepath.Walk("/", func(path string, info os.FileInfo, err error) error {
-+		if err != nil {
-+			return err
-+		}
-+		if info.IsDir() {
-+			log.Infof("\n%s\n", path + "/")
-+		} else {
-+			log.Infof("\n%s\n", path)
-+		}
-+		return nil
-+	})
++
  	cfg, ShouldSwitchRoot, err = tryMountStateAndBootstrap(cfg)
-+	filepath.Walk("/", func(path string, info os.FileInfo, err error) error {
-+		if err != nil {
-+			return err
-+		}
-+		if info.IsDir() {
-+			log.Infof("\n%s\n", path + "/")
-+		} else {
-+			log.Infof("\n%s\n", path)
-+		}
-+		return nil
-+	})
  
  	if err != nil {
- 		return nil, err
 diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/prepare/prepare.go
 --- os.prev/pkg/init/prepare/prepare.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/prepare/prepare.go	2024-02-17 15:14:06.583369600 +0900
++++ os.new/pkg/init/prepare/prepare.go	2024-02-19 10:29:20.982499700 +0900
 @@ -3,6 +3,7 @@
  import (
  	"os"
@@ -337,16 +277,18 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
  
  	"github.com/burmilla/os/config"
  	"github.com/burmilla/os/pkg/dfs"
-@@ -37,5 +38,13 @@
+@@ -37,5 +38,15 @@
  		log.SetLevel(log.InfoLevel)
  	}
  
-+	log.Infof("executing /usr/bin/after_save_cmd_line")
-+	cmd := exec.Command("/usr/bin/after_save_cmd_line")
-+	cmd.Stderr = os.Stderr
-+	_, errb := cmd.Output()
-+	if errb != nil {
-+		log.Infof("exec /usr/bin/after_save_cmd_line failed.")
++	if cfg.Rancher.State.useUdev {
++		log.Infof("executing /usr/bin/after_save_cmd_line")
++		cmd := exec.Command("/usr/bin/after_save_cmd_line")
++		cmd.Stderr = os.Stderr
++		_, errb := cmd.Output()
++		if errb != nil {
++			log.Infof("exec /usr/bin/after_save_cmd_line failed.")
++		}
 +	}
 +
  	return cfg, nil
