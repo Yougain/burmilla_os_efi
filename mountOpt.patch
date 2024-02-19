@@ -268,7 +268,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  	if err != nil {
 diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/prepare/prepare.go
 --- os.prev/pkg/init/prepare/prepare.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/prepare/prepare.go	2024-02-19 10:29:20.982499700 +0900
++++ os.new/pkg/init/prepare/prepare.go	2024-02-19 11:26:08.712499700 +0900
 @@ -3,6 +3,7 @@
  import (
  	"os"
@@ -277,10 +277,11 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
  
  	"github.com/burmilla/os/config"
  	"github.com/burmilla/os/pkg/dfs"
-@@ -37,5 +38,15 @@
+@@ -37,5 +38,16 @@
  		log.SetLevel(log.InfoLevel)
  	}
  
++
 +	if cfg.Rancher.State.useUdev {
 +		log.Infof("executing /usr/bin/after_save_cmd_line")
 +		cmd := exec.Command("/usr/bin/after_save_cmd_line")
