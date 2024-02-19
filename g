@@ -15,21 +15,24 @@ function ssh_clone(){
 		url=${url%%.git}
 		local tdir=`pwd`
 		tdir=${tdir##*/}
+		local ret=0
 		while read ln; do
 			deb $DEBUG
 			deb $ln
 			ssh_param $ln -x -q
 			if ! ssh_do git-force-clone $url $tdir;then
 				err "Failed: ssh $ln git-force-clone $url $tdir"
+				ret=1
 			fi
 		done < .git/.ssh_clone
 	fi
+	return $ret
 }
 
 
 if [ "$1" = "-s" ];then
 	ssh_clone
-	exit 0
+	exit $?
 fi
 
 
