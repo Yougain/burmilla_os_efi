@@ -35,7 +35,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/cloudinit/cloudinit.go os.new/pkg/i
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2024-02-19 13:02:00.912499700 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2024-02-19 13:17:01.192499700 +0900
 @@ -1,9 +1,15 @@
  package fsmount
  
@@ -80,7 +80,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  	} else {
  		log.Infof("Mounted BOOT: %s", cfg.Rancher.State.BootDev)
  	}
-@@ -54,17 +60,113 @@
+@@ -54,17 +60,114 @@
  	return cfg, nil
  }
  
@@ -151,6 +151,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +
 +
 +
++
 +func _mountConfigured(display, dev, fsType, target, op string) error {
 +
 +
@@ -198,7 +199,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  	if fsType == "auto" {
  		fsType, err = util.GetFsType(dev)
  	}
-@@ -73,13 +175,63 @@
+@@ -73,13 +176,63 @@
  		return err
  	}
  
@@ -266,7 +267,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  }
  
  func tryMountState(cfg *config.CloudConfig) error {
-@@ -119,6 +271,7 @@
+@@ -119,6 +272,7 @@
  
  func MountStateAndBootstrap(cfg *config.CloudConfig) (*config.CloudConfig, error) {
  	var err error
