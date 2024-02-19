@@ -958,7 +958,7 @@ ssh_sudo <<'FINAL'
 	GLOBAL_APPEND=`cat /installing/boot_dev/global.cfg | sed "s/ rancher.state.dev=[^ ]*//g" | sed "s/ console=ttyS[^ ]*//g" | sed "s/ rancher.autologin=ttyS[^ ]*//g"`
 	GLOBAL_APPEND_ARGS=${GLOBAL_APPEND#APPEND *}
 
-	KERNEL_ARGS="rancher.state.boot_mountopt=degraded,rw rancher.state.oem_mountopt=degraded,rw,subvol=/oem_root rancher.state.mountopt=degraded,rw,subvol=/state_root rancher.password=rancher $GLOBAL_APPEND_ARGS rw rootflags=degraded,rw,subvol=/state_root"
+	KERNEL_ARGS="rancher.state.boot_mountopt=rw rancher.state.oem_mountopt=rw,subvol=/oem_root rancher.state.mountopt=rw,subvol=/state_root rancher.password=rancher $GLOBAL_APPEND_ARGS rw rootflags=rw,subvol=/state_root"
 	VGA_SIZE=1024x768
 	VGA_MODE=775
 	VGA_ARGS="i915.force_probe vga=$VGA_MODE video=$VGA_SIZE"
