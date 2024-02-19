@@ -19,7 +19,9 @@ function ssh_clone(){
 			deb $DEBUG
 			deb $ln
 			ssh_param $ln -x -q
-			ssh_do git-force-clone $url $tdir
+			if ! ssh_do git-force-clone $url $tdir;then
+				err "Failed: ssh $ln git-force-clone $url $tdir"
+			fi
 		done < .git/.ssh_clone
 	fi
 }
