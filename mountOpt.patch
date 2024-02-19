@@ -35,7 +35,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/cloudinit/cloudinit.go os.new/pkg/i
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2024-02-19 12:16:39.442499700 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2024-02-19 13:02:00.912499700 +0900
 @@ -1,9 +1,15 @@
  package fsmount
  
@@ -247,7 +247,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +		
 +		for _, op := range opts {
 +			for i := 0; i < 5; i++ {
-+				if err2 := _mountConfigured(display, dev, target, fsType, op) ; err2 != nil {
++				if err2 := _mountConfigured(display, dev, fsType, target, op) ; err2 != nil {
 +					time.Sleep(2 * time.Second)
 +				} else {
 +					return nil
@@ -304,8 +304,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
  }
 diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg/init/switchroot/switchroot.go
 --- os.prev/pkg/init/switchroot/switchroot.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/switchroot/switchroot.go	2024-02-19 11:11:28.932499700 +0900
-@@ -4,9 +4,11 @@
++++ os.new/pkg/init/switchroot/switchroot.go	2024-02-19 13:03:08.612499700 +0900
+@@ -4,6 +4,7 @@
  	"fmt"
  	"io/ioutil"
  	"os"
@@ -313,11 +313,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	"path"
  	"strings"
  	"syscall"
-+	"path/filepath"
- 
- 	"github.com/burmilla/os/config"
- 	"github.com/burmilla/os/pkg/dfs"
-@@ -20,7 +22,7 @@
+@@ -20,7 +21,7 @@
  	if !fsmount.ShouldSwitchRoot {
  		return cfg, nil
  	}
@@ -326,7 +322,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	if err := switchRoot(config.StateDir, cfg.Rancher.State.Directory, cfg.Rancher.RmUsr); err != nil {
  		return cfg, err
  	}
-@@ -28,7 +30,7 @@
+@@ -28,7 +29,7 @@
  }
  
  func cleanupTarget(rootfs, targetUsr, usr, usrVer, tmpDir string) (bool, error) {
@@ -335,7 +331,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	if err := os.Remove(targetUsr); err != nil && !os.IsNotExist(err) {
  		log.Errorf("Failed to delete %s, possibly invalid BurmillaOS state partition: %v", targetUsr, err)
  		return false, err
-@@ -38,7 +40,7 @@
+@@ -38,7 +39,7 @@
  		return false, err
  	}
  
@@ -344,7 +340,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	if err := os.RemoveAll(tmpDir); err != nil {
  		// Don't care if this fails
  		log.Errorf("Failed to cleanup temp directory %s: %v", tmpDir, err)
-@@ -69,7 +71,7 @@
+@@ -69,7 +70,7 @@
  		return err
  	}
  
@@ -353,7 +349,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	if err := os.MkdirAll(tmpDir, 0755); err != nil {
  		return err
  	}
-@@ -79,13 +81,13 @@
+@@ -79,13 +80,13 @@
  		return err
  	}
  
@@ -369,7 +365,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	if err := os.Rename(usrVerTmp, usr); err != nil {
  		return err
  	}
-@@ -99,11 +101,11 @@
+@@ -99,11 +100,11 @@
  		filename := path.Join("/", file.Name())
  
  		if filename == rootfs || strings.HasPrefix(rootfs, filename+"/") {
@@ -383,28 +379,16 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  		if err := os.RemoveAll(filename); err != nil {
  			return err
  		}
-@@ -113,8 +115,19 @@
- }
+@@ -114,7 +115,7 @@
  
  func switchRoot(rootfs, subdir string, rmUsr bool) error {
-+	filepath.Walk("/", func(path string, info os.FileInfo, err error) error {
-+		if err != nil {
-+			return err
-+		}
-+		if info.IsDir() {
-+			log.Infof("\n%s\n", path + "/")
-+		} else {
-+			log.Infof("\n%s\n", path)
-+		}
-+		return nil
-+	})
  	if err := syscall.Unmount(config.OemDir, 0); err != nil {
 -		log.Debugf("Not umounting OEM: %v", err)
 +		log.Infof("Not umounting OEM: %v", err)
  	}
  
  	if subdir != "" {
-@@ -126,7 +139,7 @@
+@@ -126,7 +127,7 @@
  			}
  		}
  
@@ -413,7 +397,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  		if err := syscall.Mount(fullRootfs, rootfs, "", syscall.MS_BIND, ""); err != nil {
  			log.Errorf("Failed to bind mount subdir for %s: %v", fullRootfs, err)
  			return err
-@@ -134,7 +147,7 @@
+@@ -134,7 +135,7 @@
  	}
  
  	for _, i := range []string{"/dev", "/sys", "/proc", "/run"} {
@@ -422,7 +406,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  		if err := os.MkdirAll(path.Join(rootfs, i), 0755); err != nil {
  			return err
  		}
-@@ -147,17 +160,37 @@
+@@ -147,17 +148,26 @@
  		return err
  	}
  
@@ -431,18 +415,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	if err := syscall.Chdir(rootfs); err != nil {
  		return err
  	}
-+	filepath.Walk("/", func(path string, info os.FileInfo, err error) error {
-+		if err != nil {
-+			return err
-+		}
-+		if info.IsDir() {
-+			log.Infof("\n%s\n", path + "/")
-+		} else {
-+			log.Infof("\n%s\n", path)
-+		}
-+		return nil
-+	})
-+
+ 
+-	log.Debugf("mount MS_MOVE %s", rootfs)
 +	log.Infof("executing before_switch_root")
 +	cmd := exec.Command("/usr/bin/before_switch_root")
 +	cmd.Stderr = os.Stderr
@@ -450,8 +424,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
 +	if errb != nil {
 +		log.Infof("exec /usr/bin/before_switch_root failed.")
 +	}
- 
--	log.Debugf("mount MS_MOVE %s", rootfs)
++
 +	log.Infof("mount MS_MOVE %s", rootfs)
  	if err := syscall.Mount(rootfs, "/", "", syscall.MS_MOVE, ""); err != nil {
  		return err
@@ -462,7 +435,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	if err := syscall.Chroot("."); err != nil {
  		return err
  	}
-@@ -167,7 +200,7 @@
+@@ -167,7 +177,7 @@
  		return err
  	}
  
