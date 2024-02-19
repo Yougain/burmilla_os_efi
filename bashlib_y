@@ -245,6 +245,7 @@ warn_n(){
 }
 
 
+
 function deb(){
 	if [ -n "$DEBUG" ];then
 		echo -e $debug$@$plain >&2
