@@ -1,6 +1,6 @@
 diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
 --- os.prev/config/types.go	2024-02-15 15:45:46.750000000 +0900
-+++ os.new/config/types.go	2024-02-19 10:23:58.902499700 +0900
++++ os.new/config/types.go	2024-02-19 20:31:57.302499700 +0900
 @@ -210,6 +210,7 @@
  type StateConfig struct {
  	Directory  string   `yaml:"directory,omitempty"`
@@ -18,7 +18,7 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
  	BootFsType string   `yaml:"boot_fstype,omitempty"`
 +	BootMountOpt string   `yaml:"boot_mountopt,omitempty"`
  	BootDev    string   `yaml:"boot_dev,omitempty"`
-+	UseUdev    bool     `yaml:"use_udev,omitempty"`
++	NoUdev    bool     `yaml:"no_udev,omitempty"`
  }
  
  type CloudInit struct {
@@ -277,7 +277,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  	if err != nil {
 diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/prepare/prepare.go
 --- os.prev/pkg/init/prepare/prepare.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/prepare/prepare.go	2024-02-19 11:46:05.002499700 +0900
++++ os.new/pkg/init/prepare/prepare.go	2024-02-19 20:32:12.942499700 +0900
 @@ -3,6 +3,7 @@
  import (
  	"os"
@@ -291,7 +291,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
  	}
  
 +
-+	if cfg.Rancher.State.UseUdev {
++	if ! cfg.Rancher.State.NoUdev {
 +		log.Infof("executing /usr/bin/after_save_cmd_line")
 +		cmd := exec.Command("/usr/bin/after_save_cmd_line")
 +		cmd.Stderr = os.Stderr
