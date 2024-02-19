@@ -24,16 +24,8 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
  type CloudInit struct {
 diff -Naur '--exclude=.git' os.prev/pkg/init/cloudinit/cloudinit.go os.new/pkg/init/cloudinit/cloudinit.go
 --- os.prev/pkg/init/cloudinit/cloudinit.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/cloudinit/cloudinit.go	2024-02-19 10:41:35.342499700 +0900
-@@ -4,6 +4,7 @@
- 	"io/ioutil"
- 	"path/filepath"
- 	"strings"
-+	"os"
- 
- 	"github.com/burmilla/os/config"
- 	"github.com/burmilla/os/pkg/compose"
-@@ -116,6 +117,7 @@
++++ os.new/pkg/init/cloudinit/cloudinit.go	2024-02-19 11:46:16.782499700 +0900
+@@ -116,6 +116,7 @@
  			{Name: "cloudinit loadImages", Func: sysinit.LoadBootstrapImages},
  			{Name: "cloudinit Services", Func: runCloudInitServiceSet},
  		})
@@ -43,7 +35,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/cloudinit/cloudinit.go os.new/pkg/i
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2024-02-19 11:07:45.132499700 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2024-02-19 12:12:01.252499700 +0900
 @@ -1,9 +1,15 @@
  package fsmount
  
@@ -88,7 +80,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  	} else {
  		log.Infof("Mounted BOOT: %s", cfg.Rancher.State.BootDev)
  	}
-@@ -54,17 +60,98 @@
+@@ -54,17 +60,112 @@
  	return cfg, nil
  }
  
@@ -96,6 +88,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +
 +func blkid2GetSiblings(dev string) (resLn string) {
 +	cmd := exec.Command("/usr/bin/blkid2", "--get-siblings", dev)
++	cmd.Env = append(os.Environ(), "DEBUG=")
 +	cmd.Stderr = os.Stderr
 +	out, err := cmd.Output()
 +	if err != nil {
@@ -125,6 +118,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +		}
 +	}
 +	cmd := exec.Command("/usr/bin/blkid2")
++	cmd.Env = append(os.Environ(), "DEBUG=")
 +	cmd.Stderr = os.Stderr
 +	out, err := cmd.Output()
 +	if err != nil {
@@ -166,19 +160,31 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +		log.Infof("Mouting %s failed", dev)
 +		return err
 +	} else {
-+		log.Infof("Mouted %s successful, dev)
- 		return nil
- 	}
++		log.Infof("Mouted %s successful", dev)
++		files, _ := ioutil.ReadDir("/")
++		for _, f := range files {
++				log.Infof("\nMember of /: %s\n", f.Name())
++		}
++		files, _ = ioutil.ReadDir("/usr/bin")
++		for _, f := range files {
++				log.Infof("\nMember of /usr/bin: %s\n", f.Name())
++		}
++		files, _ = ioutil.ReadDir(target)
++		for _, f := range files {
++				log.Infof("\nMember of %s: %s\n", target, f.Name())
++		}
++		return nil
++	}
 +}
- 
--	dev = util.ResolveDevice(dev)
++
 +func mountConfigured(display, dname, fsType, target, option string) error {
 +	var err error
 +
 +	if dname == "" {
-+		return nil
-+	}
-+
+ 		return nil
+ 	}
+ 
+-	dev = util.ResolveDevice(dev)
 +	dev, _, err := blkid2MatchStr(dname)
  	if dev == "" {
 -		return fmt.Errorf("Could not resolve device %q", dev)
@@ -191,7 +197,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  	if fsType == "auto" {
  		fsType, err = util.GetFsType(dev)
  	}
-@@ -73,13 +160,62 @@
+@@ -73,13 +174,62 @@
  		return err
  	}
  
@@ -258,7 +264,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  }
  
  func tryMountState(cfg *config.CloudConfig) error {
-@@ -119,6 +255,7 @@
+@@ -119,6 +269,7 @@
  
  func MountStateAndBootstrap(cfg *config.CloudConfig) (*config.CloudConfig, error) {
  	var err error
@@ -268,7 +274,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  	if err != nil {
 diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/prepare/prepare.go
 --- os.prev/pkg/init/prepare/prepare.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/prepare/prepare.go	2024-02-19 11:26:08.712499700 +0900
++++ os.new/pkg/init/prepare/prepare.go	2024-02-19 11:46:05.002499700 +0900
 @@ -3,6 +3,7 @@
  import (
  	"os"
@@ -282,7 +288,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
  	}
  
 +
-+	if cfg.Rancher.State.useUdev {
++	if cfg.Rancher.State.UseUdev {
 +		log.Infof("executing /usr/bin/after_save_cmd_line")
 +		cmd := exec.Command("/usr/bin/after_save_cmd_line")
 +		cmd.Stderr = os.Stderr

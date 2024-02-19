@@ -241,7 +241,7 @@ function warn(){
 }
 
 warn_n(){
-	warning_n "$@"
+	warning_n "$@" >&2
 }
 
 
