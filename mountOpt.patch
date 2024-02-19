@@ -35,7 +35,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/cloudinit/cloudinit.go os.new/pkg/i
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2024-02-19 12:12:01.252499700 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2024-02-19 12:16:39.442499700 +0900
 @@ -1,9 +1,15 @@
  package fsmount
  
@@ -48,7 +48,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +	"os"
 +	"os/exec"
 +	"time"
-+	"path/filepath"
++	"io/ioutil"
  
  	"github.com/burmilla/os/config"
  	"github.com/burmilla/os/config/cmdline"
@@ -80,7 +80,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  	} else {
  		log.Infof("Mounted BOOT: %s", cfg.Rancher.State.BootDev)
  	}
-@@ -54,17 +60,112 @@
+@@ -54,17 +60,113 @@
  	return cfg, nil
  }
  
@@ -152,9 +152,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +
 +
 +func _mountConfigured(display, dev, fsType, target, op string) error {
- 	var err error
- 
--	if dev == "" {
++
++
 +	log.Infof("Mounting %s device %s to %s (option = '%s')", display, dev, target, op)
 +	if err := util.Mount(dev, target, fsType, op) ; err != nil {
 +		log.Infof("Mouting %s failed", dev)
@@ -178,8 +177,10 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +}
 +
 +func mountConfigured(display, dname, fsType, target, option string) error {
-+	var err error
-+
+ 	var err error
++	var err2 error
+ 
+-	if dev == "" {
 +	if dname == "" {
  		return nil
  	}
@@ -197,7 +198,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  	if fsType == "auto" {
  		fsType, err = util.GetFsType(dev)
  	}
-@@ -73,13 +174,62 @@
+@@ -73,13 +175,63 @@
  		return err
  	}
  
@@ -238,7 +239,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +				dg += ",device=" + s
 +			}
 +		}
-+		var ops[3]string
++		var ops[4]string
 +		ops[0] = nodg
 +		ops[1] = dg
 +		ops[2] = option
@@ -253,6 +254,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +				}
 +			}
 +		}
++		return err2
 +	} else {
 +		return _mountConfigured(display, dev, target, fsType, option)
 +	}
@@ -264,7 +266,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  }
  
  func tryMountState(cfg *config.CloudConfig) error {
-@@ -119,6 +269,7 @@
+@@ -119,6 +271,7 @@
  
  func MountStateAndBootstrap(cfg *config.CloudConfig) (*config.CloudConfig, error) {
  	var err error
