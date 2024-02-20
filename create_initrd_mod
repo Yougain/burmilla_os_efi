@@ -235,13 +235,13 @@ $libs"
 	END
 
 	cp_lib libatomic.so.1 . $for_state
+	cp_lib libpcre.so.3 . $for_state
 	
 	cp_bin . $for_state <<"	END"
 		bash
 		busybox
 		id
 		mknod
-		mkdir
 		rmdir
 		touch
 		sleep
@@ -267,11 +267,11 @@ $libs"
 		mknod
 		diff
 	END
-	for f in rm reallink mount mkdir ls grep egrep;do
+	for f in rm readlink mount mkdir ls grep egrep;do
 		cp -av /bin/$f ./usr/bin
 		cp -av /bin/$f $for_state/usr/bin
 	done
-	for f in rm sort realpath uniq;do
+	for f in sort realpath uniq;do
 		cp -av /usr/bin/$f ./usr/bin
 		cp -av /usr/bin/$f $for_state/usr/bin
 	done
