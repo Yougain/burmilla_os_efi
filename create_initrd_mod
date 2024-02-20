@@ -242,7 +242,6 @@ $libs"
 		grep
 		ls
 		id
-		mount
 		mknod
 		mkdir
 		rmdir
@@ -278,7 +277,8 @@ $libs"
 	cp -av /bin/rm $for_state/usr/bin
 	cp -av /bin/readlink ./usr/bin
 	cp -av /bin/readlink $for_state/usr/bin
-	
+	cp -av /bin/mount ./usr/bin
+	cp -av /bin/mount $for_state/usr/bin
 	
 	for d in . $for_state; do
 		system-docker cp udev:/lib/udev $d/lib
