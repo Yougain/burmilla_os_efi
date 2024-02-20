@@ -70,23 +70,26 @@ function blkid2(){
 
 	local dev
 	local bc
-	for ((i = 0; i < $IDnDEVs_n ; i++)); do
-		dev=${IDnDEVs_dev[$i]}:
-		bc=${blkids[$dev]}
-		if [ -n "$bc" ];then
-			blkids[$dev]="$bc ID=\""${IDnDEVs_id[$i]}'"'
-		fi
-	done
-	if [ -d /dev/disk/by-path ];then
-		for ((i = 0; i < $PATHnDEVs_n ; i++)); do
-			dev=${PATHnDEVs_dev[$i]}
+	if [ -n "$IDnDEVs_n" ];then
+		for ((i = 0; i < $IDnDEVs_n ; i++)); do
+			dev=${IDnDEVs_dev[$i]}:
 			bc=${blkids[$dev]}
 			if [ -n "$bc" ];then
-				blkids[$dev]="$bc PATH=\""${PATHnDEVs_path[$i]}'"'
+				blkids[$dev]="$bc ID=\""${IDnDEVs_id[$i]}'"'
 			fi
 		done
 	fi
-	
+	if [ -n "$PATHnDEVs_n" ];then
+		if [ -d /dev/disk/by-path ];then
+			for ((i = 0; i < $PATHnDEVs_n ; i++)); do
+				dev=${PATHnDEVs_dev[$i]}
+				bc=${blkids[$dev]}
+				if [ -n "$bc" ];then
+					blkids[$dev]="$bc PATH=\""${PATHnDEVs_path[$i]}'"'
+				fi
+			done
+		fi
+	fi
 	declare -A local uuid_list
 	declare -A local dev2VarNameSibs
 	local varNameSibs # use transformed uuid (tr - _) as variable name for array of siblings
