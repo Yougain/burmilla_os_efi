@@ -104,7 +104,7 @@ ${to_inst##*/} \$@
 source /usr/share/bashlib_y/bashlib_y
 source /usr/share/bashlib_y/${f##*/}
 
-${f##*/} \$@
+$fn \$@
 
 " > "$d/usr/bin/${to_inst##*/}"
 											chmod +x "$d/usr/bin/${to_inst##*/}"
