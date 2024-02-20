@@ -215,14 +215,14 @@ info $P_ISO
 #require create_initrd_mod write_script
 require write_script
 #create_initrd_mod $BURMILLAOS_VER
-if [ -z "$INITRD_FILE" ];then
-	die initrd file, not detected
-fi
-INITRD_SIZE=$(stat -c%s $INITRD_FILE-mod)
-
+#if [ -z "$INITRD_FILE" ];then
+#	die initrd file, not detected
+#fi
+#INITRD_SIZE=$(stat -c%s $INITRD_FILE-mod)
 
 P_ISO_SIZE=$(stat -c%s $BURMILLA_ISO)
-P_ISO_SIZE=$((INITRD_SIZE + P_ISO_SIZE + P_ISO_SIZE / 10))
+#P_ISO_SIZE=$((INITRD_SIZE + P_ISO_SIZE + P_ISO_SIZE / 10))
+P_ISO_SIZE=$((P_ISO_SIZE + P_ISO_SIZE / 10))
 P_ISO_SIZE_K=$((P_ISO_SIZE / 1024))
 
 sudo umount $PD $UD $RD $ED $ED2
