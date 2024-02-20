@@ -22,12 +22,9 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2024-02-20 20:55:22.830416200 +0900
-@@ -1,9 +1,10 @@
- package fsmount
- 
- import (
--	"fmt"
++++ os.new/pkg/init/fsmount/fsmount.go	2024-02-20 21:31:15.340416200 +0900
+@@ -4,6 +4,8 @@
+ 	"fmt"
  	"strings"
  	"syscall"
 +	"os"
@@ -35,7 +32,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  
  	"github.com/burmilla/os/config"
  	"github.com/burmilla/os/config/cmdline"
-@@ -22,7 +23,7 @@
+@@ -22,7 +24,7 @@
  )
  
  func MountOem(cfg *config.CloudConfig) (*config.CloudConfig, error) {
@@ -44,7 +41,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  		log.Debugf("Not mounting OEM: %v", err)
  	} else {
  		log.Infof("Mounted OEM: %s", cfg.Rancher.State.OemDev)
-@@ -45,7 +46,7 @@
+@@ -45,7 +47,7 @@
  		}
  	}
  
@@ -53,15 +50,16 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  		log.Debugf("Not mounting BOOT: %v", err)
  	} else {
  		log.Infof("Mounted BOOT: %s", cfg.Rancher.State.BootDev)
-@@ -54,32 +55,48 @@
+@@ -54,32 +56,48 @@
  	return cfg, nil
  }
  
 -func mountConfigured(display, dev, fsType, target string) error {
+-	var err error
 +func mountConfigured(display, dname, fsType, target, option string) error {
- 	var err error
  
 -	if dev == "" {
++
 +	if dname == "" {
  		return nil
  	}
@@ -90,7 +88,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 -		return err
 +	} else {
 +		
-+		dev = util.ResolveDevice(dev)
++		dev := util.ResolveDevice(dname)
 +		if dev == "" {
 +			return fmt.Errorf("Could not resolve device %q", dev)
 +		}
