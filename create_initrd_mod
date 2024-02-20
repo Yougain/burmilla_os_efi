@@ -256,7 +256,6 @@ $libs"
 		btrfsck
 		strace
 		killall
-		readlink
 		realpath
 		awk
 		sed
@@ -277,6 +276,9 @@ $libs"
 	END
 	cp -av /bin/rm ./usr/bin
 	cp -av /bin/rm $for_state/usr/bin
+	cp -av /bin/readlink ./usr/bin
+	cp -av /bin/readlink $for_state/usr/bin
+	
 	
 	for d in . $for_state; do
 		system-docker cp udev:/lib/udev $d/lib

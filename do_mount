@@ -4,7 +4,7 @@
 function do_mount(){
 	function _mount(){
 		dbv $@
-		local msg="`/bin/mount $@ 2>&1`"
+		local msg="`mount $@ 2>&1`"
 		local ret=$?
 		if echo $msg|grep "already mounted";then
 			die $msg
@@ -195,7 +195,7 @@ function do_mount(){
 		fi
 		local res
 		if [ "$type" = "btrfs" ];then
-			btrfs scan
+			btrfs device scan
 			local devices=("`blkid2 --get-siblings $to_mount`")
 			dbv "$?"
 			if [ "$?" != 0 -o "${#devices[@]}" = 0 ];then
