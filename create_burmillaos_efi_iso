@@ -212,8 +212,8 @@ P_ISO="$T"/burmillaos-$BURMILLAOS_VER.efi.iso
 info $P_ISO
 
 
-require create_initrd_mod write_script
-create_initrd_mod $BURMILLAOS_VER
+#require create_initrd_mod write_script
+#create_initrd_mod $BURMILLAOS_VER
 if [ -z "$INITRD_FILE" ];then
 	die initrd file, not detected
 fi
