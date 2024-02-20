@@ -39,6 +39,7 @@ fi
 
 if [ "$1" = "-f" ];then
 	force=1
+	shift
 else
 	Emsg=" Exiting"
 fi
