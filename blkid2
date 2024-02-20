@@ -42,9 +42,11 @@ function blkid2(){
 
 	local i
 
-	local IDnDEVs_id=(`ls /dev/disk/by-id`)
-	local IDnDEVs_dev=($(__readlink `ls /dev/disk/by-id/*`))
-	local IDnDEVs_n=${#IDnDEVs_id[@]}
+	if [ -d /dev/disk/by-id ];then
+		local IDnDEVs_id=(`ls /dev/disk/by-id`)
+		local IDnDEVs_dev=($(__readlink `ls /dev/disk/by-id/*`))
+		local IDnDEVs_n=${#IDnDEVs_id[@]}
+	fi
 	
 	if [ -d /dev/disk/by-path ];then
 		local PATHnDEVs_path=(`ls /dev/disk/by-path`)

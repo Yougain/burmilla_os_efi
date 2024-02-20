@@ -213,6 +213,7 @@ info $P_ISO
 
 
 #require create_initrd_mod write_script
+require write_script
 #create_initrd_mod $BURMILLAOS_VER
 if [ -z "$INITRD_FILE" ];then
 	die initrd file, not detected

@@ -415,7 +415,7 @@ _rm_all(){
 	local f
 	local l
 	for f in /dev/block/*;do
-		l="`readlink -f $f`"
+		l="`readlink f $f`"
 		if [ "${l:0:5}" = "/dev/" ];then
 			blockDevs+=("${l#/dev/}")
 		fi
@@ -471,7 +471,7 @@ _rm_all(){
 
 rm_all(){
 	if [ ! -d /dev/block ];then
-		err "directory, '/dev/block' is missing"
+#		err "directory, '/dev/block' is missing"
 		return 1
 	fi
 	if [ ! -r /proc/mounts ];then

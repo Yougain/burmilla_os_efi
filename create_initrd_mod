@@ -280,8 +280,8 @@ $libs"
 	
 	for d in . $for_state; do
 		system-docker cp udev:/lib/udev $d/lib
-#		ln -sf /dev/null $d/lib/udev/rules.d/75-net-description.rules
-#		ln -sf /dev/null $d/lib/udev/rules.d/80-net-name-slot.rules
+		ln -sf /dev/null $d/lib/udev/rules.d/75-net-description.rules
+		ln -sf /dev/null $d/lib/udev/rules.d/80-net-name-slot.rules
 		local f
 		for f in blkid2                      \
 				do_mount                     \
