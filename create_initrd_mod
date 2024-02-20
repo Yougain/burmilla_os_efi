@@ -239,8 +239,6 @@ $libs"
 	cp_bin . $for_state <<"	END"
 		bash
 		busybox
-		grep
-		ls
 		id
 		mknod
 		mkdir
@@ -255,7 +253,6 @@ $libs"
 		btrfsck
 		strace
 		killall
-		realpath
 		awk
 		sed
 		blkid
@@ -264,21 +261,20 @@ $libs"
 		cat
 		stat
 		tr
-		sort
-		uniq
-		egrep
 		ldd
 		date
 		find
 		mknod
 		diff
 	END
-	cp -av /bin/rm ./usr/bin
-	cp -av /bin/rm $for_state/usr/bin
-	cp -av /bin/readlink ./usr/bin
-	cp -av /bin/readlink $for_state/usr/bin
-	cp -av /bin/mount ./usr/bin
-	cp -av /bin/mount $for_state/usr/bin
+	for f in rm reallink mount mkdir ls grep egrep;do
+		cp -av /bin/$f ./usr/bin
+		cp -av /bin/$f $for_state/usr/bin
+	done
+	for f in rm sort realpath uniq;do
+		cp -av /usr/bin/$f ./usr/bin
+		cp -av /usr/bin/$f $for_state/usr/bin
+	done
 	
 	for d in . $for_state; do
 		system-docker cp udev:/lib/udev $d/lib
