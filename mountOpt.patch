@@ -22,7 +22,7 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2024-02-20 17:33:03.650416200 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2024-02-20 20:55:22.830416200 +0900
 @@ -1,9 +1,10 @@
  package fsmount
  
@@ -53,7 +53,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  		log.Debugf("Not mounting BOOT: %v", err)
  	} else {
  		log.Infof("Mounted BOOT: %s", cfg.Rancher.State.BootDev)
-@@ -54,32 +55,28 @@
+@@ -54,32 +55,48 @@
  	return cfg, nil
  }
  
@@ -74,21 +74,41 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 -		fsType, err = util.GetFsType(dev)
 -	}
 +	log.Infof("Mounting %s device %s to %s (option = '%s')", display, dname, target, option)
++
++	if _, err := os.Stat("/usr/bin/do_mount"); err == nil {
++		cmd := exec.Command("/usr/bin/do_mount", "-o", option, dname, target)
++		cmd.Stderr = os.Stderr
++		_, errb := cmd.Output()
++		if errb != nil {
++			log.Infof("exec /usr/bin/do_mount, failed.")
++			log.Infof("Mouting %s failed", display)
++			return err
++		}
++		return nil
  
 -	if err != nil {
-+	cmd := exec.Command("/usr/bin/do_mount", "-o", option, dname, target)
-+	cmd.Stderr = os.Stderr
-+	_, errb := cmd.Output()
-+	if errb != nil {
-+		log.Infof("exec /usr/bin/do_mount, failed.")
-+		log.Infof("Mouting %s failed", display)
- 		return err
+-		return err
++	} else {
++		
++		dev = util.ResolveDevice(dev)
++		if dev == "" {
++			return fmt.Errorf("Could not resolve device %q", dev)
++		}
++		if fsType == "auto" {
++			fsType, err = util.GetFsType(dev)
++		}
++
++		if err != nil {
++			return err
++		}
++		log.Debugf("FsType has been set to %s", fsType)
++		log.Infof("Mounting %s device %s to %s", display, dev, target)
++		return util.Mount(dev, target, fsType, option)
  	}
--
+ 
 -	log.Debugf("FsType has been set to %s", fsType)
 -	log.Infof("Mounting %s device %s to %s", display, dev, target)
 -	return util.Mount(dev, target, fsType, "")
-+	return nil
  }
  
  func mountState(cfg *config.CloudConfig) error {
