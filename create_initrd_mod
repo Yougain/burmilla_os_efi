@@ -288,9 +288,7 @@ $libs"
 				chain_bak					\
 				partNum2Dev					\
 				after_save_cmd_line                \
-				before_sysinit                     \
-				paste_init_log_at_exit             \
-				before_switch_root; do
+				before_sysinit; do
 			dbv $f $d
 			do_install $f $d
 		done
