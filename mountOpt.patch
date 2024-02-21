@@ -172,8 +172,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/log/log.go	2024-02-22 08:02:39.955314500 +0900
-@@ -2,13 +2,17 @@
++++ os.new/pkg/log/log.go	2024-02-22 08:48:49.845314500 +0900
+@@ -2,9 +2,13 @@
  
  import (
  	"fmt"
@@ -183,14 +183,10 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	"log/syslog"
  	"os"
 +	"os/exec"
++	"syscall"
  	"path/filepath"
  	"strings"
  
- 	"github.com/burmilla/os/config/cmdline"
-+	"github.com/burmilla/os/pkg/init/fsmount"
- 
- 	"github.com/sirupsen/logrus"
- 	lsyslog "github.com/sirupsen/logrus/hooks/syslog"
 @@ -18,6 +22,9 @@
  var userHook *ShowuserlogHook
  var defaultLogLevel logrus.Level
@@ -276,11 +272,21 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panicf(format, args...)
  }
  
-@@ -122,6 +175,25 @@
+@@ -120,8 +173,35 @@
+ 	return logrus.WithFields(logrus.Fields(fields))
+ }
  
++
++func isInitrd() bool {
++	var stat syscall.Statfs_t
++	syscall.Statfs("/", &stat)
++	return int64(stat.Type) == tmpfsMagic || int64(stat.Type) == ramfsMagic
++}
++
++
  // InitLogger sets up Logging to log to /dev/kmsg and to Syslog
  func InitLogger() {
-+	if fsmount.IsInitrd() {
++	if isInitrd() {
 +		out, errb := exec.Command("/usr/bin/date", "+%z").Output()
 +		if errb != nil {
 +			Infof("exec /usr/bin/date, failed: %v", errb)
