@@ -180,7 +180,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/log/log.go	2024-02-21 09:11:09.135314500 +0900
++++ os.new/pkg/log/log.go	2024-02-21 10:28:45.255314500 +0900
 @@ -2,6 +2,7 @@
  
  import (
@@ -235,7 +235,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +			}
 +		}
 +		if doPreserve {
-+			preservedLogs += "time=" + t.String() + "level=" + lv + " " + "msg=\"" + fmt.sprintf(string, args...) + "\") + "\n"
++			preservedLogs += "time=" + t.String() + "level=" + lv + " " + "msg=\"" + fmt.sprintf(string, args...) + "\"") + "\n"
 +		}
 +	}
 +}
