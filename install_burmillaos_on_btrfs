@@ -226,22 +226,25 @@ dbv $NET_DEV
 if [ -z "$NET_DEV" ]; then
 	die Cannot find net device for default route.
 fi
-DS="`ssh_do cat /etc/resolv.conf| sed -e 's/[ \t]*#.*//' | grep "nameserver" | sed -e 's/^[ \t]*//' | awk '{print $2}'`"
-DNS_SETTINGS="`ssh_do cat /etc/resolv.conf| sed -e 's/[ \t]*#.*//' | grep "nameserver" | sed -e 's/^[ \t]*//' | awk '{print $2}' | sed -e 's/^/      - /'`"
 
-DSX=""
-DSX2=""
-for i in $DS; do
-	if [ -z "$DSX" ]; then
-		DSX='"'$i'"'
-		DSX2='\"'$i'\"'
-	else
-		DSX="$DSX",'"'$i'"'
-		DSX2="$DSX2",'\"'$i'\"'
-	fi
-done
-DNS_SETTINGS_YQ="[$DSX]"
-DNS_SETTINGS_YQ2="[$DSX2]"
+function __set_dns__(){
+	local DS="`ssh_do cat /etc/resolv.conf| sed -e 's/[ \t]*#.*//' | grep "nameserver" | sed -e 's/^[ \t]*//' | awk '{print $2}'`"
+	DNS_SETTINGS="`ssh_do cat /etc/resolv.conf| sed -e 's/[ \t]*#.*//' | grep "nameserver" | sed -e 's/^[ \t]*//' | awk '{print $2}' | sed -e 's/^/      - /'`"
+
+	local DSX=""
+	local DSX2=""
+	for i in $DS; do
+		if [ -z "$DSX" ]; then
+			DSX='"'$i'"'
+			DSX2='\"'$i'\"'
+		else
+			DSX="$DSX",'"'$i'"'
+			DSX2="$DSX2",'\"'$i'\"'
+		fi
+	done
+	DNS_SETTINGS_YQ="[$DSX]"
+	DNS_SETTINGS_YQ2="[$DSX2]"
+}
 
 deb $DNS_SETTINGS_YQ2
 
@@ -962,7 +965,7 @@ ssh_sudo <<'FINAL'
 	GLOBAL_APPEND=`cat /installing/boot_dev/global.cfg | sed "s/ rancher.state.dev=[^ ]*//g" | sed "s/ console=ttyS[^ ]*//g" | sed "s/ rancher.autologin=ttyS[^ ]*//g"`
 	GLOBAL_APPEND_ARGS=${GLOBAL_APPEND#APPEND *}
 
-	KERNEL_ARGS="TZ=$TZ rancher.state.boot_mountopt=rw rancher.state.oem_mountopt=rw,subvol=/oem_root rancher.state.mountopt=rw,subvol=/state_root rancher.password=rancher $GLOBAL_APPEND_ARGS rw rootflags=rw,subvol=/state_root"
+	KERNEL_ARGS="TZ=$TZL rancher.state.boot_mountopt=rw rancher.state.oem_mountopt=rw,subvol=/oem_root rancher.state.mountopt=rw,subvol=/state_root rancher.password=rancher $GLOBAL_APPEND_ARGS rw rootflags=rw,subvol=/state_root"
 	VGA_SIZE=1024x768
 	VGA_MODE=775
 	VGA_ARGS="i915.force_probe vga=$VGA_MODE video=$VGA_SIZE"
