@@ -18,6 +18,7 @@ after_save_cmd_line(){
 		udevadm trigger --action=change --type=devices
 		udevadm settle
 		mkdir -p /run/udev
+		touch /run/dev/queue
 		info udev started
 		sleep 5
 	fi
