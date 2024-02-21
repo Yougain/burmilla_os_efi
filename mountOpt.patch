@@ -172,7 +172,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/log/log.go	2024-02-21 21:00:01.695314500 +0900
++++ os.new/pkg/log/log.go	2024-02-21 21:04:52.725314500 +0900
 @@ -2,9 +2,12 @@
  
  import (
@@ -218,7 +218,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +			fmt.Printf("file found, '%s'\n", preserveLogFN)
 +			if doPreserve {
 +				 // write preserved
-+				file, err := os.OpenFile(preserveLogFN, os.O_WRONLY|os.O_APPEND)
++				file, err := os.OpenFile(preserveLogFN, os.O_WRONLY|os.O_APPEND, 0666)
 +				if err == nil {
 +					fmt.Printf("file opened, '%s'", preserveLogFN)
 +					_, err := file.WriteString(preservedLogs)
