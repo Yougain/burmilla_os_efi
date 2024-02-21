@@ -11,6 +11,7 @@ chain_bak(){
 	local theFirst
 	local force
 	local reverse
+	local limit
 
 	dbv "$@"
 	while (( "$#" )); do
@@ -40,33 +41,37 @@ chain_bak(){
 						;;
 				esac
 			else
-				local i
-				for (( i=1; i<${#1}; i++ )); do
-					local o="${1:$i:1}"
-					case "$o" in
-						"v")
-							verbose="-v"
+				if [[ $1 =~ ^-([0-9]+)$ ]];then
+					limit=${BASH_REMATCH[1]}
+				else
+					local i
+					for (( i=1; i<${#1}; i++ )); do
+						local o="${1:$i:1}"
+						case "$o" in
+							"v")
+								verbose="-v"
+								;;
+							"d")
+								diff=1
+								;;
+							"?")
+								help=1
+								;;
+							"x")
+								cyclic=1
+								;;
+							"r")
+								reverse=1
+								;;
+							"f")
+								force="-f"
 							;;
-						"d")
-							diff=1
-							;;
-						"?")
-							help=1
-							;;
-						"x")
-							cyclic=1
-							;;
-						"r")
-							reverse=1
-							;;
-						"f")
-							force="-f"
-						;;
-						*)
-							die "not supported option -'$o'"
-							;;
-					esac
-				done
+							*)
+								die "not supported option -'$o'"
+								;;
+						esac
+					done
+				fi
 			fi
 		else
 			argv+=("$1")
@@ -96,6 +101,7 @@ chain_bak(){
      -x, --exchange, --cyclic : Exchange name cyclically
      -v, --verbose            : Verbose output
      -r, --reverse            : Reverse all action
+     -[LIMIT_NUM]             : Erase clobber over LIMIT_NUM
      -?, --help               : Show this help messages"
 		exit 0
 	fi
@@ -238,6 +244,22 @@ chain_bak(){
 	}
 	
 	
+	function _chain_rm(){
+		local num="$1"
+		local f0="$(_chain_bak_set_file $num)"
+		local f1="$(_chain_bak_set_file $((num + 1)))"
+		dbv rm $f0 $f1
+		if [ -e "$f1" ];then
+			if ! _chain_rm $((num + 1)); then
+				return 1
+			fi
+		fi
+		if ! rm -f $verbose "$f0"; then
+			return 1
+		fi
+		dbv erased "$f0"
+	}
+	
 	function _chain_bak2(){
 		local num="$1"
 		local f0
@@ -258,8 +280,14 @@ chain_bak(){
 			fi
 		fi
 		dbv $f0, $f1
-		if ! _mv_it $force "$f0" "$f1"; then
-			return 1
+		if [ "$num" != "$limit" ];then
+			if ! _mv_it $force "$f0" "$f1"; then
+				return 1
+			fi
+		else
+			if ! _chain_rm $num; then
+				return 1
+			fi
 		fi
 	}
 
@@ -271,7 +299,7 @@ chain_bak(){
 		else
 			t="$theme.$n"
 		fi
-		if [ ! -e "$t" ];then
+		if [ ! -e "$t" -o "$1" = "$limit" ];then
 			max=$1
 		else
 			_chain_bak_find_max $n
@@ -286,7 +314,7 @@ chain_bak(){
 		else
 			t="$theme.$n"
 		fi
-		if [ ! -e "$t" ];then
+		if [ ! -e "$t" -o "$1" = "-$limit" ];then
 			min=$1
 		else
 			_chain_bak_find_min $n
