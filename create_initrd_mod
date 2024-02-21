@@ -277,6 +277,10 @@ $libs"
 		cp -av /usr/bin/$f ./usr/bin
 		cp -av /usr/bin/$f $for_state/usr/bin
 	done
+	cp -av /usr/lib/locale ./usr/lib
+	cp -av /usr/lib/locale $for_state/usr/lib
+	cp -av /usr/share/zoneinfo ./usr/share
+	cp -av /usr/share/zoneinfo $for_state/usr/share
 	
 	for d in . $for_state; do
 		system-docker cp udev:/lib/udev $d/lib

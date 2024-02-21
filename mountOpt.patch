@@ -172,16 +172,17 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/log/log.go	2024-02-21 14:06:17.215314500 +0900
-@@ -2,6 +2,7 @@
++++ os.new/pkg/log/log.go	2024-02-21 17:25:08.805314500 +0900
+@@ -2,6 +2,8 @@
  
  import (
  	"fmt"
 +	"time"
++  "strconv"
  	"io"
  	"log/syslog"
  	"os"
-@@ -18,6 +19,9 @@
+@@ -18,6 +20,9 @@
  var userHook *ShowuserlogHook
  var defaultLogLevel logrus.Level
  var debugThisLogger = false
@@ -191,14 +192,14 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  
  type Fields logrus.Fields
  type Level logrus.Level
-@@ -63,28 +67,75 @@
+@@ -63,28 +68,74 @@
  	return Level(logrus.GetLevel())
  }
  
 +
 +func UntilLogWritable(lgFName string){
 +	preserveLogFN = lgFName
-+	fmt.Printf("setting log file, '%s'", preserveLogFN)
++	fmt.Printf("setting log file, '%s'\n", preserveLogFN)
 +}
 +
 +
@@ -207,18 +208,18 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		t := time.Now()
 +		_, err := os.Stat(preserveLogFN)
 +		if err != nil { // file missing
-+			fmt.Printf("file missing, '%s'", preserveLogFN)
++			fmt.Printf("file missing, '%s'\n", preserveLogFN)
 +			doPreserve = true
 +		} else { // file exists
-+			fmt.Printf("file found, '%s'", preserveLogFN)
++			fmt.Printf("file found, '%s'\n", preserveLogFN)
 +			if doPreserve {
 +				 // write preserved
-+				file, err := os.Create(preserveLogFN)
++				file, err := os.OpenFile(preserveLogFN, os.O_WRITE|os.O_APPEND)
 +				if err == nil {
 +					fmt.Printf("file opened, '%s'", preserveLogFN)
 +					_, err := file.WriteString(preservedLogs)
 +					if err == nil {
-+						fmt.Printf("written preserved log, '%s'", preservedLogs)
++						fmt.Printf("written preserved log\n")
 +						file.Close()
 +					}
 +				}
@@ -227,8 +228,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +			}
 +		}
 +		if doPreserve {
-+			preservedLogs += "time=" + t.String() + "level=" + lv + " " + "msg=\"" + fmt.Sprintf(format, args...) + "\"" + "\n"
-+			fmt.Printf("preserved logs, '%s'", preservedLogs)
++			preservedLogs += "time=" + t.String() + " level=" + lv + " " + " msg=\"" + fmt.Sprintf(format, args...) + "\"" + "\n"
 +		}
 +	}
 +}
@@ -267,6 +267,28 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panicf(format, args...)
  }
  
+@@ -122,6 +173,21 @@
+ 
+ // InitLogger sets up Logging to log to /dev/kmsg and to Syslog
+ func InitLogger() {
++	out, errb := exec.Command("/usr/bin/date", "%z").Output()
++	if errb != nil {
++		log.Errorf("exec /usr/bin/date, failed.")
++	} else {
++		td := string(out)
++		log.Infof("output of `date %z`: %s", td)
++		base := strconv.Atoi(td[1:3]) * 60 * 60 + strconv.Atoi(td[3:]) * 60
++		if td[0:1] = "-" {
++			base = -base
++		}
++		log.Infof("time difference: %d seconds", base)
++		loc := time.FixedZone("INIT_LOCAL", base)
++		time.Local = loc
++		log.Infof("set time zone")
++	}
+ 	if logTheseApps() {
+ 		innerInit(false)
+ 		FsReady()
 diff -Naur '--exclude=.git' os.prev/pkg/sysinit/sysinit.go os.new/pkg/sysinit/sysinit.go
 --- os.prev/pkg/sysinit/sysinit.go	2024-02-15 15:45:46.760000000 +0900
 +++ os.new/pkg/sysinit/sysinit.go	2024-02-20 16:23:46.720416200 +0900

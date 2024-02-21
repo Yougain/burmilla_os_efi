@@ -84,6 +84,11 @@ function ssh_param(){
 		SSH_PORT=`echo $SSH_CON_LINE| egrep -o '[0-9]+$'`
 		SSH_PORT_OPT=" -p $SSH_PORT"
 		SSH_HOST_IP=`echo $SSH_CON_LINE| egrep -o '\[[0-9/A-Fa-f\.:]+\]'| egrep -o [0-9/A-Fa-f\.:]+`
+		if [ -z "$SSH_HOST_IP" ];then
+			SSH_HOST_IP=`echo $SSH_CON_LINE| egrep -o 'to [0-9/A-Fa-f\.:]+' | egrep -o [0-9/A-Fa-f\.:]+`
+		fi
+		dbv $SSH_HOST_IP $SSH_PORT
+		dbv $SSH_CON_LINE
 	else
 		local pc=`egrep "debug1: channel_connect_stdio_fwd " $SCRIPT_TMP_DIR/test_ssh`
 		if [ -n "$pc" ];then
@@ -96,6 +101,7 @@ function ssh_param(){
 			SSH_HOST_IP=${adr%:*}
 			SSH_PORT_OPT=" -p $SSH_PORT"
 			SSH_PROXY=1
+			dbv $SSH_HOST_IP
 		fi
 	fi
 	deb $SSH_PORT
@@ -108,7 +114,7 @@ function ssh_param(){
 
 
 function wait_sshd_start(){
-	if [ -z "$SSH_PORT" -o -z "$SSH_HOST" ];then
+	if [ -z "$SSH_PORT" -o -z "$SSH_HOST" -o -z "$SSH_HOST_IP" ];then
 		die "missing ssh paramter variables. Please execute 'ssh_param SERVER_NAME' first."
 	fi
 	local SSH_CON_
@@ -118,12 +124,14 @@ function wait_sshd_start(){
 		blue_n "."
 		if [ -z "$SSH_PROXY" ];then
 			SSH_CON_=`echo | nc $SSH_HOST_IP $SSH_PORT 2>&1`
+			dbv $SSH_HOST_IP $SSH_PORT $SSH_CON_
 			if [ "${SSH_CON_:0:3}" = "SSH" ];then
 				cyanBgBlue connected
 				return
 			fi
 		else
 			echo ssh $SSH_OPTS $port -v -o \"ConnectTimeout=5\"  -o \"PasswordAuthentication no\" -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" $SSH_HOST echo -n|"$SSH_SUDO_PREFIX"bash > $SCRIPT_TMP_DIR/test_ssh 2>&1
+			dbv "`cat $SCRIPT_TMP_DIR/test_ssh`"
 			if [ `grep 'debug1: Remote protocol version 2.0, remote software version OpenSSH' $SCRIPT_TMP_DIR/test_ssh|wc|awk '{print $1}'` = "2" ];then
 				cyanBgBlue connected
 				return
