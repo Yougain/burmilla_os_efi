@@ -17,6 +17,7 @@ after_save_cmd_line(){
 		udevadm trigger --action=add --type=devices
 		udevadm trigger --action=change --type=devices
 		udevadm settle
+		mkdir -p /run/udev
 		info udev started
 		sleep 5
 	fi

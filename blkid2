@@ -31,19 +31,6 @@ function blkid2(){
 		die "multiple arguments specified"
 	fi
 
-	if [ ! -e /dev/btrfs-control ];then
-		if [ "`id -u`" = 0 ];then
-			mknod /dev/btrfs-control c 10 234
-		fi
-	fi
-	if [ "`id -u`" = 0 ];then
-		if [ -x /bin/btrfs ];then
-			btrfs device scan > /dev/null 2>/dev/null
-		else
-			warn "'/usr/bin/btrfs', not found"
-		fi
-	fi
-
 	local i
 
 	if [ -d /dev/disk/by-id ];then
