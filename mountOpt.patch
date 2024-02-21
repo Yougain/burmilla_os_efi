@@ -180,8 +180,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/log/log.go	2024-02-21 10:30:23.505314500 +0900
-@@ -2,6 +2,7 @@
++++ os.new/pkg/log/log.go	2024-02-21 10:34:39.095314500 +0900
+@@ -2,9 +2,11 @@
  
  import (
  	"fmt"
@@ -189,7 +189,11 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	"io"
  	"log/syslog"
  	"os"
-@@ -18,6 +19,9 @@
++	"os/file"
+ 	"path/filepath"
+ 	"strings"
+ 
+@@ -18,6 +20,9 @@
  var userHook *ShowuserlogHook
  var defaultLogLevel logrus.Level
  var debugThisLogger = false
@@ -199,7 +203,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  
  type Fields logrus.Fields
  type Level logrus.Level
-@@ -63,28 +67,74 @@
+@@ -63,28 +68,74 @@
  	return Level(logrus.GetLevel())
  }
  
@@ -212,7 +216,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +func mayRedirect(lv string, format string, args ...interface{}) {
 +	if preserveLogFN != "" {
 +		t := time.Now()
-+		_, err = os.stat(preserveLogFN)
++		_, err := os.Stat(preserveLogFN)
 +		if err != nil { // file missing
 +			doPreserve = true
 +		} else { // file exists
@@ -235,7 +239,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +			}
 +		}
 +		if doPreserve {
-+			preservedLogs += "time=" + t.String() + "level=" + lv + " " + "msg=\"" + fmt.sprintf(string, args...) + "\"" + "\n"
++			preservedLogs += "time=" + t.String() + "level=" + lv + " " + "msg=\"" + fmt.Sprintf(string, args...) + "\"" + "\n"
 +		}
 +	}
 +}
