@@ -172,7 +172,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/log/log.go	2024-02-21 10:38:25.135314500 +0900
++++ os.new/pkg/log/log.go	2024-02-21 14:06:17.215314500 +0900
 @@ -2,6 +2,7 @@
  
  import (
@@ -191,13 +191,14 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  
  type Fields logrus.Fields
  type Level logrus.Level
-@@ -63,28 +67,74 @@
+@@ -63,28 +67,75 @@
  	return Level(logrus.GetLevel())
  }
  
 +
 +func UntilLogWritable(lgFName string){
 +	preserveLogFN = lgFName
++	fmt.Printf("setting log file, '%s'", preserveLogFN)
 +}
 +
 +
@@ -206,21 +207,20 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		t := time.Now()
 +		_, err := os.Stat(preserveLogFN)
 +		if err != nil { // file missing
++			fmt.Printf("file missing, '%s'", preserveLogFN)
 +			doPreserve = true
 +		} else { // file exists
++			fmt.Printf("file found, '%s'", preserveLogFN)
 +			if doPreserve {
 +				 // write preserved
 +				file, err := os.Create(preserveLogFN)
 +				if err == nil {
++					fmt.Printf("file opened, '%s'", preserveLogFN)
 +					_, err := file.WriteString(preservedLogs)
 +					if err == nil {
++						fmt.Printf("written preserved log, '%s'", preservedLogs)
 +						file.Close()
-+					} else {
-+						logrus.Errorf("write '%s' falied", preserveLogFN)
-+						logrus.Errorf("contents: " + preservedLogs)
 +					}
-+				} else {
-+					logrus.Errorf("open '%s' falied", preserveLogFN)
 +				}
 +				preserveLogFN = ""
 +				doPreserve = false
@@ -228,6 +228,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		}
 +		if doPreserve {
 +			preservedLogs += "time=" + t.String() + "level=" + lv + " " + "msg=\"" + fmt.Sprintf(format, args...) + "\"" + "\n"
++			fmt.Printf("preserved logs, '%s'", preservedLogs)
 +		}
 +	}
 +}
