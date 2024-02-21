@@ -172,7 +172,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/log/log.go	2024-02-22 08:57:18.385314500 +0900
++++ os.new/pkg/log/log.go	2024-02-22 08:57:41.985314500 +0900
 @@ -2,9 +2,13 @@
  
  import (
@@ -187,7 +187,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	"path/filepath"
  	"strings"
  
-@@ -14,10 +18,19 @@
+@@ -14,10 +18,18 @@
  	lsyslog "github.com/sirupsen/logrus/hooks/syslog"
  )
  
@@ -195,7 +195,6 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +	tmpfsMagic int64 = 0x01021994
 +	ramfsMagic int64 = 0x858458f6
 +)
-+
 +
  var logFile *os.File
  var userHook *ShowuserlogHook
@@ -207,7 +206,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  
  type Fields logrus.Fields
  type Level logrus.Level
-@@ -63,28 +76,74 @@
+@@ -63,28 +75,74 @@
  	return Level(logrus.GetLevel())
  }
  
@@ -282,7 +281,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panicf(format, args...)
  }
  
-@@ -120,8 +179,35 @@
+@@ -120,8 +178,35 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
