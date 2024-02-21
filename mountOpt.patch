@@ -172,7 +172,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/log/log.go	2024-02-21 21:04:52.725314500 +0900
++++ os.new/pkg/log/log.go	2024-02-21 21:37:16.735314500 +0900
 @@ -2,9 +2,12 @@
  
  import (
@@ -215,8 +215,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +			fmt.Printf("file missing, '%s'\n", preserveLogFN)
 +			doPreserve = true
 +		} else { // file exists
-+			fmt.Printf("file found, '%s'\n", preserveLogFN)
 +			if doPreserve {
++				fmt.Printf("file found, '%s'\n", preserveLogFN)
 +				 // write preserved
 +				file, err := os.OpenFile(preserveLogFN, os.O_WRONLY|os.O_APPEND, 0666)
 +				if err == nil {
@@ -277,7 +277,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  func InitLogger() {
 +	out, errb := exec.Command("/usr/bin/date", "%z").Output()
 +	if errb != nil {
-+		Errorf("exec /usr/bin/date, failed.")
++		Infof("exec /usr/bin/date, failed.")
 +	} else {
 +		td := string(out)
 +		Infof("output of `date %z`: %s", td)
