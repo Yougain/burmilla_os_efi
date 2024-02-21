@@ -23,31 +23,11 @@ after_save_cmd_line(){
 }
 
 
-__paste_init_log_at_exit_magic_num(){
-	echo 9325439054218358014385
-}
-
-
 before_sysinit(){
-	__paste_init_log_at_exit_magic_num
 	killall udevd
 	info killall udevd: result = $?
 	info udev stopped
-	local mnum=`__paste_init_log_at_exit_magic_num`
-	kill `ps ax | grep $mnum | grep -v grep | awk '{print $1}'`
 }
 
-
-
-paste_init_log_at_exit(){
-	sleep `__paste_init_log_at_exit_magic_num`
-	echo -E "$BOO_INIT_LOG" > /var/log/boot/__init_until_switch_root.log
-	chain_ren /var/log/boot/{__,}init_until_switch_root.log
-}
-
-
-before_switch_root(){
-	BOO_INIT_LOG="`cat /var/log/boot/init.log`" paste_init_log_at_exit &
-}
 
 

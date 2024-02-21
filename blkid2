@@ -37,7 +37,11 @@ function blkid2(){
 		fi
 	fi
 	if [ "`id -u`" = 0 ];then
-		btrfs device scan > /dev/null 2>/dev/null
+		if [ -x /bin/btrfs ];then
+			btrfs device scan > /dev/null 2>/dev/null
+		else
+			warn "'/usr/bin/btrfs', not found"
+		fi
 	fi
 
 	local i
@@ -46,12 +50,16 @@ function blkid2(){
 		local IDnDEVs_id=(`ls /dev/disk/by-id`)
 		local IDnDEVs_dev=($(__readlink `ls /dev/disk/by-id/*`))
 		local IDnDEVs_n=${#IDnDEVs_id[@]}
+	else
+		warn "/dev/disk/by-id not found"
 	fi
 	
 	if [ -d /dev/disk/by-path ];then
 		local PATHnDEVs_path=(`ls /dev/disk/by-path`)
 		local PATHnDEVs_dev=($(__readlink `ls /dev/disk/by-path/*`))
 		local PATHnDEVs_n=${#IDnPATHs_path[@]}
+	else
+		warn "/dev/disk/by-path not found"
 	fi
 
 	declare -A local blkids

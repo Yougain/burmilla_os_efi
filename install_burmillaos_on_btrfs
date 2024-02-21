@@ -731,25 +731,29 @@ if [ "$DISK_SIZE" -le 1073741824 ];then
 fi
 
 # TZ environmental variable
-TZ_N=`date +"%Z"`
-TZ_D=`date +"%z"`
-if [ "${TZ_D:0:1}" = "+" ];then
-	TZ_DS="-"
-else
-	TZ_DS=""
-fi
-TZ_DH1="${TZ_D:1:1}"
-if [ "$TZ_DH1" = "0" ];then
-	TZ_DH1=""
-fi
-TZ_DH="$TZ_DH1${TZ_D:2:1}"
-TZ_DM="${TZ_D:3:2}"
-if [ "$TZ_DM" = "00" ];then
-	TZ_DM=""
-else
-	TZ_DM=":${TZ_DM}"
-fi
-TZL="$TZ_N$TZ_DS$TZ_DH$TZ_DM"
+__tz_set__(){
+	local TZ_N=`date +"%Z"`
+	local TZ_D=`date +"%z"`
+	if [ "${TZ_D:0:1}" = "+" ];then
+		local TZ_DS="-"
+	else
+		local TZ_DS=""
+	fi
+	local TZ_DH1="${TZ_D:1:1}"
+	if [ "$TZ_DH1" = "0" ];then
+		TZ_DH1=""
+	fi
+	local TZ_DH="$TZ_DH1${TZ_D:2:1}"
+	local TZ_DM="${TZ_D:3:2}"
+	if [ "$TZ_DM" = "00" ];then
+		TZ_DM=""
+	else
+		TZ_DM=":${TZ_DM}"
+	fi
+	TZL="$TZ_N$TZ_DS$TZ_DH$TZ_DM"
+}
+__tz_set__
+unset -f __tz_set__
 
 info "INSTALL FROM "$INST_DRIVE"
 NET_INTERFACE="$NET_DEV"
@@ -958,7 +962,7 @@ ssh_sudo <<'FINAL'
 	GLOBAL_APPEND=`cat /installing/boot_dev/global.cfg | sed "s/ rancher.state.dev=[^ ]*//g" | sed "s/ console=ttyS[^ ]*//g" | sed "s/ rancher.autologin=ttyS[^ ]*//g"`
 	GLOBAL_APPEND_ARGS=${GLOBAL_APPEND#APPEND *}
 
-	KERNEL_ARGS="rancher.state.boot_mountopt=rw rancher.state.oem_mountopt=rw,subvol=/oem_root rancher.state.mountopt=rw,subvol=/state_root rancher.password=rancher $GLOBAL_APPEND_ARGS rw rootflags=rw,subvol=/state_root"
+	KERNEL_ARGS="TZ=$TZ rancher.state.boot_mountopt=rw rancher.state.oem_mountopt=rw,subvol=/oem_root rancher.state.mountopt=rw,subvol=/state_root rancher.password=rancher $GLOBAL_APPEND_ARGS rw rootflags=rw,subvol=/state_root"
 	VGA_SIZE=1024x768
 	VGA_MODE=775
 	VGA_ARGS="i915.force_probe vga=$VGA_MODE video=$VGA_SIZE"

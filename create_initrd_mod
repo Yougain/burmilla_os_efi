@@ -247,7 +247,6 @@ $libs"
 		sleep
 		udevadm
 		umount
-		chown
 		chmod
 		btrfs
 		btrfsck
@@ -262,16 +261,19 @@ $libs"
 		stat
 		tr
 		ldd
-		date
 		find
 		mknod
 		diff
 	END
-	for f in rm readlink mount mkdir ls grep egrep;do
+	for f in date chown rm readlink mount mkdir ls grep egrep;do
+		rm -fv ./usr/bin/$f
+		rm -fv $for_state/usr/bin/$f
 		cp -av /bin/$f ./usr/bin
 		cp -av /bin/$f $for_state/usr/bin
 	done
 	for f in sort realpath uniq;do
+		rm -fv ./usr/bin/$f
+		rm -fv $for_state/usr/bin/$f
 		cp -av /usr/bin/$f ./usr/bin
 		cp -av /usr/bin/$f $for_state/usr/bin
 	done
@@ -293,6 +295,8 @@ $libs"
 			do_install $f $d
 		done
 	done
+	ln -svf bash ./bin/sh
+	ln -svf bash $for_state/bin/sh
 	chown root:root usr/bin/busybox
 	find | cpio -o -H newc  | gzip -c > ../$INITRD_FILE-mod.new
 	if [ -z "$stand_alone" ];then
