@@ -22,15 +22,15 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/configfiles/configfiles.go os.new/pkg/init/configfiles/configfiles.go
 --- os.prev/pkg/init/configfiles/configfiles.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/configfiles/configfiles.go	2024-02-21 11:39:07.315314500 +0900
-@@ -87,6 +87,7 @@
++++ os.new/pkg/init/configfiles/configfiles.go	2024-02-21 14:40:15.265314500 +0900
+@@ -55,6 +55,7 @@
+ 			ConfigFiles[name] = content
+ 		}
  	}
- 	log.FsReady()
- 	log.Debugf("WARNING: switchroot and mount OEM2 and BOOT phases not written to log file")
 +	log.UntilLogWritable("/var/log/boot/init.log")
- 
  	return cfg, nil
  }
+ 
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2024-02-15 15:45:46.760000000 +0900
 +++ os.new/pkg/init/fsmount/fsmount.go	2024-02-20 21:31:15.340416200 +0900
