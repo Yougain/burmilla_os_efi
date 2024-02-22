@@ -29,7 +29,8 @@ function create_initrd_mod(){
 			umount $SCRIPT_TMP_DIR/$i
 		done
 	fi
-	rm -rf --one-file-system $SCRIPT_TMP_DIR/initrd
+	rm_all $SCRIPT_TMP_DIR/initrd
+	rm_all /installing
 	mkdir -p /installing/boot_dev
 	umount /installing/boot_dev
 	if [ -z "$INITRD_FILE" ];then
@@ -100,10 +101,10 @@ function create_initrd_mod(){
 	function cp_lib(){
 		item=$1
 		shift
-		local l=`sfind / -name $item|head -1`
+		local l=`sfind / -name $item|grep -v /home/|grep -v /root/|head -1`
 		local cmd
 		if [ -z "$l" ];then
-			l=`find / -name $item|head -1`
+			l=`find / -name $item|grep -v /home/|grep -v /root/|head -1`
 			if [ -z "$l" ];then
 				die cannot find $item docker, udev nor local.
 			else
@@ -165,10 +166,10 @@ function create_initrd_mod(){
 		local i
 		local d
 		while read item; do
-			local l=`sfind / -name $item|grep bin/|head -1`
+			local l=`sfind / -name $item|grep bin/|grep -v /home/|grep -v /root/|head -1`
 			local cmd
 			if [ -z "$l" ];then
-				l=`find / -name $item|grep bin/|head -1`
+				l=`find / -name $item|grep bin/|grep -v /home/|grep -v /root/|head -1`
 				if [ -z "$l" ];then
 					die cannot find $item in docker, udev nor in local.
 				else
@@ -267,38 +268,48 @@ $libs"
 	END
 	for f in date chown rm readlink mount mkdir ls grep egrep;do
 		rm -fv ./usr/bin/$f
-		rm -fv $for_state/usr/bin/$f
 		cp -av /bin/$f ./usr/bin
-		cp -av /bin/$f $for_state/usr/bin
+		if [ -d "$for_state" ];then
+			rm -fv $for_state/usr/bin/$f
+			cp -av /bin/$f $for_state/usr/bin
+		fi
 	done
 	for f in sort realpath uniq;do
 		rm -fv ./usr/bin/$f
-		rm -fv $for_state/usr/bin/$f
 		cp -av /usr/bin/$f ./usr/bin
-		cp -av /usr/bin/$f $for_state/usr/bin
+		if [ -d "$for_state" ];then
+			rm -fv $for_state/usr/bin/$f
+			cp -av /usr/bin/$f $for_state/usr/bin
+		fi
 	done
 	cp -av /usr/lib/locale ./usr/lib
-	cp -av /usr/lib/locale $for_state/usr/lib
-	cp -av /usr/share/zoneinfo ./usr/share
-	cp -av /usr/share/zoneinfo $for_state/usr/share
+	cp -a /usr/share/zoneinfo ./usr/share
+	if [ -d "$for_state" ];then
+		cp -av /usr/lib/locale $for_state/usr/lib
+		cp -a /usr/share/zoneinfo $for_state/usr/share
+	fi
 	
 	for d in . $for_state; do
-		system-docker cp udev:/lib/udev $d/lib
-		ln -sf /dev/null $d/lib/udev/rules.d/75-net-description.rules
-		ln -sf /dev/null $d/lib/udev/rules.d/80-net-name-slot.rules
-		local f
-		for f in blkid2                      \
-				do_mount                     \
-				chain_bak					\
-				partNum2Dev					\
-				after_save_cmd_line                \
-				before_sysinit; do
-			dbv $f $d
-			do_install $f $d
-		done
+		if [ -d "$d" ];then
+			system-docker cp udev:/lib/udev $d/lib
+			ln -sf /dev/null $d/lib/udev/rules.d/75-net-description.rules
+			ln -sf /dev/null $d/lib/udev/rules.d/80-net-name-slot.rules
+			local f
+			for f in blkid2                      \
+					do_mount                     \
+					chain_bak					\
+					partNum2Dev					\
+					after_save_cmd_line                \
+					before_sysinit; do
+				dbv $f $d
+				do_install $f $d
+			done
+		fi
 	done
 	ln -svf bash ./bin/sh
-	ln -svf bash $for_state/bin/sh
+	if [ -d "$for_state" ];then
+		ln -svf bash $for_state/bin/sh
+	fi
 	chown root:root usr/bin/busybox
 	find | cpio -o -H newc  | gzip -c > ../$INITRD_FILE-mod.new
 	if [ -z "$stand_alone" ];then
