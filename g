@@ -94,6 +94,9 @@ function v(){
 
 function commit(){
 	echo -E "`v` $*" > version
+	if [ -e .git/.g-pre-commit ];then
+		.git/.g-pre-commit
+	fi
 	git commit -a -m "`v` $*"
 	git push
 	ssh_clone
