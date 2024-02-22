@@ -172,7 +172,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/log/log.go	2024-02-22 16:57:18.225314500 +0900
++++ os.new/pkg/log/log.go	2024-02-22 17:01:01.435314500 +0900
 @@ -2,9 +2,13 @@
  
  import (
@@ -300,7 +300,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +
 +
 +//Format function
-+func (f *logFormat) Format(entry *logrus.Entry) ([]byte, error) {
++func (f *logFormat) Format(entry *logrus.Entry) ([]bytes, error) {
 +    var b *bytes.Buffer
 +
 +    if entry.Buffer != nil {
@@ -341,7 +341,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		_, err := os.Stat("/dev/null")
 +		if err != nil { // file missing
 +			os.Symlink("/idev/null", "/dev/null")
-+			out, errb = exec.Command("/usr/bin/date", "+%z").Output()
++			out, errb := exec.Command("/usr/bin/date", "+%z").Output()
 +			if errb != nil {
 +				Infof("exec /usr/bin/date, failed: %v", errb)
 +			} else {
