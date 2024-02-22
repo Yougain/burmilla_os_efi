@@ -172,7 +172,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/log/log.go	2024-02-22 20:58:21.805314500 +0900
++++ os.new/pkg/log/log.go	2024-02-22 21:26:23.185314500 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -320,7 +320,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,8 +192,95 @@
+@@ -120,8 +192,104 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -387,7 +387,16 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +	out, errb := exec.Command("date", "+%z").Output()
 +	if errb != nil {
 +		Infof("exec 'date', failed: %v", errb)
-+	} else {
++		out, errb = exec.Command("/usr/bin/date", "+%z").Output()
++		if errb != nil {
++			Infof("exec '/usr/bin/date', failed: %v", errb)
++			out, errb = exec.Command("/bin/date", "+%z").Output()
++			if errb != nil {
++				Infof("exec 'date', failed: %v", errb)
++			}
++		}
++	}
++	if errb != nil {
 +		td := string(out)
 +		Infof("output of 'date %%z': %s", td)
 +		a, _ := strconv.Atoi(td[1:3])
@@ -401,7 +410,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		if tz == "" {
 +			tz = "LOCAL"
 +		}
-+		loc := time.FixedZone(os.Getenv("TZ"), base)
++		loc := time.FixedZone(tz, base)
 +		time.Local = loc
 +		Infof("set time zone")
 +	}
@@ -416,7 +425,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	if logTheseApps() {
  		innerInit(false)
  		FsReady()
-@@ -131,6 +290,7 @@
+@@ -131,6 +299,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}

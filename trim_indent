@@ -31,10 +31,10 @@ function putsp(){
 	local s=$((w % TAB_STOP))
 	local i
 	for ((i = 0; i < t; i++)); do
-		echo -n "\t"
+		echo -nE "	"
 	done
 	for ((i = 0; i < t; i++)); do
-		echo -n " "
+		echo -nE " "
 	done
 }
 

@@ -1352,6 +1352,9 @@ if [ "$TARGET_DEV" = "$TARGET_DEV_S" ]; then
 		umount /efipart
 		rmdir /efipart
 		rm /var/lib/rancher/conf/cloud-config.d/user_config.yml
+		apt-get -y update
+		apt-get -y upgrade
+		apt-get install btrfs-progs
 		do_install do_mount
 		do_install blkid2
 		do_install chain_bak

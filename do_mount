@@ -220,7 +220,7 @@ function do_mount(){
 			fi
 			local dev
 			local devOptArgs
-			for dev in "${devices[@]}";do
+			for dev in ${devices[@]};do
 				if [ -z "$devOptArgs" ];then
 					devOptArgs="device=$dev"
 				else

@@ -1,9 +1,9 @@
 #!/bin/bash
 
 
-SCRIPT_PATH=$(dirname "$(realpath -s "$0")")
-. $SCRIPT_PATH/err
+source $(dirname "$(realpath -s "$0")")/bashlib_y
 
+require ssh_do
 
 if [ "$#" != 2 ]; then
 	info "Usage: $0 SERVER_NAME DISK_DEVICE(ex. /dev/sda)"
@@ -18,113 +18,145 @@ fi
 
 ssh_sudo <<'SCRIPT_END'
 
-if [ ! -x "`which gdisk`" ]; then
-	apt-get install -y gdisk
-fi
-if [ ! -x "`which btrfs`" ]; then
-	apt-get install -y btrfs-progs
-fi
-if [ ! -x "`which partprobe`" ]; then
-	apt-get install -y parted
-fi
+	if [ ! -x "`which gdisk`" ]; then
+		apt-get install -y gdisk
+	fi
+	if [ ! -x "`which btrfs`" ]; then
+		apt-get install -y btrfs-progs
+	fi
+	if [ ! -x "`which partprobe`" ]; then
+		apt-get install -y parted
+	fi
 
 
 
-if [ "$A2" = "" ];then
-	die "Argument missing."
-fi
+	if [ "$A2" = "" ];then
+		die "Argument missing."
+	fi
 
 
-if [ "${A2:0:7}" != "/dev/sd" -o "${1:8}" != "" ];then
-	die "cannot use device, $A2."
-fi
-if [ ! -e "$A2" ];then
-	echo "$A2 is not existing."
-fi
+	if [ "${A2:0:7}" != "/dev/sd" -o "${1:8}" != "" ];then
+		die "cannot use device, $A2."
+	fi
+	if [ ! -e "$A2" ];then
+		die "$A2 is not existing."
+	fi
 
-TARGET_DISK=$A2
-BOOT_DEV_NAME=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}') # should be OEM disk  (symlinked)
+	TARGET_DISK=$A2
+	BOOT_DEV_NAME=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o 'efi=UUID=[\\"0-9a-fA-F-]+'|egrep -o '[0-9a-fA-F-]{3,}'`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}') # should be OEM disk  (symlinked)
 
-BOOT_DISK=/dev/$BOOT_DEV_NAME
-if [ "${BOOT_DISK:0:7}" != "/dev/sd" ]; then
-	echo "device of '/home' is not a /dev/sd? device."
-	exit 1
-fi
+	if [ -z "$BOOT_DEV_NAME" ];then
+		die "cannot detect boot disk"
+	fi
 
-if [ "$BOOT_DISK" = "$1" ]; then
-	echo "'$1' is same as boot disk."
-	exit 1
-fi
+	BOOT_DISK=/dev/$BOOT_DEV_NAME
+	if ! [[ "$BOOT_DISK" =~ ^/dev/sd[a-z]$ ]]; then
+		die "boot disk, '$BOOT_DISK' is not a /dev/sd? device."
+	fi
+	if ! [[ "$TARGET_DISK" =~ ^/dev/sd[a-z]$ ]]; then
+		die "target disk is not a /dev/sd? device."
+	fi
 
-function sectors(){
-	local GRES="`gdisk $1 <<EOF
-p
-q
-EOF`"
-	echo "$GRES"|grep "Command (? for help): Disk "|awk '{print $7 " " $8 " " $9 " " $10}'
-}
+	if [ "$BOOT_DISK" = "$1" ]; then
+		die "'$1' is same as boot disk."
+	fi
 
-BOOT_DISK_S_LINE=`sectors $BOOT_DISK`
-TARGET_DISK_S_LINE=`sectors $A2`
-BOOT_DISK_SSIZE=`echo $BOOT_DISK_S_LINE|awk '{print $1}'`
-TARGET_DISK_SSIZE=`echo $TARGET_DISK_S_LINE|awk '{print $1}'`
-BOOT_DISK_SZ=`echo $BOOT_DISK_S_LINE|awk '{print $3 " " $4}'`
-TARGET_DISK_SZ=`echo $TARGET_DISK_S_LINE|awk '{print $3 " " $4}'`
+	function sectors(){
+		local GRES="`gdisk $1 2>&1 <<EOF
+	p
+	q
+	EOF`"
+		dbv "$GRES"
+		local tmp=`echo -E "$GRES"|grep "Found invalid MBR and corrupt GPT. What do you want to do?"`
+		if [ -n "$tmp" ];then
+			GRES="`gdisk $1 2>&1 <<EOF
+	1
+	p
+	q
+	EOF`"
+		fi
+		echo "$GRES"|grep "Command (? for help): Disk "|awk '{print $7 " " $8 " " $9 " " $10}'
+	}
+	
+	dbv "$BOOT_DISK"
+	dbv "$A2"
 
-if [ $TARGET_DISK_SSIZE -lt $BOOT_DISK_SSIZE ];then
-	echo "Target disk ($TARGET_DISK) sector size, $TARGET_DISK_SSIZE is less than boot disk ($BOOT_DISK) sector size, $BOOT_DISK_SSIZE."
-	exit 1
-fi
+	BOOT_DISK_S_LINE=`sectors $BOOT_DISK`
+	TARGET_DISK_S_LINE=`sectors $A2`
+	
+	dbv "$BOOT_DISK_S_LINE"
+	dbv "$TARGET_DISK_S_LINE"
+	
+	BOOT_DISK_SSIZE=`echo $BOOT_DISK_S_LINE|awk '{print $1}'`
+	TARGET_DISK_SSIZE=`echo $TARGET_DISK_S_LINE|awk '{print $1}'`
+	BOOT_DISK_SZ=`echo $BOOT_DISK_S_LINE|awk '{print $3 " " $4}'`
+	TARGET_DISK_SZ=`echo $TARGET_DISK_S_LINE|awk '{print $3 " " $4}'`
+	
+	if ! [[ "$BOOT_DISK_SSIZE" =~ ^[0-9]+$ ]];then
+		die "cannot get sector size of $BOOT_DISK"
+	fi
+	if ! [[ "$TARGET_DISK_SSIZE" =~ ^[0-9]+$ ]];then
+		die "cannot get sector size of $TARGET_DISK"
+	fi
 
-echo "BOOT DISK  : $BOOT_DISK, $BOOT_DISK_SSIZE sectors ($BOOT_DISK_SZ)"
-echo "TARGET DISK: $TARGET_DISK, $TARGET_DISK_SSIZE sectors ($TARGET_DISK_SZ)"
+	if [ $TARGET_DISK_SSIZE -lt $BOOT_DISK_SSIZE ];then
+		die "Target disk ($TARGET_DISK) sector size, $TARGET_DISK_SSIZE is less than boot disk ($BOOT_DISK) sector size, $BOOT_DISK_SSIZE."
+	fi
 
-dd if=/dev/zero of=$TARGET_DISK bs=1G count=1
-partprobe
+	echo "BOOT DISK  : $BOOT_DISK, $BOOT_DISK_SSIZE sectors ($BOOT_DISK_SZ)"
+	echo "TARGET DISK: $TARGET_DISK, $TARGET_DISK_SSIZE sectors ($TARGET_DISK_SZ)"
 
-#copy partition table
-GRES="`gdisk $BOOT_DISK <<EOH
-x
-u
-$TARGET_DISK
-y
-q
-EOH`"
-partprobe
-#randomize guiid of target disk
-gdisk $TARGET_DISK <<EOF
-x
-f
-w
-EOF
+	dd if=/dev/zero of=$TARGET_DISK bs=1G count=1
+	partprobe
 
-echo "$GRES"|egrep -o '^The operation.*|writing.*'
-partprobe
+	#copy partition table
+	GRES="`gdisk $BOOT_DISK <<EOH
+	x
+	u
+	$TARGET_DISK
+	y
+	q
+	EOH`"
+	partprobe
+	
+	#randomize guiid of target disk
+	gdisk $TARGET_DISK <<EOF
+	x
+	f
+	w
+	EOF
 
-# copy bios boot partition
-echo copying "$BOOT_DISK"1 to "$TARGET_DISK"1 ...
-dd if="$BOOT_DISK"1 of="$TARGET_DISK"1
-echo done
-# copy efi partition
-echo copying "$BOOT_DISK"2 to "$TARGET_DISK"2 ...
-dd if="$BOOT_DISK"2 of="$TARGET_DISK"2
-echo done
+	echo "$GRES"|egrep -o '^The operation.*|writing.*'
+	partprobe
 
-#randomize uuid of efi partition
-EUUID=`xxd -u -l 2 -p /dev/urandom`-`xxd -u -l 2 -p /dev/urandom`
-printf "\x${EUUID:7:2}\x${EUUID:5:2}\x${EUUID:2:2}\x${EUUID:0:2}" \
-| dd bs=1 seek=67 count=4 conv=notrunc of="$TARGET_DISK"2
-partprobe
-if ! mkswap -L RANCHER_SWAP_SIBLING "$TARGET_DISK"3; then
-	echo "cannot create swap partition"
-	exit 1
-fi
+	# copy bios boot partition
+	echo copying "$BOOT_DISK"1 to "$TARGET_DISK"1 ...
+	dd if="$BOOT_DISK"1 of="$TARGET_DISK"1
+	echo done
+	# copy efi partition
+	echo copying "$BOOT_DISK"2 to "$TARGET_DISK"2 ...
+	dd if="$BOOT_DISK"2 of="$TARGET_DISK"2
+	echo done
 
-dd if=/dev/zero of="$TARGET_DISK"4 bs=100M count=1
-dd if=/dev/zero of="$TARGET_DISK"5 bs=100M count=1
-dd if=/dev/zero of="$TARGET_DISK"7 bs=100M count=1
+	#randomize uuid of efi partition
+	EUUID=`xxd -u -l 2 -p /dev/urandom`-`xxd -u -l 2 -p /dev/urandom`
+	printf "\x${EUUID:7:2}\x${EUUID:5:2}\x${EUUID:2:2}\x${EUUID:0:2}" \
+	| dd bs=1 seek=67 count=4 conv=notrunc of="$TARGET_DISK"2
+	partprobe
+	if ! mkswap -L RANCHER_SWAP_SIBLING "$TARGET_DISK"3; then
+		echo "cannot create swap partition"
+		exit 1
+	fi
+
+	dd if=/dev/zero of="$TARGET_DISK"4 bs=100M count=1
+	dd if=/dev/zero of="$TARGET_DISK"5 bs=100M count=1
+	dd if=/dev/zero of="$TARGET_DISK"7 bs=100M count=1
 
 SCRIPT_END
+
+if [ "$?" != "0" ];then
+	die "ssh failed"
+fi
 
 ssh_reboot
 
