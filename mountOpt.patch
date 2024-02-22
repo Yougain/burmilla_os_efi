@@ -172,7 +172,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/log/log.go	2024-02-22 18:22:18.425314500 +0900
++++ os.new/pkg/log/log.go	2024-02-22 20:50:07.025314500 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -208,7 +208,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  
  type Fields logrus.Fields
  type Level logrus.Level
-@@ -63,53 +77,115 @@
+@@ -63,53 +77,111 @@
  	return Level(logrus.GetLevel())
  }
  
@@ -228,18 +228,14 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		t := time.Now()
 +		_, err := os.Stat(preserveLogFN)
 +		if err != nil { // file missing
-+			fmt.Printf("file missing, '%s'\n", preserveLogFN)
 +			doPreserve = true
 +		} else { // file exists
 +			if doPreserve {
-+				fmt.Printf("file found, '%s'\n", preserveLogFN)
 +				 // write preserved
 +				file, err := os.OpenFile(preserveLogFN, os.O_WRONLY|os.O_APPEND, 0666)
 +				if err == nil {
-+					fmt.Printf("file opened, '%s'", preserveLogFN)
 +					_, err := file.WriteString(preservedLogs)
 +					if err == nil {
-+						fmt.Printf("written preserved log\n")
 +						file.Close()
 +					}
 +				}
@@ -324,7 +320,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,8 +196,87 @@
+@@ -120,8 +192,95 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -379,48 +375,52 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +
  // InitLogger sets up Logging to log to /dev/kmsg and to Syslog
  func InitLogger() {
++	nullSymlinked := false
 +	if isInitrd() {
 +		Infof("logger started in initrd.")
-+		_, err := os.Stat("/dev/null")
-+		if err != nil { // file missing
-+			os.Symlink("/idev/null", "/dev/null")
-+			out, errb := exec.Command("/usr/bin/date", "+%z").Output()
-+			if errb != nil {
-+				Infof("exec /usr/bin/date, failed: %v", errb)
-+			} else {
-+				td := string(out)
-+				Infof("output of 'date %%z': %s", td)
-+				a, _ := strconv.Atoi(td[1:3])
-+				b, _ := strconv.Atoi(td[3:])
-+				base := a * 60 * 60 + b * 60
-+				if td[0:1] == "-" {
-+					base = -base
-+				}
-+				Infof("time difference: %d seconds", base)
-+				tz := os.Getenv("TZ")
-+				if tz == "" {
-+					tz = "LOCAL"
-+				}
-+				loc := time.FixedZone(os.Getenv("TZ"), base)
-+				time.Local = loc
-+				Infof("set time zone")
-+			}
-+			os.Remove("/dev/null")
++	}
++	_, err := os.Stat("/dev/null")
++	if err != nil { // file missing
++		os.Symlink("/idev/null", "/dev/null")
++		nullSymlinked = true
++	}
++	out, errb := exec.Command("/usr/bin/date", "+%z").Output()
++	if errb != nil {
++		Infof("exec /usr/bin/date, failed: %v", errb)
++	} else {
++		td := string(out)
++		Infof("output of 'date %%z': %s", td)
++		a, _ := strconv.Atoi(td[1:3])
++		b, _ := strconv.Atoi(td[3:])
++		base := a * 60 * 60 + b * 60
++		if td[0:1] == "-" {
++			base = -base
 +		}
++		Infof("time difference: %d seconds", base)
++		tz := os.Getenv("TZ")
++		if tz == "" {
++			tz = "LOCAL"
++		}
++		loc := time.FixedZone(os.Getenv("TZ"), base)
++		time.Local = loc
++		Infof("set time zone")
++	}
++	if nullSymlinked {
++			os.Remove("/dev/null")
 +	}
 +	
++  formatter := logFormat{}
++  formatter.TimestampFormat = DefaultTimeFormat
++  logrus.SetFormatter(&formatter)
++
  	if logTheseApps() {
  		innerInit(false)
  		FsReady()
-@@ -131,6 +286,11 @@
+@@ -131,6 +290,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
 +    logrus.SetReportCaller(true)
-+    formatter := logFormat{}
-+    formatter.TimestampFormat = DefaultTimeFormat
-+
-+    logrus.SetFormatter(&formatter)
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }

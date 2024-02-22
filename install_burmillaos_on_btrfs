@@ -1455,7 +1455,7 @@ ssh_sudo <<'FINAL'
 		FEND
 	else
 		yq e -i ".hostname|=\"$HNAME_FULL\"" $UF
-		yq e -i ".rancher.network.dns.nameservers|=$DNS_SETTINGS_YQ2" $UF
+		yq e -i ".rancher.network.dns.nameservers|=$DNS_SETTINGS_YQ" $UF
 		yq e -i ".rancher.network.interfaces.$NET_DEV.address|=\"$IP/$NETMASK\"" $UF
 		yq e -i ".rancher.network.interfaces.$NET_DEV.gateway|=\"$GATEWAY\"" $UF
 		yq e -i ".rancher.services.console.environment.TZ|=\"$TZL\"" $UF
