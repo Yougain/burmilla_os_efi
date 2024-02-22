@@ -30,7 +30,9 @@ function create_initrd_mod(){
 		system-docker exec udev find $@ 2> >(egrep -v '/proc.*: Invalid argument')
 	}
 
-	rm_all $TMPD
+	if [ -e "$TMPD" ];then
+		rm_all $TMPD
+	fi
 	if [ -z "$INITRD_FILE" ];then
 		local stand_alone
 		if [ -n "$1" ];then
@@ -73,7 +75,7 @@ function create_initrd_mod(){
 	mkdir -p $IMGD
 	cd $IMGD
 
-	zcat $EXTD/boot_dev/$INITRD_FILE | cpio -idmv
+	zcat $EXTD/boot_dev/$INITRD_FILE | cpio -idm
 
 	local d
 	for d in . $for_state; do
@@ -261,6 +263,7 @@ $libs"
 	mkdir -p ./usr/busybox
 	ln -sf ../bin/busybox ./usr/busybox/mkdir
 	ln -sf ../bin/mknod ./usr/busybox/mknod
+	ln -sf ../bin/ln ./usr/busybox/ln
 	for f in date chown rm readlink mount mkdir ls grep egrep;do
 		rm -fv ./usr/bin/$f
 		cp -av /bin/$f ./usr/bin
@@ -277,10 +280,10 @@ $libs"
 			cp -av /usr/bin/$f $for_state/usr/bin
 		fi
 	done
-	cp -av /usr/lib/locale ./usr/lib
+	cp -a /usr/lib/locale ./usr/lib
 	cp -a /usr/share/zoneinfo ./usr/share
 	if [ -d "$for_state" ];then
-		cp -av /usr/lib/locale $for_state/usr/lib
+		cp -a /usr/lib/locale $for_state/usr/lib
 		cp -a /usr/share/zoneinfo $for_state/usr/share
 	fi
 	
