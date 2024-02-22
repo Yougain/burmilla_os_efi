@@ -266,6 +266,9 @@ $libs"
 		mknod
 		diff
 	END
+	mkdir -p ./usr/busybox
+	ln -sf ../bin/busybox ./usr/busybox/mkdir
+	ln -sf ../bin/mknod ./usr/busybox/mknod
 	for f in date chown rm readlink mount mkdir ls grep egrep;do
 		rm -fv ./usr/bin/$f
 		cp -av /bin/$f ./usr/bin
