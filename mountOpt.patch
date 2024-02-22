@@ -172,7 +172,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/log/log.go	2024-02-22 18:01:52.465314500 +0900
++++ os.new/pkg/log/log.go	2024-02-22 18:22:18.425314500 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -249,8 +249,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		}
 +		if doPreserve {
 +			msg := ""
-+			for i, arg := range args{
-+				msg += arg
++			for _, arg := range args{
++				msg += fmt.Sprintf("%v", arg)
 +			}
 +			preservedLogs += strings.ToUpper(lv + " ")[0:5] + " " + t.Format(DefaultTimeFormat) + " " + msg + "\n"
 +		}
