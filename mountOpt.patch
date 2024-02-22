@@ -172,7 +172,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/log/log.go	2024-02-22 17:58:38.715314500 +0900
++++ os.new/pkg/log/log.go	2024-02-22 18:01:52.465314500 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -379,8 +379,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +
  // InitLogger sets up Logging to log to /dev/kmsg and to Syslog
  func InitLogger() {
-+	Infof("logger started")
 +	if isInitrd() {
++		Infof("logger started in initrd.")
 +		_, err := os.Stat("/dev/null")
 +		if err != nil { // file missing
 +			os.Symlink("/idev/null", "/dev/null")
