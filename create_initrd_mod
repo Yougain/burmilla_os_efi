@@ -260,11 +260,7 @@ $libs"
 		mknod
 		diff
 	END
-	mkdir -p ./usr/busybox
-	ln -sf ../bin/busybox ./usr/busybox/mkdir
-	ln -sf ../bin/mknod ./usr/busybox/mknod
-	ln -sf ../bin/ln ./usr/busybox/ln
-	mkdir -p ./idev
+	mkdir -p ./idev # for logger
 	mknod ./idev/null c 1 3
 	for f in date chown rm readlink mount mkdir ls grep egrep;do
 		rm -fv ./usr/bin/$f

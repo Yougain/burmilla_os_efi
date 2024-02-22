@@ -172,7 +172,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/log/log.go	2024-02-22 15:03:54.035314500 +0900
++++ os.new/pkg/log/log.go	2024-02-22 16:57:18.225314500 +0900
 @@ -2,9 +2,13 @@
  
  import (
@@ -281,7 +281,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panicf(format, args...)
  }
  
-@@ -120,8 +178,47 @@
+@@ -120,8 +178,87 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -293,6 +293,47 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +}
 +
 +
++type logFormat struct {
++    TimestampFormat string
++}
++
++
++
++//Format function
++func (f *logFormat) Format(entry *logrus.Entry) ([]byte, error) {
++    var b *bytes.Buffer
++
++    if entry.Buffer != nil {
++        b = entry.Buffer
++    } else {
++        b = &bytes.Buffer{}
++    }
++
++    b.WriteString(strings.ToUpper(entry.Level.String()))
++    b.WriteString(" ")
++    b.WriteString(entry.Time.Format(f.TimestampFormat))
++
++    if entry.Message != "" {
++        b.WriteString(" - ")
++        b.WriteString(entry.Message)
++    }
++
++    if len(entry.Data) > 0 {
++        b.WriteString(" || ")
++    }
++    for key, value := range entry.Data {
++        b.WriteString(key)
++        b.WriteByte('=')
++        b.WriteByte('{')
++        fmt.Fprint(b, value)
++        b.WriteString("}, ")
++    }
++
++    b.WriteByte('\n')
++    return b.Bytes(), nil
++}
++
++
  // InitLogger sets up Logging to log to /dev/kmsg and to Syslog
  func InitLogger() {
 +	Infof("logger started")
@@ -300,18 +341,12 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		_, err := os.Stat("/dev/null")
 +		if err != nil { // file missing
 +			os.Symlink("/idev/null", "/dev/null")
-+			out, errb := exec.Command("/usr/busybox/ls", "-R", "/").Output()
-+			if errb != nil {
-+				Infof("exec /usr/busybox/ls -R, failed: %v", errb)
-+			}else{
-+				Infof(string(out))
-+			}
 +			out, errb = exec.Command("/usr/bin/date", "+%z").Output()
 +			if errb != nil {
 +				Infof("exec /usr/bin/date, failed: %v", errb)
 +			} else {
 +				td := string(out)
-+				Infof("output of `date %z`: %s", td)
++				Infof("output of 'date %%z': %s", td)
 +				a, _ := strconv.Atoi(td[1:3])
 +				b, _ := strconv.Atoi(td[3:])
 +				base := a * 60 * 60 + b * 60
@@ -319,16 +354,33 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +					base = -base
 +				}
 +				Infof("time difference: %d seconds", base)
-+				loc := time.FixedZone("INITRD_LOCAL", base)
++				tz := os.Getenv("TZ")
++				if tz == "" {
++					tz = "LOCAL"
++				}
++				loc := time.FixedZone(os.Getenv("TZ"), base)
 +				time.Local = loc
 +				Infof("set time zone")
 +			}
++			os.Remove("/dev/null")
 +		}
 +	}
 +	
  	if logTheseApps() {
  		innerInit(false)
  		FsReady()
+@@ -131,6 +268,11 @@
+ 		if err != nil {
+ 			logrus.Error(err)
+ 		}
++    logrus.SetReportCaller(true)
++    formatter := logFormat{}
++    formatter.TimestampFormat = "2006-01-02 Mon 15:04:05.000000 -0700"
++
++    logrus.SetFormatter(&formatter)
+ 		logrus.Debugf("START: %v in %s", os.Args, pwd)
+ 	}
+ }
 diff -Naur '--exclude=.git' os.prev/pkg/sysinit/sysinit.go os.new/pkg/sysinit/sysinit.go
 --- os.prev/pkg/sysinit/sysinit.go	2024-02-15 15:45:46.760000000 +0900
 +++ os.new/pkg/sysinit/sysinit.go	2024-02-20 16:23:46.720416200 +0900
