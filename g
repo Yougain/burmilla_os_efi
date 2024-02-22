@@ -44,7 +44,6 @@ else
 	Emsg=" Exiting"
 fi
 
-
 if [ -z "`git diff`" ];then
 	warn "Not modified.$Emsg."
 	if [ -z "$force" ];then
