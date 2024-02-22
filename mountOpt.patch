@@ -172,7 +172,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/log/log.go	2024-02-22 11:55:18.015314500 +0900
++++ os.new/pkg/log/log.go	2024-02-22 13:29:59.715314500 +0900
 @@ -2,9 +2,13 @@
  
  import (
@@ -281,7 +281,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panicf(format, args...)
  }
  
-@@ -120,8 +178,51 @@
+@@ -120,8 +178,47 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -296,7 +296,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  // InitLogger sets up Logging to log to /dev/kmsg and to Syslog
  func InitLogger() {
 +	if isInitrd() {
-+		_, err := os.Stat("/dev")
++		_, err := os.Stat("/dev/null")
 +		if err != nil { // directory missing
 +			out, errb := exec.Command("/usr/busybox/mkdir", "-p", "/dev").Output()
 +			if errb != nil {
@@ -322,10 +322,6 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +				loc := time.FixedZone("INITRD_LOCAL", base)
 +				time.Local = loc
 +				Infof("set time zone")
-+			}
-+			out, errb = exec.Command("/usr/bin/rm", "-rf", "/dev").Output()
-+			if errb != nil {
-+				Infof("exec /usr/bin/rm -rf /dev , failed: %v", errb)
 +			}
 +		}
 +	}

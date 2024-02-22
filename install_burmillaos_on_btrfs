@@ -1390,8 +1390,9 @@ UF=/installing/oem_part/var/lib/rancher/conf/cloud-config.d/user_config.yml
 ssh_sudo <<'FINAL'
 	#!/bin/bash
 
+ 	create_initrd_mod 
+
 	do_mount 4 /installing/boot_dev
- 	create_initrd_mod
 	ls -la /installing/boot_dev
 
 	# patching os-config file

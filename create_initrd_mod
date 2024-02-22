@@ -2,10 +2,18 @@
 
 
 function create_initrd_mod(){
+	apt-get -y update
+	apt-get -y install cpio btrfs-progs strace
+
+	local tmpd=`pwd`
 	local PATH="$tmpd:$PATH"
+	local TMPD="$SCRIPT_TMP_DIR/create_initrd_mod"
+	local IMGD="$TMPD/initrd"
+	local EXTD="$TMPD/extd"
 	require -s initrd_support
 	require do_install
 	require chain_bak
+	require do_mount
 
 	if [ ! -x /usr/bin/system-docker ];then
 		die "/usr/bin/system-docker not found"
@@ -22,58 +30,39 @@ function create_initrd_mod(){
 		system-docker exec udev find $@ 2> >(egrep -v '/proc.*: Invalid argument')
 	}
 
-	local tmpd=`pwd`
-
-	if [ -d $SCRIPT_TMP_DIR/initrd ];then
-		for i in `ls $SCRIPT_TMP_DIR/initrd`;do
-			umount $SCRIPT_TMP_DIR/$i
-		done
-	fi
-	rm_all $SCRIPT_TMP_DIR/initrd
-	rm_all /installing
-	mkdir -p /installing/boot_dev
-	umount /installing/boot_dev
+	rm_all $TMPD
 	if [ -z "$INITRD_FILE" ];then
 		local stand_alone
 		if [ -n "$1" ];then
-			require blkid2
-			require do_mount
 			stand_alone=for_installer
-			mkdir -p /installing/installer
-			if ! mount /home/$SUDO_USER/burmilla_os_iso/burmillaos-$1.iso /installing/installer;then
+			mkdir -p $EXTD/{installer,boot_dev}
+			if ! mount /home/$SUDO_USER/burmilla_os_iso/burmillaos-$1.iso $EXTD/installer;then
 				die "installer disk not found"
 			fi
-			mount --bind /installing/installer/boot /installing/boot_dev
+			mount --bind $EXTD/installer/boot $EXTD/boot_dev
 		else
 			stand_alone=1
-			require do_mount
-			do_mount 4 /installing/boot_dev
+			do_mount 4 $EXTD/boot_dev
 		fi
 	else
 		if [ -n "$TARGET_DEV4" ];then
-			mount $TARGET_DEV4 /installing/boot_dev
-			mkdir -p /installing/state_root
-			umount /installing/state_root
-			mount $TARGET_DEV5 /installing/state_root
-			local for_state=/installing/state_root
+			do_mount 4 $EXTD/boot_dev
+			do_mount 5 $EXTD/state_root
+			local for_state=$EXTD/state_root
 		else
 			die boot drive not found
 		fi
 	fi
-	mkdir -p $SCRIPT_TMP_DIR/initrd
-	cd $SCRIPT_TMP_DIR/initrd
-	apt-get -y update
-	apt-get -y install cpio btrfs-progs strace
 
 	if [ -z "$INITRD_FILE" ];then
 		if [ -n "$1" -a "$1" != for_installer ];then
-			if [ ! -e /installing/boot_dev/initrd-$1 ];then
+			if [ ! -e $EXTD/boot_dev/initrd-$1 ];then
 				die "'initrd-$1' not found"
 			else
 				INITRD_FILE=initrd-$1
 			fi
 		else
-			INITRD_FILE=`cd /installing/boot_dev;ls -d initrd-*|egrep -v '\-mod$'`
+			INITRD_FILE=`cd $EXTD/boot_dev;ls -d initrd-*|egrep -v '\-mod$'`
 			local INITRD_FILE_COUNT=`echo "$INITRD_FILE" | wc | awk '{print $1}'`
 			if [ "$INITRD_FILE_COUNT" != "1" ];then
 			    die cannot detect initrd in iso image, or multiple initrd detected.
@@ -81,7 +70,10 @@ function create_initrd_mod(){
 		fi
 	fi
 
-	zcat /installing/boot_dev/$INITRD_FILE | cpio -idmv
+	mkdir -p $IMGD
+	cd $IMGD
+
+	zcat $EXTD/boot_dev/$INITRD_FILE | cpio -idmv
 
 	local d
 	for d in . $for_state; do
@@ -316,11 +308,11 @@ $libs"
 	chown root:root usr/bin/busybox
 	find | cpio -o -H newc  | gzip -c > ../$INITRD_FILE-mod.new
 	if [ -z "$stand_alone" ];then
-		chain_bak -d ../$INITRD_FILE-mod.new /installing/boot_dev/$INITRD_FILE-mod
+		chain_bak -d ../$INITRD_FILE-mod.new $EXTD/boot_dev/$INITRD_FILE-mod
 	else
 		chain_bak -d ../$INITRD_FILE-mod.new $tmpd/$INITRD_FILE-mod
 	fi
 	cd $tmpd
-
+	rm_all $TMPD
 }
 
