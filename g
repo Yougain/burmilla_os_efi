@@ -44,6 +44,12 @@ else
 	Emsg=" Exiting"
 fi
 
+
+if [ -e .git/.g-pre-commit ];then
+	.git/.g-pre-commit
+fi
+
+
 if [ -z "`git diff`" ];then
 	warn "Not modified.$Emsg."
 	if [ -z "$force" ];then
@@ -93,9 +99,6 @@ function v(){
 
 function commit(){
 	echo -E "`v` $*" > version
-	if [ -e .git/.g-pre-commit ];then
-		.git/.g-pre-commit
-	fi
 	git commit -a -m "`v` $*"
 	git push
 	ssh_clone
