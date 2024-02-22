@@ -274,9 +274,6 @@ echo sudo cp -ar $UD/boot/grub $PD/boot/
 sudo cp -ar $UD/boot/grub $PD/boot/
 
 
-
-cp $INITRD_FILE-mod $PD/boot/$INITRD_FILE-mod
-
 echo sudo cp -ar $UD/EFI $PD/
 sudo cp -ar $UD/EFI $PD/
 

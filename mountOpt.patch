@@ -172,7 +172,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/log/log.go	2024-02-22 13:57:39.235314500 +0900
++++ os.new/pkg/log/log.go	2024-02-22 15:03:54.035314500 +0900
 @@ -2,9 +2,13 @@
  
  import (
@@ -281,7 +281,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panicf(format, args...)
  }
  
-@@ -120,8 +178,54 @@
+@@ -120,8 +178,47 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -297,21 +297,14 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  func InitLogger() {
 +	Infof("logger started")
 +	if isInitrd() {
-+		out, errb := exec.Command("/usr/busybox/ls", "-R", "/").Output()
-+		if errb != nil {
-+			Infof("exec /usr/busybox/ls -R, failed: %v", errb)
-+		}else{
-+			Infof(string(out))
-+		}
 +		_, err := os.Stat("/dev/null")
-+		if err != nil { // directory missing
-+			out, errb = exec.Command("/usr/busybox/mkdir", "-p", "/dev").Output()
++		if err != nil { // file missing
++			os.Symlink("/idev/null", "/dev/null")
++			out, errb := exec.Command("/usr/busybox/ls", "-R", "/").Output()
 +			if errb != nil {
-+				Infof("exec /usr/busybox/mkdir -p /dev, failed: %v", errb)
-+			}
-+			out, errb = exec.Command("/usr/busybox/mknod", "/dev/null", "c", "1", "3").Output()
-+			if errb != nil {
-+				Infof("exec /usr/busybox/mknod /dev/null , failed: %v", errb)
++				Infof("exec /usr/busybox/ls -R, failed: %v", errb)
++			}else{
++				Infof(string(out))
 +			}
 +			out, errb = exec.Command("/usr/bin/date", "+%z").Output()
 +			if errb != nil {
