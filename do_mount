@@ -2,26 +2,44 @@
 
 
 function do_mount(){
+	function _info(){
+		if [ -n $verbose ];then
+			echo $@
+		fi
+		info $@
+	}
+	function _die(){
+		if [ -n $verbose ];then
+			echo $@
+		fi
+		die $@
+	}
+	function _err(){
+		if [ -n $verbose ];then
+			echo $@
+		fi
+		err $@
+	}
 	function _mount(){
 		local msg="`mount $@ 2>&1`"
 		local ret=$?
 		if echo $msg|grep "already mounted" > /dev/null;then
-			die $msg
+			_die $msg
 			ret=1
 		else
 			if echo $msg|grep "wrong fs" > /dev/null;then
 				if [ "$type" = "btrfs" ]; then
-					info mount failed / mount $@
+					_info mount failed / mount $@
 					return 1
 				fi
-				die $msg
+				_die $msg
 				ret=1
 			fi
 		fi
 		if [ "$ret" = "0" ];then
-			info mount successful / mount $@
+			_info mount successful / mount $@
 		else
-			err mount failed / mount $@
+			_err mount failed / mount $@
 		fi
 		return $ret
 	}
@@ -30,6 +48,7 @@ function do_mount(){
 	local args=()
 	local moptShift
 	local forceDegraded
+	local verbose
 	declare -A mopts
 	declare -A moptsNoDeg
 	declare -A moptsWithDeg
@@ -38,7 +57,7 @@ function do_mount(){
 	while (( "$#" )); do
 		if [ "${1:0:1}" = "-" ];then
 			if [ -n "$moptShift" ];then
-				die "missing mount option operand"
+				_die "missing mount option operand"
 			fi
 			if [ "${1:0:2}" = "--" ];then
 				case $1 in
@@ -53,27 +72,30 @@ function do_mount(){
 						;;
 					--rw)
 						if [ -n "${mopts[ro]}" ];then
-							die "both 'rw' and 'ro' mount option specified"
+							_die "both 'rw' and 'ro' mount option specified"
 						fi
 						mopts[rw]=1
 						;;
 					--read-write)
 						if [ -n "${mopts[ro]}" ];then
-							die "both 'rw' and 'ro' mount option specified"
+							_die "both 'rw' and 'ro' mount option specified"
 						fi
 						mopts[rw]=1
 						;;
 					--read-only)
 						if [ -n "${mopts[rw]}" ];then
-							die "both 'rw' and 'ro' mount option specified"
+							_die "both 'rw' and 'ro' mount option specified"
 						fi
 						mopts[ro]=1
 						;;
 					--force-degraded)
 						forceDegraded=1
 						;;
+					--verbose)
+						verbose=1
+						;;
 					*)
-						die "not supported option '$1'"
+						_die "not supported option '$1'"
 						;;
 				esac
 			else
@@ -81,7 +103,7 @@ function do_mount(){
 				local mustLast=""
 				for (( i=1; i<${#1}; i++ )); do
 					if [ -n "$mustLast" ];then
-						die "missing mount option operand"
+						_die "missing mount option operand"
 					fi
 					local o="${1:$i:1}"
 					case "$o" in
@@ -93,13 +115,13 @@ function do_mount(){
 							;;
 						w)
 							if [ -n "${mopts[ro]}" ];then
-								die "both 'rw' and 'ro' mount option specified"
+								_die "both 'rw' and 'ro' mount option specified"
 							fi
 							mopts[rw]=1
 							;;
 						r)
 							if [ -n "${mopts[rw]}" ];then
-								die "both 'rw' and 'ro' mount option specified"
+								_die "both 'rw' and 'ro' mount option specified"
 							fi
 							mopts[ro]=1
 							;;
@@ -108,7 +130,7 @@ function do_mount(){
 							moptShift=1
 							;;
 						*)
-							die "unknown option '-$o'"
+							_die "unknown option '-$o'"
 							;;
 							
 					esac
@@ -120,10 +142,10 @@ function do_mount(){
 				split tmopts "$1" ,
 				for i in "${tmopts[@]}"; do
 					if [ "$i" = "rw" -a "${mopts[ro]}" = 1 ]; then
-						die "both 'rw' and 'ro' mount option specified"
+						_die "both 'rw' and 'ro' mount option specified"
 					fi
 					if [ "$i" = "ro" -a "${mopts[rw]}" = 1 ]; then
-						die "both 'rw' and 'ro' mount option specified"
+						_die "both 'rw' and 'ro' mount option specified"
 					fi
 					mopts[$i]=1
 				done
@@ -131,7 +153,7 @@ function do_mount(){
 				args+=($1)
 				i=${#args[@]}
 				if ((i > 2)); then
-					die "extra arguments specified"
+					_die "extra arguments specified"
 				fi
 			fi
 		fi
@@ -175,33 +197,33 @@ function do_mount(){
 	fi
 	i=${#to_mount_cand[@]}
 	if [ "$i" = 0 ];then
-		die "'$src' is not mountable source."
+		_die "'$src' is not mountable source."
 	fi
 	if ((i > 1)); then
 		i=$(joinq ', ' "'" "${!to_mount_cand[@]}")
-		die "'$src' is ambiguous. Candidates are $i"
+		_die "'$src' is ambiguous. Candidates are $i"
 	fi
 	to_mount=${!to_mount_cand[@]}
 	local type=`blkid $to_mount|sed -r 's/.*TYPE="([^"]+)".*/\1/g'`
 	if [ -z "$type" ];then
-		die "cannot detect filesystem of '$to_mount'."
+		_die "cannot detect filesystem of '$to_mount'."
 	fi
 	if [ "$type" = "swap" ];then
 		if [ -n "$dst" ];then
-			err "cannot mount swap partition"
+			_err "cannot mount swap partition"
 		fi
 		if [ -n "$opts" -o -n "$mopts" ];then
-			err "cannot use option for swap partition"
+			_err "cannot use option for swap partition"
 		fi
 		exit_if_err
 		swapon $to_mount
 	else
 		if [ -z "$dst" ];then
-			die "mount point is not specified."
+			_die "mount point is not specified."
 		fi
 		if [ ! -d "$dst" ];then
 			if [ -e "$dst" ];then
-				die "'$dst' is not a directory."
+				_die "'$dst' is not a directory."
 			fi
 			mkdir -p "$dst"
 		fi
@@ -224,7 +246,7 @@ function do_mount(){
 			dbv "$?"
 			if [ "$?" != 0 -o "${#devices[@]}" = 0 ];then
 				dbv "${#devices[@]}"
-				die "'blkid2 --get-siblings $to_mount' failed"
+				_die "'blkid2 --get-siblings $to_mount' failed"
 			fi
 			local dev
 			local devOptArgs
@@ -248,14 +270,22 @@ function do_mount(){
 			if [ -z "$forceDegraded" ];then
 				local i=0
 				while ! _mount $opts $moptsNoDeg $to_mount $dst;do
-					info retrying ...
+					if [ $i = 0 ];then
+						info_n retrying .
+					else
+						echo -n .
+					fi
 					i=$((i + 1))
 					if [ $i = 5 ];then
+						echo
 						_mount $opts $moptsWithDeg $to_mount $dst
 						res=$?
+						if [ "$res" = 0 ];then
+							_warn "Mounted degraded drive."
+						fi
 						break
 					fi
-					sleep 5
+					sleep 2
 				done
 				res=$?
 			else
@@ -267,7 +297,7 @@ function do_mount(){
 			res=$?
 		fi
 		if [ "$res" != "0" ];then
-			die "cannot mount $to_mount on $dst"
+			_die "cannot mount $to_mount on $dst"
 		fi
 	fi
 }

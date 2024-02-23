@@ -33,7 +33,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/configfiles/configfiles.go os.new/p
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2024-02-20 21:31:15.340416200 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2024-02-24 07:46:38.697919100 +0900
 @@ -4,6 +4,8 @@
  	"fmt"
  	"strings"
@@ -43,7 +43,12 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  
  	"github.com/burmilla/os/config"
  	"github.com/burmilla/os/config/cmdline"
-@@ -22,7 +24,7 @@
+@@ -18,11 +20,12 @@
+ )
+ 
+ var (
++	MountDegraded = false
+ 	ShouldSwitchRoot bool
  )
  
  func MountOem(cfg *config.CloudConfig) (*config.CloudConfig, error) {
@@ -52,7 +57,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  		log.Debugf("Not mounting OEM: %v", err)
  	} else {
  		log.Infof("Mounted OEM: %s", cfg.Rancher.State.OemDev)
-@@ -45,7 +47,7 @@
+@@ -45,7 +48,7 @@
  		}
  	}
  
@@ -61,7 +66,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  		log.Debugf("Not mounting BOOT: %v", err)
  	} else {
  		log.Infof("Mounted BOOT: %s", cfg.Rancher.State.BootDev)
-@@ -54,32 +56,48 @@
+@@ -54,32 +57,50 @@
  	return cfg, nil
  }
  
@@ -85,18 +90,18 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +	log.Infof("Mounting %s device %s to %s (option = '%s')", display, dname, target, option)
 +
 +	if _, err := os.Stat("/usr/bin/do_mount"); err == nil {
-+		cmd := exec.Command("/usr/bin/do_mount", "-o", option, dname, target)
-+		cmd.Stderr = os.Stderr
-+		_, errb := cmd.Output()
++		cmd := exec.Command("/usr/bin/do_mount", "--verbose", "-o", option, dname, target)
++		out, errb := cmd.Output()
 +		if errb != nil {
 +			log.Infof("exec /usr/bin/do_mount, failed.")
 +			log.Infof("Mouting %s failed", display)
 +			return err
 +		}
++		if strings.Index(striing(out), "Mounted degraded drive") != -1 {
++			MountDegraded = true
++		}
 +		return nil
- 
--	if err != nil {
--		return err
++
 +	} else {
 +		
 +		dev := util.ResolveDevice(dname)
@@ -106,7 +111,9 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +		if fsType == "auto" {
 +			fsType, err = util.GetFsType(dev)
 +		}
-+
+ 
+-	if err != nil {
+-		return err
 +		if err != nil {
 +			return err
 +		}
@@ -153,7 +160,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
  }
 diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg/init/switchroot/switchroot.go
 --- os.prev/pkg/init/switchroot/switchroot.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/switchroot/switchroot.go	2024-02-21 10:40:06.455314500 +0900
++++ os.new/pkg/init/switchroot/switchroot.go	2024-02-24 07:50:30.347919100 +0900
 @@ -141,6 +141,7 @@
  		if err := syscall.Mount(i, path.Join(rootfs, i), "", syscall.MS_MOVE, ""); err != nil {
  			return err
@@ -162,7 +169,20 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
  
  	if err := copyMoveRoot(rootfs, rmUsr); err != nil {
-@@ -158,6 +159,7 @@
+@@ -152,12 +153,17 @@
+ 		return err
+ 	}
+ 
+-	log.Debugf("mount MS_MOVE %s", rootfs)
+-	if err := syscall.Mount(rootfs, "/", "", syscall.MS_MOVE, ""); err != nil {
+-		return err
++	if !fsmout.MountDegraded {
++		log.Debugf("mount MS_MOVE %s", rootfs)
++		if err := syscall.Mount(rootfs, "/", "", syscall.MS_MOVE, ""); err != nil {
++			return err
++		}
++	}else{
++		log.Warnf("Mounted degraded drive. Skipping move /state to /.")
  	}
  
  	log.Debug("chroot .")
@@ -172,7 +192,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/log/log.go	2024-02-23 10:39:29.435368000 +0900
++++ os.new/pkg/log/log.go	2024-02-24 07:52:50.837919100 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -345,7 +365,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,8 +217,124 @@
+@@ -120,8 +217,123 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -408,8 +428,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +	if err != nil { // file missing
 +		os.Symlink("/idev/null", "/dev/null")
 +		nullSymlinked = true // initrd started
-+	}
-+	if false {
++	} else {
 +		file, err := os.Open(timeDiffFN)
 +		if err == nil { // file exists
 +			byteData, err := io.ReadAll(file)
@@ -470,7 +489,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	if logTheseApps() {
  		innerInit(false)
  		FsReady()
-@@ -131,6 +344,7 @@
+@@ -131,6 +343,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
