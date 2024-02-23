@@ -192,7 +192,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/log/log.go	2024-02-24 07:52:50.837919100 +0900
++++ os.new/pkg/log/log.go	2024-02-24 08:42:05.997919100 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -445,10 +445,10 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		}
 +	}
 +	if err != nil || base == 0 {
-+		out, errb := exec.Command("date", "+%z").Output()
-+		if errb != nil {
-+			Infof("exec 'date', failed: %v", errb)
-+			out, errb = exec.Command("/usr/bin/date", "+%z").Output()
++		//out, errb := exec.Command("date", "+%z").Output()
++		//if errb != nil {
++			//Infof("exec 'date', failed: %v", errb)
++			out, errb := exec.Command("/usr/bin/date", "+%z").Output()
 +			if errb != nil {
 +				Infof("exec '/usr/bin/date', failed: %v", errb)
 +				out, errb = exec.Command("/bin/date", "+%z").Output()
@@ -456,7 +456,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +					Infof("exec 'date', failed: %v", errb)
 +				}
 +			}
-+		}
++		//}
 +		if errb != nil {
 +			tz = os.Getenv("TZ")
 +			td := string(out)
