@@ -172,7 +172,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/log/log.go	2024-02-23 09:52:36.515368000 +0900
++++ os.new/pkg/log/log.go	2024-02-23 09:53:56.335368000 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -215,7 +215,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  
  type Fields logrus.Fields
  type Level logrus.Level
-@@ -63,53 +84,130 @@
+@@ -63,53 +84,129 @@
  	return Level(logrus.GetLevel())
  }
  
@@ -239,12 +239,11 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		} else { // file exists
 +			if doPreserve {
 +				 // write preserved
-+				file, err := os.OpenFile(preserveLogFN, os.O_WRONLY|os.O_APPEND, 0666)
++				file, err := os.OpenFile(preserveLogFN, os.O_WRONLY|os.O_APPEND, 0644)
 +				if err == nil {
 +					file.WriteString(preservedLogs)
 +					file.Close()
 +				}
-+				/usr/share/ros/oem/var/lib/rancher/
 +				preserveLogFN = ""
 +				doPreserve = false
 +				if base != 0 {
@@ -346,7 +345,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,8 +218,122 @@
+@@ -120,8 +217,122 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -469,7 +468,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	if logTheseApps() {
  		innerInit(false)
  		FsReady()
-@@ -131,6 +343,7 @@
+@@ -131,6 +342,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
