@@ -1395,7 +1395,9 @@ ssh_sudo <<'FINAL'
 
  	create_initrd_mod 
 
-	do_mount 4 /installing/boot_dev
+	if ! do_mount 4 /installing/boot_dev; then
+		die cannot mount
+	fi
 	ls -la /installing/boot_dev
 
 	# patching os-config file
@@ -1415,7 +1417,9 @@ ssh_sudo <<'FINAL'
 		exit 1
 	fi
 
-	do_mount 7 /installing/oem_part
+	if ! do_mount 7 /installing/oem_part; then
+		die cannot mount
+	fi
 	mkdir -p /installing/oem_part/var/lib/rancher/conf/cloud-config.d
 	if [ -z "$USER_CONFIG" -o ! -e "$UF" ]; then
 		DATE=`TZ=$TZL date`
@@ -1517,16 +1521,17 @@ ssh_sudo <<'FINAL'
 
 	[ ! -e /installing/oem_part/home ] && cp -af /installing/state/home /installing/oem_part
 	[ ! -e /installing/oem_part/root ] && cp -af /installing/state/root /installing/oem_part
+	[ ! -e /installing/oem_part/opt ] && cp -af /installing/state/opt /installing/oem_part
 	mkdir -p /installing/oem_part/var
 	[ ! -e /installing/oem_part/var/log ] && cp -af /installing/state/var/log /installing/oem_part/var
 	mkdir -p /installing/oem_part/var/lib/rancher
 	[ ! -e /installing/oem_part/var/lib/rancher/conf ] && cp -af /installing/state/var/lib/rancher/conf /installing/oem_part/var/lib/rancher
 
 	rm -rf /installing/state/{root,opt,home,var/log,var/lib/rancher/conf}
-	mkdir -p /installing/state/{root/.ssh,opt,home,var/log,var/lib/rancher/conf}
-	chmod 550 /installing/state/root
-	chmod 700 /installing/state/root/.ssh
-	chmod 755 /installing/state/{opt,home,var,var/log,var/lib,var/lib/rancher,var/lib/rancher/conf}
+
+	mkdir -p /installing/oem_part/root/.ssh
+	chmod 550 /installing/oem_part/root
+	chmod 700 /installing/oem_part/root/.ssh
 	
 	ln -s /usr/share/ros/oem/root /installing/state/root
 	ln -s /usr/share/ros/oem/home /installing/state/home

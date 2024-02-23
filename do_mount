@@ -7,8 +7,12 @@ function do_mount(){
 		local ret=$?
 		if echo $msg|grep "already mounted";then
 			die $msg
+			ret=1
 		else
-			echo -n $msg
+			if echo $msg|grep "wrong fs";then
+				die $msg
+				ret=1
+			fi
 		fi
 		if [ "$ret" = "0" ];then
 			info mount successful / mount $@
