@@ -160,7 +160,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
  }
 diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg/init/switchroot/switchroot.go
 --- os.prev/pkg/init/switchroot/switchroot.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/switchroot/switchroot.go	2024-02-24 07:50:30.347919100 +0900
++++ os.new/pkg/init/switchroot/switchroot.go	2024-02-24 08:05:29.857919100 +0900
 @@ -141,6 +141,7 @@
  		if err := syscall.Mount(i, path.Join(rootfs, i), "", syscall.MS_MOVE, ""); err != nil {
  			return err
@@ -176,7 +176,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
 -	log.Debugf("mount MS_MOVE %s", rootfs)
 -	if err := syscall.Mount(rootfs, "/", "", syscall.MS_MOVE, ""); err != nil {
 -		return err
-+	if !fsmout.MountDegraded {
++	if !fsmount.MountDegraded {
 +		log.Debugf("mount MS_MOVE %s", rootfs)
 +		if err := syscall.Mount(rootfs, "/", "", syscall.MS_MOVE, ""); err != nil {
 +			return err
