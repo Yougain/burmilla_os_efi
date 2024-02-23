@@ -1523,7 +1523,11 @@ ssh_sudo <<'FINAL'
 	[ ! -e /installing/oem_part/var/lib/rancher/conf ] && cp -af /installing/state/var/lib/rancher/conf /installing/oem_part/var/lib/rancher
 
 	rm -rf /installing/state/{root,opt,home,var/log,var/lib/rancher/conf}
-	chmod 700 /installing/oem_part/root
+	mkdir -p /installing/state/{root/.ssh,opt,home,var/log,var/lib/rancher/conf}
+	chmod 550 /installing/state/root
+	chmod 700 /installing/state/root/.ssh
+	chmod 755 /installing/state/{opt,home,var,var/log,var/lib,var/lib/rancher,var/lib/rancher/conf}
+	
 	ln -s /usr/share/ros/oem/root /installing/state/root
 	ln -s /usr/share/ros/oem/home /installing/state/home
 	ln -s /usr/share/ros/oem/opt /installing/state/opt
