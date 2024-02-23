@@ -172,7 +172,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/log/log.go	2024-02-23 09:55:28.885368000 +0900
++++ os.new/pkg/log/log.go	2024-02-23 10:39:29.435368000 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -345,7 +345,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,8 +217,122 @@
+@@ -120,8 +217,124 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -409,17 +409,19 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		os.Symlink("/idev/null", "/dev/null")
 +		nullSymlinked = true // initrd started
 +	}
-+	file, err := os.Open(timeDiffFN)
-+	if err == nil { // file exists
-+		byteData, err := io.ReadAll(file)
-+		file.Close()
-+		base, err = strconv.Atoi(string(byteData))
-+		if err == nil {
-+			file, err := os.Open(tzFN)
-+			if err == nil { // file exists
-+				byteData, err = io.ReadAll(file)
-+				file.Close()
-+				tz = strings.TrimSpace(string(byteData))
++	if false {
++		file, err := os.Open(timeDiffFN)
++		if err == nil { // file exists
++			byteData, err := io.ReadAll(file)
++			file.Close()
++			base, err = strconv.Atoi(string(byteData))
++			if err == nil {
++				file, err := os.Open(tzFN)
++				if err == nil { // file exists
++					byteData, err = io.ReadAll(file)
++					file.Close()
++					tz = strings.TrimSpace(string(byteData))
++				}
 +			}
 +		}
 +	}
@@ -468,7 +470,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	if logTheseApps() {
  		innerInit(false)
  		FsReady()
-@@ -131,6 +342,7 @@
+@@ -131,6 +344,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
