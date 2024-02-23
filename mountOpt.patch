@@ -172,7 +172,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/log/log.go	2024-02-23 09:53:56.335368000 +0900
++++ os.new/pkg/log/log.go	2024-02-23 09:55:28.885368000 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -263,7 +263,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		_, err := os.Stat(oemVarDir)
 +		if err == nil {
 +			checkOemVarDir = false
-+			os.Mkdir(oemVarDirInitrd)
++			os.Mkdir(oemVarDirInitrd, 0755)
 +			file, err := os.Create(timeDiffFN)
 +			if err == nil {
 +				file.WriteString(fmt.Sprintf("%d", base))
