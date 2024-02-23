@@ -5,11 +5,15 @@ function do_mount(){
 	function _mount(){
 		local msg="`mount $@ 2>&1`"
 		local ret=$?
-		if echo $msg|grep "already mounted";then
+		if echo $msg|grep "already mounted" > /dev/null;then
 			die $msg
 			ret=1
 		else
-			if echo $msg|grep "wrong fs";then
+			if echo $msg|grep "wrong fs" > /dev/null;then
+				if [ "$type" = "btrfs" ]; then
+					info mount failed / mount $@
+					return 1
+				fi
 				die $msg
 				ret=1
 			fi
@@ -244,6 +248,7 @@ function do_mount(){
 			if [ -z "$forceDegraded" ];then
 				local i=0
 				while ! _mount $opts $moptsNoDeg $to_mount $dst;do
+					info retrying ...
 					i=$((i + 1))
 					if [ $i = 5 ];then
 						_mount $opts $moptsWithDeg $to_mount $dst
