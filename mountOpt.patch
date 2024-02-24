@@ -160,7 +160,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
  }
 diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg/init/switchroot/switchroot.go
 --- os.prev/pkg/init/switchroot/switchroot.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/switchroot/switchroot.go	2024-02-24 08:05:29.857919100 +0900
++++ os.new/pkg/init/switchroot/switchroot.go	2024-02-24 15:19:25.807919100 +0900
 @@ -141,6 +141,7 @@
  		if err := syscall.Mount(i, path.Join(rootfs, i), "", syscall.MS_MOVE, ""); err != nil {
  			return err
@@ -169,20 +169,12 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
  
  	if err := copyMoveRoot(rootfs, rmUsr); err != nil {
-@@ -152,12 +153,17 @@
- 		return err
- 	}
+@@ -154,10 +155,11 @@
  
--	log.Debugf("mount MS_MOVE %s", rootfs)
--	if err := syscall.Mount(rootfs, "/", "", syscall.MS_MOVE, ""); err != nil {
+ 	log.Debugf("mount MS_MOVE %s", rootfs)
+ 	if err := syscall.Mount(rootfs, "/", "", syscall.MS_MOVE, ""); err != nil {
 -		return err
-+	if !fsmount.MountDegraded {
-+		log.Debugf("mount MS_MOVE %s", rootfs)
-+		if err := syscall.Mount(rootfs, "/", "", syscall.MS_MOVE, ""); err != nil {
-+			return err
-+		}
-+	}else{
-+		log.Warnf("Mounted degraded drive. Skipping move /state to /.")
++		log.Warnf("MS_MOVE failed (%v). Continue by chrooting.", err)
  	}
  
  	log.Debug("chroot .")
@@ -192,7 +184,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/log/log.go	2024-02-24 14:34:21.267919100 +0900
++++ os.new/pkg/log/log.go	2024-02-24 14:50:38.937919100 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -365,7 +357,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,8 +217,122 @@
+@@ -120,8 +217,125 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -426,8 +418,11 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +	}
 +	_, err := os.Stat("/dev/null")
 +	if err != nil { // file missing
-+		os.Symlink("/idev/null", "/dev/null")
-+		nullSymlinked = true // initrd started
++		_, err := os.Stat("/idev/null")
++		if err == nil {
++			os.Symlink("/idev/null", "/dev/null")
++			nullSymlinked = true // initrd started
++		}
 +	} else {
 +		file, err := os.Open(timeDiffFN)
 +		if err == nil { // file exists
@@ -488,7 +483,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	if logTheseApps() {
  		innerInit(false)
  		FsReady()
-@@ -131,6 +342,7 @@
+@@ -131,6 +345,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
