@@ -202,7 +202,7 @@ UDIR=`WG --no-check-certificate -O - $UB_RELEASE_URL/ 2>/dev/null|grep "$LATEST_
 UBUNTU_ISO="$T"/ubuntu-$LATEST_UV-live-server-amd64.iso
 info Ubuntu Version: $LATEST_UV
 
-if [ ! -e burmillaos-$BURMILLAOS_VER.iso ];then
+if [ ! -e $BURMILLA_ISO ];then
 	for i in $F_VERSION;do
 		if [ "$i" = "$BURMILLAOS_VER" ];then
 			info download $BURMILLAOS_VER
@@ -210,7 +210,7 @@ if [ ! -e burmillaos-$BURMILLAOS_VER.iso ];then
 			break
 		fi
 	done
-	if [ ! -e burmillaos-$BURMILLAOS_VER.iso ];then
+	if [ ! -e $BURMILLA_ISO ];then
 		die cannot download burmillaos-$BURMILLAOS_VER.iso
 	fi
 fi
