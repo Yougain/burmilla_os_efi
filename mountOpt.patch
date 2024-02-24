@@ -192,7 +192,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/log/log.go	2024-02-24 14:12:23.137919100 +0900
++++ os.new/pkg/log/log.go	2024-02-24 14:34:21.267919100 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -208,7 +208,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	"path/filepath"
  	"strings"
  
-@@ -14,10 +19,19 @@
+@@ -14,10 +19,26 @@
  	lsyslog "github.com/sirupsen/logrus/hooks/syslog"
  )
  
@@ -216,6 +216,10 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +	tmpfsMagic int64 = 0x01021994
 +	ramfsMagic int64 = 0x858458f6
 +	DefaultTimeFormat = "2006-01-02 Mon 15:04:05.000000 -0700"
++	oemVarDir = "/usr/share/ros/oem/var/lib/rancher"
++	oemVarDirInitrd = oemVarDir + "/initrd"
++	timeDiffFN = oemVarDirInitrd + "/time_diff_seconds"
++	tzFN = oemVarDirInitrd + "/TZ"
 +)
 +
  var logFile *os.File
@@ -225,10 +229,13 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +var preservedLogs = ""
 +var preserveLogFN = ""
 +var doPreserve = false
++var base = 0 // time difference
++var tz = "" // time zone name
++var checkOemVarDir = false
  
  type Fields logrus.Fields
  type Level logrus.Level
-@@ -63,53 +77,111 @@
+@@ -63,53 +84,129 @@
  	return Level(logrus.GetLevel())
  }
  
@@ -252,15 +259,16 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		} else { // file exists
 +			if doPreserve {
 +				 // write preserved
-+				file, err := os.OpenFile(preserveLogFN, os.O_WRONLY|os.O_APPEND, 0666)
++				file, err := os.OpenFile(preserveLogFN, os.O_WRONLY|os.O_APPEND, 0644)
 +				if err == nil {
-+					_, err := file.WriteString(preservedLogs)
-+					if err == nil {
-+						file.Close()
-+					}
++					file.WriteString(preservedLogs)
++					file.Close()
 +				}
 +				preserveLogFN = ""
 +				doPreserve = false
++				if base != 0 {
++					checkOemVarDir = true
++				}
 +			}
 +		}
 +		if doPreserve {
@@ -269,6 +277,23 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +				msg += fmt.Sprintf("%v", arg)
 +			}
 +			preservedLogs += strings.ToUpper(lv + " ")[0:5] + " " + t.Format(DefaultTimeFormat) + " " + msg + "\n"
++		}
++	}
++	if checkOemVarDir {
++		_, err := os.Stat(oemVarDir)
++		if err == nil {
++			checkOemVarDir = false
++			os.Mkdir(oemVarDirInitrd, 0755)
++			file, err := os.Create(timeDiffFN)
++			if err == nil {
++				file.WriteString(fmt.Sprintf("%d", base))
++				file.Close()
++				file, err = os.Create(tzFN)
++				if err == nil {
++					file.WriteString(tz)
++					file.Close()
++				}
++			}
 +		}
 +	}
 +}
@@ -340,7 +365,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,8 +192,104 @@
+@@ -120,8 +217,122 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -402,31 +427,49 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +	_, err := os.Stat("/dev/null")
 +	if err != nil { // file missing
 +		os.Symlink("/idev/null", "/dev/null")
-+		nullSymlinked = true
++		nullSymlinked = true // initrd started
++	} else {
++		file, err := os.Open(timeDiffFN)
++		if err == nil { // file exists
++			byteData, err := io.ReadAll(file)
++			file.Close()
++			base, err = strconv.Atoi(string(byteData))
++			if err == nil {
++				file, err := os.Open(tzFN)
++				if err == nil { // file exists
++					byteData, err = io.ReadAll(file)
++					file.Close()
++					tz = strings.TrimSpace(string(byteData))
++				}
++			}
++		}
 +	}
-+	out, errb := exec.Command("date", "+%z").Output()
-+	if errb != nil {
-+		Infof("exec 'date', failed: %v", errb)
-+		out, errb = exec.Command("/usr/bin/date", "+%z").Output()
++	if err != nil || base == 0 {
++		out, errb := exec.Command("date", "+%z").Output()
 +		if errb != nil {
-+			Infof("exec '/usr/bin/date', failed: %v", errb)
-+			out, errb = exec.Command("/bin/date", "+%z").Output()
++			out, errb = exec.Command("/usr/bin/date", "+%z").Output()
 +			if errb != nil {
++				out, errb = exec.Command("/bin/date", "+%z").Output()
++			}
++		}
++		if errb == nil {
++			tz = os.Getenv("TZ")
++			td := string(out)
++			Infof("output of 'date %%z': %s", td)
++			a, _ := strconv.Atoi(td[1:3])
++			b, _ := strconv.Atoi(td[3:])
++			base = a * 60 * 60 + b * 60
++			if td[0:1] == "-" {
++				base = -base
++			}
++		}else{
++			if(nullSymlinked){
 +				Infof("exec 'date', failed: %v", errb)
 +			}
 +		}
 +	}
-+	if errb == nil {
-+		td := string(out)
-+		Infof("output of 'date %%z': %s", td)
-+		a, _ := strconv.Atoi(td[1:3])
-+		b, _ := strconv.Atoi(td[3:])
-+		base := a * 60 * 60 + b * 60
-+		if td[0:1] == "-" {
-+			base = -base
-+		}
++	if base != 0 {
 +		Infof("time difference: %d seconds", base)
-+		tz := os.Getenv("TZ")
 +		if tz == "" {
 +			tz = "LOCAL"
 +		}
@@ -445,7 +488,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	if logTheseApps() {
  		innerInit(false)
  		FsReady()
-@@ -131,6 +299,7 @@
+@@ -131,6 +342,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
