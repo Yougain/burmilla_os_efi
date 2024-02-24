@@ -49,9 +49,9 @@ function ver {
 	echo -n ${tmp%%-*}
 }
 
-VERSIONS=`wget $BM_RELEASE_URL --quiet -O - |egrep -o 'expanded_assets/v[0-9].*"'|awk '{sub(/.$/, "", $0);print substr($0,17)}'`
+F_VERSIONS=`wget $BM_RELEASE_URL --quiet -O - |egrep -o 'expanded_assets/v[0-9].*"'|awk '{sub(/.$/, "", $0);print substr($0,17)}'`
 VERSIONS=`ls $T/ | grep -v efi | grep iso | grep burmillaos | sed -s 's/burmillaos-//;s/.iso//'`"
-"$VERSIONS
+"$F_VERSIONS
 echo "$VERSIONS" > $SCRIPT_TMP_DIR/$0.ver
 echo "--`cat $SCRIPT_TMP_DIR/$0.ver`--"
 echo "$VERSIONS" | awk '{gsub(/^v/,"");gsub(/$/, ".2"); gsub(/-rc/,".1.");gsub(/-beta/,".0.");print}' | tr '.' ' ' | awk '{printf "%03d%03d%03d%03d%03d %01d\n", $1, $2, $3, $4, $5, $4}' > $SCRIPT_TMP_DIR/$0.vernum
@@ -89,6 +89,12 @@ while (( "$#" )); do
 			;;
 		"--overwrite-usb" )
 			OVERWRITE_USB=1
+			;;
+		"now" )
+			ARG_FOUND=1
+			isofile=`ls -t "$T"/burmillaos-*.iso | grep -v .efi.iso | head -1`
+			tmp=${isofile##*burmillaos-}
+			BURMILLAOS_VER=${tmp%.iso}
 			;;
 		* )
 			ARG_FOUND=1
@@ -196,7 +202,18 @@ UDIR=`WG --no-check-certificate -O - $UB_RELEASE_URL/ 2>/dev/null|grep "$LATEST_
 UBUNTU_ISO="$T"/ubuntu-$LATEST_UV-live-server-amd64.iso
 info Ubuntu Version: $LATEST_UV
 
-WG $BM_RELEASE_URL/download/$BURMILLAOS_VER/burmillaos-$BURMILLAOS_VER.iso -O $BURMILLA_ISO
+if [ ! -e burmillaos-$BURMILLAOS_VER.iso ];then
+	for i in $F_VERSION;do
+		if [ "$i" = "$BURMILLAOS_VER" ];then
+			info download $BURMILLAOS_VER
+			WG $BM_RELEASE_URL/download/$BURMILLAOS_VER/burmillaos-$BURMILLAOS_VER.iso -O $BURMILLA_ISO
+			break
+		fi
+	done
+	if [ ! -e burmillaos-$BURMILLAOS_VER.iso ];then
+		die cannot download burmillaos-$BURMILLAOS_VER.iso
+	fi
+fi
 #WG --ca-certificate=$UB_CERT $UB_RELEASE_URL/$UDIR"ubuntu-$LATEST_UV-live-server-amd64.iso" -O $UBUNTU_ISO
 WG --no-check-certificate $UB_RELEASE_URL/$UDIR"ubuntu-$LATEST_UV-live-server-amd64.iso" -O $UBUNTU_ISO
 
