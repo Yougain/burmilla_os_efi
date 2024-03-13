@@ -178,7 +178,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
  }
 diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg/init/switchroot/switchroot.go
 --- os.prev/pkg/init/switchroot/switchroot.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/switchroot/switchroot.go	2024-03-13 21:49:42.819787400 +0900
++++ os.new/pkg/init/switchroot/switchroot.go	2024-03-13 21:53:54.429787400 +0900
 @@ -4,6 +4,7 @@
  	"fmt"
  	"io/ioutil"
@@ -207,7 +207,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
 +		}
 +		log.Warnf("Continue by chrooting.", err)
 +		if errb != nil {
-+			log.Warnf("cannot exec dmesg (Error:%s)", string(errb))
++			log.Warnf("cannot exec dmesg (Error:%v)", errb)
 +		}
  	}
  
