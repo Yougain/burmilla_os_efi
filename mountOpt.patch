@@ -1,6 +1,15 @@
 diff -Naur '--exclude=.git' os.prev/cmd/init/init.go os.new/cmd/init/init.go
 --- os.prev/cmd/init/init.go	2024-02-15 15:45:46.740000000 +0900
-+++ os.new/cmd/init/init.go	2024-02-24 21:35:11.567919100 +0900
++++ os.new/cmd/init/init.go	2024-03-13 21:56:18.159787400 +0900
+@@ -5,7 +5,7 @@
+ 
+ import (
+ 	"fmt"
+-
++	"os/exec"
+ 	"github.com/burmilla/os/config"
+ 	"github.com/burmilla/os/pkg/dfs"
+ 	"github.com/burmilla/os/pkg/init/b2d"
 @@ -38,6 +38,14 @@
  
  	if err := RunInit(); err != nil {
@@ -11,7 +20,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/init/init.go os.new/cmd/init/init.go
 +		}
 +		log.Warnf("Continue by chrooting.", err)
 +		if errb != nil {
-+			log.Warnf("cannot exec dmesg (Error:%s)", string(errb))
++			log.Warnf("cannot exec dmesg (Error:%v)", errb)
 +		}
  	}
  }
