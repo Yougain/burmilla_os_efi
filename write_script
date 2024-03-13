@@ -8,8 +8,76 @@ function transfer_env_for_grub(){
 }
 
 
+function store_env(){
+	if [ "$1" = "-s" ];then
+		shift
+		local useSource=1
+	fi
+	local vname="${1##*/}"
+	if ! [[ "$vname" =~ [A-Za-z][A-Za-z0-9]* ]];then
+		die "store_env: illeagal variable name, '$vname'"
+	fi
+	if [ -n "$useSource" ];then
+		if [ $# == "1" ];then
+			local dec_vname=$vname
+		else
+			eval "local dec_$vname=\"\$2\""
+		fi
+		local dec="`declare -p $dec_vname 2> /dev/null`"
+		if [ "$?" = 0 ];then
+			echo ${dec#*-* } > $1
+		fi
+	else
+		local HEAD
+		local content
+		if [ $# == "1" ];then
+			content="${!vname}"
+		else
+			content="$2"
+		fi
+		content="`echo -E $content |sed 's/\\/\\\\/'|sed -z 's/\n/\\\n/'`"
+		content="$vname=$content
+"
+		HEAD="# GRUB Environment Block
+$vname=$content
+"
+		local SHARPS="############################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################"
+		if [ "$((1024 - ${#HEAD}))" -lt 0 ];then
+			die "Cannot store variable, '$vname' on grub environment file. Exceeding size limit (< 1024)"
+		fi
+		local RES=$HEAD${SHARPS:0:$((1024 - ${#HEAD}))}
+		echo -nE "$RES" | tee $1 > /dev/null
+	fi
+}
+
+
+function source_env(){
+	if [ ! -r "$1" ];then
+		die "source_env: cannot read '$1'"
+	else
+		if [ "`head -1 $1`" = "# GRUB Environment Block" ];then
+			die "source_env: GRUB enviroment block is not supported"
+		fi
+	fi
+	source $1
+}
+
+
 function write_grub_script(){
-	(set_env 1024; trim_indent) > $1
+	local lns="`trim_indent`"
+	local left="$lns"
+	local envs=()
+	dbv $left
+	if [[ "$left" =~ 1 ]];then
+		dbv success
+	fi
+	while [[ "$left" =~ \$([a-zA-Z_][0-9A-Za-z_]*)(.*) ]];do
+		dbv ${BASH_REMATCH[@]}
+		envs+=(${BASH_REMATCH[1]})
+		left=${BASH_REMATCH[2]}
+	done
+	dbv ${envs[@]}
+	(set_env ${envs[@]}; echo -E "$lns") > $1
 }
 
 
@@ -40,6 +108,7 @@ function write_script(){
 
 
 function set_env(){
+	dbv $@
 	local ln
 	local lim
 	local d
@@ -47,8 +116,14 @@ function set_env(){
 	if [ -z "$1" ];then
 		lim=2147483647
 	else
-		lim=$1
+		if [[ "$1" =~ ^[0-9]+$ ]];then
+			lim=$1
+			shift
+		else
+			lim=2147483647
+		fi
 	fi
+	local envs=($@)
 	env_defined | while read ln; do
 		dec="`declare -p $ln`"
 		ln=${dec#declare -* }
@@ -58,11 +133,14 @@ function set_env(){
 			else
 				d=""
 			fi
-			if [[ ${ln} =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]];then
-				echo "$d$ln=''"
-			else
-				echo -E "$d$ln"
-				dbv $ln
+			if [[ ${ln} =~ ^([A-Za-z_][A-Za-z0-9_]*)(=|$) ]];then
+				if [ "$#" == 0 ] || detect envs ${BASH_REMATCH[1]}; then
+					if [ "${BASH_REMATCH[2]}" = "=" ]; then
+						echo -E "$d$ln"
+					else
+						echo "$d$ln=''"
+					fi
+				fi
 			fi
 		fi
 	done

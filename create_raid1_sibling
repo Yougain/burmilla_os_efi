@@ -153,14 +153,23 @@ ssh_sudo <<'SCRIPT_END'
 	dd if=/dev/zero of="$TARGET_DISK"7 bs=100M count=1
 
 SCRIPT_END
+dbv $?
 
 if [ "$?" != "0" ];then
 	die "ssh failed"
 fi
 
+if [ -z "$TARGET_DISK" ];then
+	die "environment variable TARGET_DISK is not set"
+fi
+
 ssh_reboot
 
 ssh_sudo <<'SCRIPT_END'
+
+if [ -z "$TARGET_DISK" ];then
+	die "environment variable TARGET_DISK is not set"
+fi
 
 # copy boot partition to new disk (optional)
 # mkdir -p /tmp/{src,dst}
@@ -170,29 +179,40 @@ ssh_sudo <<'SCRIPT_END'
 # umount /tmp/src /tmp/dst
 
 # remove missing device
+info btrfs device delete missing /boot
 btrfs device delete missing /boot
+info btrfs device delete missing /state_top_lvl
 btrfs device delete missing /state_top_lvl
+info btrfs device delete missing /oem_top_lvl
 btrfs device delete missing /oem_top_lvl
 
 # add new device
+info btrfs device add "$TARGET_DISK"4 /boot
 btrfs device add "$TARGET_DISK"4 /boot
+info btrfs device add "$TARGET_DISK"5 /state_top_lvl
 btrfs device add "$TARGET_DISK"5 /state_top_lvl
+info btrfs device add "$TARGET_DISK"7 /oem_top_lvl
 btrfs device add "$TARGET_DISK"7 /oem_top_lvl
 
+info partprobe
 partprobe
 EFI_UUID=`/sbin/blkid "$TARGET_DISK"2 | awk '{print $4}'`
 EFI_UUID_ARG=${EFI_UUID:6:9}
+EFI_UUID="`echo $EFI_UUID`"
 OEM_UUID_SUB=`/sbin/blkid "$TARGET_DISK"7 | awk '{print $4}'`
+OEM_UUID_SUB="`echo $OEM_UUID_SUB`"
 BOOT_UUID_SUB=`/sbin/blkid "$TARGET_DISK"4 | awk '{print $4}'`
+BOOT_UUID_SUB="`echo $BOOT_UUID_SUB`"
 STATE_UUID_SUB=`/sbin/blkid "$TARGET_DISK"5 | awk '{print $4}'`
+STATE_UUID_SUB="`echo $STATE_UUID_SUB`"
 
 mkdir -p /efi2
 mount "$TARGET_DISK"2 /efi2
 
-sed -i "s/rancher\.state\.boot_dev=\"[-A-F0-9]*\"/rancher.state.boot_dev=\\\"$BOOT_UUID_SUB\\\"/g" /efi2/EFI/boot/grub.cfg
-sed -i "s/rancher\.state\.oem_dev=\"[-A-F0-9]*\"/rancher.state.oem_dev=\\\"$OEM_UUID_SUB\\\"/g" /efi2/EFI/boot/grub.cfg
-sed -i "s/rancher\.state\.dev=\"[-A-F0-9]*\"/rancher.state.dev=\\\"$STATE_UUID_SUB\\\"/g" /efi2/EFI/boot/grub.cfg
-sed -i "s/efi=UUID=\"[-A-F0-9]*\"/efi=UUID=\\\"$EFI_UUID_ARG\\\"/g" /efi2/EFI/boot/grub.cfg
+sed -i "s/rancher\.state\.boot_dev=UUID_SUB=[A-F0-9][-A-F0-9]*/rancher.state.boot_dev=UUID_SUB=$BOOT_UUID_SUB/g" /efi2/EFI/boot/grub.cfg
+sed -i "s/rancher\.state\.oem_dev=UUID_SUB=[A-F0-9][-A-F0-9]*/rancher.state.oem_dev=UUID_SUB=$OEM_UUID_SUB/g" /efi2/EFI/boot/grub.cfg
+sed -i "s/rancher\.state\.dev=UUID_SUB=[A-F0-9][-A-F0-9]*/rancher.state.dev=UUID_SUB=$STATE_UUID_SUB/g" /efi2/EFI/boot/grub.cfg
+sed -i "s/efi=UUID=[A-F0-9][-A-F0-9]*/efi=UUID=$EFI_UUID_ARG/g" /efi2/EFI/boot/grub.cfg
 
 umount "$TARGET_DISK"2
 rmdir /efi2

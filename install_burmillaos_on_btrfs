@@ -126,42 +126,43 @@ if [ -z "$INST_IP" ]; then
 				fi
 			fi
 			efi_blkid=$(ssh $INST_IP -p $INSTALLED_PORT -l rancher -o ConnectTimeout=3 -o ConnectionAttempts=3 <<'END'
-				sudo mkdir -p /installing/installer
-				if sudo mount LABEL=RANCHEROS /installing/installer; then
-					efi_dev="`sudo mount|grep 'on /boot/efi type vfat'|awk '{print \$1}'`"
-					if [ -n "\$efi_dev" ];then
-						sudo blkid "\$efi_dev"
-						if ! sudo cp /oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer /boot/efi/.grub_env_for_installing; then
-							exit 4
+				BURMILLAOS_VER="`egrep '^\s*VERSION:\s+[^\s]+' /var/log/boot/init.log | awk '{print $2}'`"
+				if [ -n "$BURMILLAOS_VER" ];then
+					# search installer with relevant version
+					devs=(`blkid2 LABEL=RANCHEROS`)
+					for d in ${devs[@]}; do
+						do_mount $d /installing/installer
+						if source_env /installing/installer/boot/grub/VERSION
+							if [ "$VERSION" = "$BURMILLAOS_VER" ];then
+								store_env /installing/efipart/TOPIC REINSTALL
+								umount /installing/installer
+								sudo reboot >/dev/null
+								exit 0
+							fi
 						fi
-						sudo touch -d @$((`date +%s` + 300)) /boot/efi/.grub_env_for_installing
-						sudo reboot >/dev/null
-					else
-						exit 3
-					fi
-					exit 0
-				else
+						umount /installing/installer
+					done
 					exit 2
+				else
+					exit 1
 				fi
 END
 			)
 			case "$?" in
 				0) # logon the target and reboot
 					;;
+				1)
+					die "Kernel paramter without burmillaOS version."
+					;;
 				2)
-					die "Installer disk not inserted on target machine."
+					die "Installer disk with version, $KER_VERSION is not inserted on target machine."
 					;;
-				3)
-					die "EFI partition not mounted."
-					;;
-				4)
-					die /oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer not found.
-					;;
+					
 				*) # Time out. Already booted by installer ?
 					;;
 			esac
-			org_efi_uuid_with_tag=`echo "$efi_blkid"|egrep -o " UUID=\"[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]-[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]\""`
-			ORG_EFI_UUID=${org_efi_uuid_with_tag:7:9}
+#			org_efi_uuid_with_tag=`echo "$efi_blkid"|egrep -o " UUID=\"[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]-[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]\""`
+#			ORG_EFI_UUID=${org_efi_uuid_with_tag:7:9}
 		fi
 	fi
 fi
@@ -181,15 +182,6 @@ ssh_param $INST_IP 22 -x -q -o "PasswordAuthentication no" -o "StrictHostKeyChec
 wait_sshd_start
 
 
-if ssh_do ls -la /installing 2>/dev/null;then
-	info "Clear terminated installing."
-	for i in `ssh_sudo ls /installing`;do
-		ssh_sudo umount /installing/$i
-	done
-	ssh_sudo rm -rf /installing
-fi
-
-
 # install ssh key if not installed
 if ! ssh_do echo; then
 	if ! install_ssh_key; then
@@ -202,35 +194,56 @@ if ! ssh_do echo; then
 fi
 
 
+if ssh_do ls -la /installing 2>/dev/null;then
+	info "Clear terminated installing."
+	for i in `ssh_sudo ls /installing`;do
+		ssh_sudo umount /installing/$i
+	done
+	ssh_sudo rm -rf /installing
+fi
+
+
 # check booted from installer disk
 if [ "`ssh_do sudo mount | grep /usr/bin/ros | awk '{print $1}'`" != "none" ]; then
 	die Not booted from installer disk
 fi
 
 
-ssh_do sudo mkdir -p /installing/installer
 # check uefi-grub-enabled installer
-if ssh_do sudo mount /dev/disk/by-label/RANCHEROS /installing/installer; then
-	if [ -z "`ssh_do sudo cat /installing/installer/boot/grub/grub.cfg`" ]; then
-		die Installer disk is not uefi-grub enabled.
-	else
-		ssh_do sudo umount /installing/installer
-	fi
-else
-	die Installer disk with label, RANCHEROS is not found.
-fi
+ssh_sudo <<'END'
+	apt-get update
+	apt-get install fdisk
+	version="`egrep '^\s*VERSION:\s+[^\s]+' /var/log/boot/init.log | awk '{print $2}'`"
+	mkdir -p /installing/installer
+	for d in `/sbin/blkid | grep LABEL=\"RANCHEROS\" | awk '{print substr($1, 0, index($1, ":") - 1 )}'`;do
+		mount $d /installing/installer
+		if [ -e /installing/installer/boot/grub/VERSION ];then
+			VERSION=
+			if source /installing/installer/boot/grub/VERSION; then
+				if [ "$VERSION" = "$version" ];then
+					INST_DRIVE=$d
+					break
+				fi
+			fi
+		fi
+		umount /installing/installer
+	done
+	# get network parameters from target server booted by installer
+	NET_DEV=`ip route show|grep default|awk '{print $5}'|head -1`
+	NETMASK=`ip address show dev $NET_DEV | grep 'inet ' | grep global | awk '{print $2}'| sed -e 's/.*\///'|head -1`
+	GATEWAY=`ip route |egrep 'default via'|awk '{print $3}'|head -1`
+	DS="`cat /etc/resolv.conf| sed -e 's/[ \t]*#.*//' | grep "nameserver" | sed -e 's/^[ \t]*//' | awk '{print $2}'`"
+	DNS_SETTINGS="`ssh_do /etc/resolv.conf| sed -e 's/[ \t]*#.*//' | grep "nameserver" | sed -e 's/^[ \t]*//' | awk '{print $2}' | sed -e 's/^/      - /'`"
+END
 
-# get network parameters from target server booted by installer
-NET_DEV=`ssh_do ip route show|grep default|awk '{print $5}'|head -1`
+
+
 dbv $NET_DEV
 if [ -z "$NET_DEV" ]; then
 	die Cannot find net device for default route.
 fi
 
 function __set_dns__(){
-	local DS="`ssh_do cat /etc/resolv.conf| sed -e 's/[ \t]*#.*//' | grep "nameserver" | sed -e 's/^[ \t]*//' | awk '{print $2}'`"
-	DNS_SETTINGS="`ssh_do cat /etc/resolv.conf| sed -e 's/[ \t]*#.*//' | grep "nameserver" | sed -e 's/^[ \t]*//' | awk '{print $2}' | sed -e 's/^/      - /'`"
-
 	local DSX=""
 	local DSX2=""
 	for i in $DS; do
@@ -254,7 +267,6 @@ deb $DNS_SETTINGS_YQ2
 if [ -z "$DNS_SETTINGS" ]; then
 	die Cannot find DNS setting.
 fi
-NETMASK=`ssh_do ip address show dev $NET_DEV | grep 'inet ' | grep global | awk '{print $2}'| sed -e 's/.*\///'|head -1`
 if [ -z "$NETMASK" ]; then
 	die Cannot find net mask.
 else
@@ -267,7 +279,6 @@ else
 		die Unsupported netmask, $NETMASK
 	fi
 fi
-GATEWAY=`ssh_do ip route |egrep 'default via'|awk '{print $3}'|head -1`
 if [ -z "$GATEWAY" ]; then
 	die Cannot find default gateway.
 fi
@@ -716,11 +727,8 @@ else
 	fi
 fi
 
-INST_DRIVE=/dev/`ssh_do readlink /dev/disk/by-label/RANCHEROS | sed -e 's/.*\///'`
-
-if [ "$INST_DRIVE" = "/dev/" ];then
-	die "Abnormal installer's drive $cyan'$INST_DRIVE'$red."
-	exit 1
+if [ -z "$INST_DRIVE" ];then
+	die "Installer disk not found."
 fi
 
 if [ "${INST_DRIVE:0:-1}" = "$TARGET_DEV" ];then
@@ -862,7 +870,7 @@ ssh_sudo <<'FINAL'
 		- export BOOT_DEV=/dev/$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|sed -r 's/^.*[[:space:]]efi=UUID=(([\\]|)['"'"'"]|)([0-9a-fA-F-]+)\1.*$/\3/g'`|sed -r 's/^\/dev\/([a-z]+)[0-9]+$/\1/g')
 		- mkdir -p /efi_dev
 		- mount "\$BOOT_DEV"2 /efi_dev
-		- cp -f /efi_dev/.gruvenv_empty /efi_dev/.grubenv_booting
+		- rm -f /efi_dev/TOPIC
 		- umount /efi_dev
 		- rmdir /efi_dev
 	END
@@ -879,8 +887,6 @@ ssh_sudo <<'FINAL'
 	# move all files from installer's efi directory to $TARGET_DEV2 (efi drive).
 	mkdir -p /installing/efipart
 	mount $TARGET_DEV2 /installing/efipart
-	mkdir -p /installing/installer
-	mount $INST_DRIVE /installing/installer
 	cp -r /installing/installer/EFI /installing/efipart
 
 	# move all files from $TARGET_DEV4 (initial state drive) to $TARGET_DEV5 (state drive) first
@@ -892,6 +898,7 @@ ssh_sudo <<'FINAL'
 	if [ -z "$STATE_UUID_SUB" ];then
 		die cannot detect sub uuid of state device, $TARGET_DEV5.
 	fi
+	STATE_UUID_SUB="`echo $STATE_UUID_SUB`"
 	mkdir -p /installing/state_top
 	mount $TARGET_DEV5 /installing/state_top
 	btrfs subvolume create /installing/state_top/state_root
@@ -904,9 +911,12 @@ ssh_sudo <<'FINAL'
 	mkfs.btrfs -L RANCHER_BOOT_SIBLING -f $TARGET_DEV4
 	partprobe
 	BOOT_UUID_SUB=`/sbin/blkid $TARGET_DEV4 | awk '{print $4}'`
+	BOOT_UUID=$(eval "echo `/sbin/blkid $TARGET_DEV4 | awk '{print $3}'`")
+	BOOT_UUID=${BOOT_UUID#UUID=}
 	if [ -z "$BOOT_UUID_SUB" ];then
 		die cannot detect uuid of boot device, $TARGET_DEV4.
 	fi
+	BOOT_UUID_SUB="`echo $BOOT_UUID_SUB`"
 	# install btrfs mount tool for best mounting for maybe degraded drive.
 	do_install do_mount
 	do_install partNum2Dev
@@ -921,28 +931,30 @@ ssh_sudo <<'FINAL'
 		if [ -z "$OEM_UUID_SUB" ];then
 			die cannot detect uuid of state device, $TARGET_DEV7.
 		fi
+		OEM_UUID_SUB="`echo $OEM_UUID_SUB`"
 		mkdir -p /installing/oem_top
 		mount $TARGET_DEV7 /installing/oem_top
 		btrfs subvolume create /installing/oem_top/oem_root
 		echo btrfs subvolume set-default `btrfs subvolume list /installing/oem_top|grep oem_root|awk '{print $2}'` /installing/oem_top
 		btrfs subvolume set-default `btrfs subvolume list /installing/oem_top|grep oem_root|awk '{print $2}'` /installing/oem_top
 		mkdir -p /installing/oem_top/oem_root/opt/rancher/conf/grub
-		echo -n "USER_SETTINGS='rancher.network.interfaces.$NET_DEV.address=$IP/$NETMASK rancher.network.interfaces.$NET_DEV.gateway=$GATEWAY rancher.network.dns.nameservers=$DNS_SETTINGS_YQ'" > /installing/oem_top/oem_root/opt/rancher/conf/grub/grub_env_for_installer
-		chmod +x /installing/oem_top/oem_root/opt/rancher/conf/grub/grub_env_for_installer
+		echo -n "USER_SETTINGS='rancher.network.interfaces.$NET_DEV.address=$IP/$NETMASK rancher.network.interfaces.$NET_DEV.gateway=$GATEWAY rancher.network.dns.nameservers=$DNS_SETTINGS_YQ'" > /installing/oem_top/oem_root/opt/rancher/conf/grub/USER_SETTINGS
+		chmod +x /installing/oem_top/oem_root/opt/rancher/conf/grub/USER_SETTINGS
 		umount /installing/oem_top
 	else
 		OEM_UUID_SUB=`/sbin/blkid $TARGET_DEV7| awk '{print $4}'`
+		OEM_UUID_SUB="`echo $OEM_UUID_SUB`"
 	fi
 	EFI_UUID=`/sbin/blkid $TARGET_DEV2| awk '{print $4}'`
 	EFI_UUID_ARG=${EFI_UUID:6:9}
+	EFI_UUID="`echo $EFI_UUID`"
 	echo EFI_UUID=$EFI_UUID
 	echo EFI_UUID_ARG=$EFI_UUID_ARG
 
 	# move all files from $TARGET_DEV4/boot (initial state drive) to $TARGET_DEV2 (boot drive).
 	mount $TARGET_DEV4 /installing/boot_dev
 	cp -a /installing/state_top/state_root/boot/* /installing/boot_dev
-	mkdir -p /installing/installer
-	mount LABEL=RANCHEROS /installing/installer
+
 	cp -a /installing/installer/boot/grub /installing/boot_dev/
 	rm -f /installing/boot_dev/grub/*.cfg
 	ln -sf ../efi/EFI/boot/grub.cfg /installing/boot_dev/grub/grub.cfg
@@ -974,324 +986,39 @@ ssh_sudo <<'FINAL'
 	echo APPEND $VGA_ARGS $KERNEL_ARGS > /installing/global.cfg
 	ROOT_ARGS="rancher.state.boot_dev=$BOOT_UUID_SUB rancher.state.oem_dev=$OEM_UUID_SUB rancher.state.dev=$STATE_UUID_SUB efi=$EFI_UUID"
 
-	echo -n "$USER_SETTINGS_FOR_GRUB_SOURCE_FOR_INSTALLING" > /installing/efipart/.grub_env_for_installing
-	echo -n '# GRUB Environment Block
-#######################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################' > /installing/efipart/.grubenv_empty
-	cp /installing/efipart/.grubenv_empty /installing/efipart/.grubenv_booting
-	cp /installing/efipart/.grubenv_empty /installing/efipart/.installing_2nd_phase
-	cp /installing/efipart/.grubenv_empty /installing/efipart/.installing_3rd_phase
-	write_grub_script /installing/efipart/EFI/BOOT/grub.cfg <<'END'
+	store_env /installing/efipart/TOPIC "" # empty
+	
+	BURMILLAOS_VER="`egrep '^\s*VERSION:\s+[^\s]+' /var/log/boot/init.log | awk '{print $2}'`"
+	if [ -z "$BURMILLAOS_VER" ];then
+		die cannot detect burmillaos version of installer
+	fi
 
-		set timeout=5
-		set default=0
-
-		set gfxmode=$VGA_SIZE
-		set gfxpayload=keep
-
-		echo EFI_UUID_ARG=$EFI_UUID_ARG
-		if ! search --no-floppy --fs-uuid --set=efi $EFI_UUID_ARG; then
-			echo "Sorry, no installation found or corrupted. Please reinstall by installer."
-			sleep 3000000
-		fi
-		echo cat ($efi)/.installing_2nd_phase
-		cat ($efi)/.installing_2nd_phase
-		echo cat ($efi)/.installing_3rd_phase
-		cat ($efi)/.installing_3rd_phase
-		if ! regexp --set 1:this_hd (.*),(.*) $efi ;then
-			echo "Sorry, no installation found or corrupted. Please reinstall by installer."
-			sleep 3000000
-		fi
-
-		echo efi=$efi
-		boot=$this_hd,gpt4
-		state=$this_hd,gpt5
-		oem=$this_hd,gpt7
-
-		root=$boot
-		
-		if load_env --file ($efi)/.grubenv_booting; then
-			echo Loaded ($efi)/.grubenv_booting
-			if [ "$booting" = "1" ];then
-				echo Last boot failed.
-				boot_failed="Last boot failed"
-				booting=
-			else
-				echo Last boot successful.
-			fi
-		else
-			echo Load failed: ($efi)/.grubenv_booting
-			boot_failed="missing file, '($efi)/.grubenv_booting'"
-		fi
-
-
-		insmod /grub/x86_64-efi/terminfo.mod
-		insmod /grub/x86_64-efi/serial.mod
-		insmod /grub/x86_64-efi/eval.mod
-
-		if serial --unit=0 --speed=115200 --word=8 --parity=no --stop=1; then
-			set serial_port=0
-		else
-			if serial --unit=1 --speed=115200 --word=8 --parity=no --stop=1; then
-				set serial_port=1
-			else
-				if serial --unit=2 --speed=115200 --word=8 --parity=no --stop=1; then
-					set serial_port=2
-				fi
-			fi
-		fi
-		if [ -n "$serial_port" ]; then
-			terminal_input console serial_com$serial_port
-			terminal_output console serial_com$serial_port
-			console="console=ttyS$serial_port,115200n8"
-		fi
-
-
-		function boot_default_kernel {
-			linux    /$VMLINUZ_FILE $VGA_ARGS $KERNEL_ARGS $console $ROOT_ARGS
-			if [ -e /$INITRD_FILE-mod ];then
-				initrd   /$INITRD_FILE-mod
-			else
-				initrd   /$INITRD_FILE
-			fi
-			booting=1
-			save_env booting --file ($efi)/.grubenv_booting
-			boot
-		}
-
-
-		search --set=installer --label RANCHEROS
-		search --set=ros_efi --label ROS_EFI # installer's boot efi
-
-		echo 1
-		function boot_installer{
-			root=$installer
-			prefix=($root)/boot
-			configfile $prefix/grub/grub.cfg
-			echo "loading configfile, $prefix/grub/grub.cfg, failed."
-			sleep 10
-			boot_installer_failed=1
-			false
-		}
-
-		echo 2
-
-		function check_installation_terminated{
-			echo cat ($efi)/.installing_$1_phase
-			cat ($efi)/.installing_$1_phase
-			if load_env --file ($efi)/.installing_$1_phase; then
-				tmp='tmp=$installing_'$1'_phase'
-				echo $tmp
-				eval $tmp
-				echo $tmp
-				if [ -n "$tmp" ]; then
-					echo "Installation terminated."
-					sleep 10
-					boot_failed="Installation terminated."
-					return 1
-				fi
-			fi
-			installing_$1_phase=1
-			echo setting installing_$1_phase=1
-			save_env installing_$1_phase --file ($efi)/.installing_$1_phase
-			return 0
-		}
-
-		echo 3
-		if [ -n "$chosen" ];then
-			if ! regexp menu "$chosen";then 
-				# chain loaded from other drive's grub
-				boot_default_kernel
-			else # menu selection has been chosen by previous menu
-				set menu_chained=1
-				timeout=
-			fi
-		else # no previous menu
-			if [ "$cmdpath" != "($efi)/EFI/BOOT" ];then  # chained from grub booted by other drive
-				chained=1
-			else
-				chained=
-			fi
-		fi
-		
-
-
-		echo 4
-
-		while true; do
-			if [ -n "$boot_failed" ];then
-				timeout=
-			else
-				if [ -n "$installer" ]; then
-					if [ -e ($efi)/.reboot ];then
-						root=$installer
-						prefix=($root)/boot
-						configfile $prefix/grub/grub.cfg
-					else
-						if [ -e ($efi)/.grub_env_for_installing ]; then # starting reinstration
-							# check 2nd phase or 3rd phase of installation
-							if [ -e ($state)/state_root/var/lib/rancher/conf/cloud-config.yml ]; then 
-								echo ($state)/state_root/var/lib/rancher/conf/cloud-config.yml found
-								if [ -e ($state)/state_root/home ]; then # starting 3rd phase of installation
-									if ! check_installation_terminated 3rd; then
-										break
-									fi
-									boot_installer
-								else
-									boot_failed="Installation error."
-								fi
-								break
-							else
-								echo ($state)/state_root/var/lib/rancher/conf/cloud-config.yml not found
-								if [ -e ($state)/state_root/home ]; then # has been rebooted for reinstalling
-									echo ($state)/state_root/home found
-									boot_installer
-								else # 2nd phase of installation : boot by target disk
-									if [ -n "$chained" ];then
-										boot_default_kernel
-									fi
-									if ! check_installation_terminated 2nd; then
-										break
-									fi
-									boot_default_kernel
-								fi
-								break
-							fi
-						fi
-					fi
-				fi
-			fi
-			break
-		done
-		echo 5
-		function search_efi {
-			for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19; do
-				g=(hd$i,gpt2)/efi/boot/grub.cfg
-				l=(hd$i,gpt2)/.last_booted
-				if [ -e $g ];then
-					if [ "hd$i,gpt2" == "$efi" ];then
-						this_disk=" [hd$i]"
-						if [ -n $boot_failed ];then
-							this_disk="$this_disk : $boot_failed"
-						else
-							if [ -e $l ];then
-								this_disk="$this_disk : Last booted"
-							fi
-						fi
-					else
-						if [ -e $l ];then
-							last_booted="$i"
-						else
-							if [ -z "$EFI_LIST" ];then
-								EFI_LIST="$i"
-							else
-								EFI_LIST="$EFI_LIST $i"
-							fi
-						fi
-					fi
-				fi
-			done
-		}
-
-		echo 6
-		function disp_efi_menu{
-			for i in $1; do
-				ex_efi=hd$i,gpt2
-				eval "menuentry \\\"Directly boot hard disk (hd$i)$2\\\" {
-					prefix=($ex_efi)/efi/boot
-					configfile $prefix/grub.cfg
-					echo "Cannot load config file for hard disk (hd$i)."
-					sleep 10
-					false
-				}"
-				eval "menuentry \\\"Boot menu of hard disk (hd$i)$2\\\" {
-					prev_prefix=\\$prefix
-					prefix=($ex_efi)/efi/boot
-					configfile $prefix/grub.cfg
-					prefix=\\$prev_prefix
-					chosen=escaped
-					#while true;do
-					#	configfile ($efi)/efi/boot/grub.cfg
-					#	chosen=escaped
-					#done
-					false
-				}"
-			done
-		}
-		echo 7
-
-		search_efi
-
-
-		function disp_menu {
-			eval "menuentry 'Burmilla OS ""$INITRD_VER $KERNEL_VER$this_disk""' {
-				linux    /$VMLINUZ_FILE $VGA_ARGS $KERNEL_ARGS $console $ROOT_ARGS panic=10
-				if [ -e /$INITRD_FILE-mod ];then
-					initrd   /$INITRD_FILE-mod
-				else
-					initrd   /$INITRD_FILE
-				fi
-			}"
-			if [ -n "$last_booted" ];then
-				set default=1
-				disp_efi_menu "$last_booted" " : Last booted"
-			fi
-			if [ -n "$installer" -a -z "$menu_chained" ]; then
-				eval "menuentry 'Directly boot installer' {
-					root=$installer
-					prefix=(\$root)/boot
-					configfile \$prefix/grub/grub.cfg
-				}"
-				eval "menuentry 'Display boot menu in installer' {
-					prev_root=\$root
-					root=$installer
-					prev_prefix=\$prefix
-					prefix=(\$root)/boot
-					configfile \$prefix/grub/grub.cfg
-					root=\$prev_root
-					prefix=\$prev_prefix
-					if [ -n \"$efi\" ];then
-						chosen=escaped
-						while true; do
-							configfile ($efi)/efi/boot/grub.cfg
-							chosen=escaped
-						done
-					else
-						reboot
-					fi
-				}"
-			fi
-			disp_efi_menu "$EFI_LIST"
-			eval "menuentry \"Burmilla OS $INITRD_VER $KERNEL_VER (debug)$this_disk\" {
-			    linux    /$VMLINUZ_FILE vga=ask DEBUG=1 rancher.debug=true $KERNEL_ARGS $console $ROOT_ARGS ---
-				if [ -e /$INITRD_FILE-mod ];then
-					initrd   /$INITRD_FILE-mod
-				else
-					initrd   /$INITRD_FILE
-				fi
-			}"
-		}
-
-		if [ "$chosen" == "escaped" ]; then
-			timeout=
-		fi
-		disp_menu
-	END
+	store_env -s /installing/efipart/BOOT_UUID
+	LINUX="$VMLINUZ_FILE BURMILLAOS_VER=$VERSION $VGA_ARGS $KERNEL_ARGS $ROOT_ARGS"
+	LINUX_DEBUG="$VMLINUZ_FILE BURMILLAOS_VER=$VERSION vga=ask DEBUG=1 rancher.debug=true $KERNEL_ARGS $ROOT_ARGS"
+	INITRD="$INITRD_FILE"
+	store_env -s /installing/efipart/LINUX
+	store_env -s /installing/efipart/LINUX_DEBUG
+	store_env -s /installing/efipart/INITRD
+	
 FINAL
-
-dbv $INITRD_FILE
 
 
 if [ "$?" = "1" ];then
 	exit 1
 fi
 
+
+cat $(__FILE_DIR__)/grub.cfg | ssh_sudo tee /installing/efipart/EFI/BOOT/grub.cfg > /dev/null
+
+dbv $INITRD_FILE
+
+
 if [ -z "$INITRD_FILE" ];then
 	die 'missing $INITRD_FILE'
 fi
 
 ssh_sudo <<'FINAL'
-	cat /installing/efipart/.installing_2nd_phase
-	umount /installing/installer
 	umount /installing/boot_dev
 	umount /installing/state_top
 	umount /installing/installer
@@ -1348,7 +1075,6 @@ if [ "$TARGET_DEV" = "$TARGET_DEV_S" ]; then
 		fi
 		mkdir -p /efipart
 		mount $TARGET_DEV2 /efipart
-		cp -f /efipart/.grubenv_empty /efipart/.installing_2nd_phase
 		umount /efipart
 		rmdir /efipart
 		rm /var/lib/rancher/conf/cloud-config.d/user_config.yml
@@ -1449,8 +1175,7 @@ ssh_sudo <<'FINAL'
 			- do_mount 7 -o subvol=/ /oem_top_lvl
 			- do_mount 4 /boot
 			- do_mount 2 /boot/efi
-			- cp -f /boot/efi/.gruvenv_empty /boot/efi/.gruvenv_booting
-			- rm -f /boot/efi/.grub_env_for_installing
+			- rm -f /boot/efi/TOPIC
 			- swapon `cat /tmp/boot_drive`3
 			- btrfs quota enable /state_top_lvl
 			- btrfs quota enable /state_top_lvl/state_root
@@ -1673,7 +1398,7 @@ ssh_sudo <<'FINAL'
 
 		USER_SETTINGS_FOR_GRUB_SOURCE="USER_SETTINGS='rancher.network.interfaces.$NET_DEV.address=$IP/$NETMASK rancher.network.interfaces.$NET_DEV.gateway=$GATEWAY rancher.network.dns.nameservers=$DNS_SETTINGS_YQ'"
 		mkdir -p /oem_top_lvl/oem_root/opt/rancher/conf/grub
-		kpF=/oem_top_lvl/oem_root/opt/rancher/conf/grub/grub_env_for_installer
+		kpF=/oem_top_lvl/oem_root/opt/rancher/conf/grub/USER_SETTINGS
 		if [ ! -e $kpF ];then
 			noKernelParam=1
 		else
@@ -1714,17 +1439,19 @@ ssh_sudo <<'FINAL'
 
 	# preserve user setting for grub
 	mkdir -p /installing/oem_part/opt/rancher/conf/grub
-	if [ "$USER_SETTINGS_FOR_GRUB_SOURCE" != "`cat /installing/oem_part/opt/rancher/conf/grub/grub_env_for_installer 2> /dev/null`" ]; then
-		if [ -e /installing/oem_part/opt/rancher/conf/grub/grub_env_for_installer ];then
-			chain_bak /installing/oem_part/opt/rancher/conf/grub/grub_env_for_installer
+	if [ "$USER_SETTINGS_FOR_GRUB_SOURCE" != "`cat /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS 2> /dev/null`" ]; then
+		if [ -e /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS ];then
+			chain_bak /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS
 		fi
-		echo -n "$USER_SETTINGS_FOR_GRUB_SOURCE" > /installing/oem_part/opt/rancher/conf/grub/grub_env_for_installer
-		chmod +x /installing/oem_part/opt/rancher/conf/grub/grub_env_for_installer
+		echo -n "$USER_SETTINGS_FOR_GRUB_SOURCE" > /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS
+		chmod +x /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS
 	fi
 
 	mkdir -p /installing/efipart
 	mount $TARGET_DEV2  /installing/efipart
-	rm -f /installing/efipart/.grub_env_for_installing
+	INITRD=$INITRD-mod
+	store_env -s /installing/efipart/INITRD
+	rm -f /installing/efipart/TOPIC
 	umount /installing/efipart
 	umount /installing/oem_part
 	reboot

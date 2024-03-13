@@ -193,9 +193,11 @@ function ssh_do(){
 				#!/bin/bash
 
 				mkdir -p $SCRIPT_TMP_DIR/$SSH_ID
-				mkdir -p --mode=0777 $SCRIPT_TMP_DIR/../..
-				if [ -n "$SUDO_USER" ];then
-					chown -R "$SUDO_USER" $SCRIPT_TMP_DIR
+				chmod 777 $SCRIPT_TMP_DIR/../.. $SCRIPT_TMP_DIR/..
+				if [ -n "$SUDO_USER" -a -e /etc/passwd ];then
+					if egrep "^$SUDO_USER:" /etc/passwd;then
+						chown -R "$SUDO_USER" $SCRIPT_TMP_DIR
+					fi
 				fi
 				rm -f $SCRIPT_TMP_DIR/../latest
 				if [ -n "$DEBUG" ];then
@@ -325,17 +327,18 @@ function install_ssh_key(){
 
 function ssh_reboot(){
 	ssh_sudo <<'END'
-		efi_dev=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')2
+		efi_dev=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[\\\\\"0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')2
 		if [ -z "$efi_dev" ]; then die "boot efi device not found."; fi
 		mkdir -p $SCRIPT_TMP_DIR/efi_dev
 		mount /dev/$efi_dev $SCRIPT_TMP_DIR/efi_dev
-		touch $SCRIPT_TMP_DIR/efi_dev/.reboot
+		echo -n '# GRUB Environment Block
+#######################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################' > $SCRIPT_TMP_DIR/efi_dev/.reboot
 		reboot
 END
 	wait_sshd_start
 	echo try ssh connect
 	ssh_sudo <<'END'
-		efi_dev=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')2
+		efi_dev=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[\\\\\"0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')2
 		if [ -z "$efi_dev" ]; then die "boot efi device not found."; fi
 		mkdir -p $SCRIPT_TMP_DIR/efi_dev
 		mount /dev/$efi_dev $SCRIPT_TMP_DIR/efi_dev

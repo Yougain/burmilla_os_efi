@@ -1,3 +1,21 @@
+diff -Naur '--exclude=.git' os.prev/cmd/init/init.go os.new/cmd/init/init.go
+--- os.prev/cmd/init/init.go	2024-02-15 15:45:46.740000000 +0900
++++ os.new/cmd/init/init.go	2024-02-24 21:35:11.567919100 +0900
+@@ -38,6 +38,14 @@
+ 
+ 	if err := RunInit(); err != nil {
+ 		log.Fatal(err)
++		dmsg, errb := exec.Command("bash", "-c", "dmesg | tail -10").Output()
++		if errb == nil {
++			log.Warnf("%s", string(dmsg))
++		}
++		log.Warnf("Continue by chrooting.", err)
++		if errb != nil {
++			log.Warnf("cannot exec dmesg (Error:%s)", string(errb))
++		}
+ 	}
+ }
+ 
 diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
 --- os.prev/config/types.go	2024-02-15 15:45:46.750000000 +0900
 +++ os.new/config/types.go	2024-02-20 16:23:46.720416200 +0900
@@ -160,7 +178,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
  }
 diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg/init/switchroot/switchroot.go
 --- os.prev/pkg/init/switchroot/switchroot.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/switchroot/switchroot.go	2024-02-24 15:19:25.807919100 +0900
++++ os.new/pkg/init/switchroot/switchroot.go	2024-02-24 21:32:52.957919100 +0900
 @@ -141,6 +141,7 @@
  		if err := syscall.Mount(i, path.Join(rootfs, i), "", syscall.MS_MOVE, ""); err != nil {
  			return err
@@ -169,12 +187,20 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
  
  	if err := copyMoveRoot(rootfs, rmUsr); err != nil {
-@@ -154,10 +155,11 @@
+@@ -154,10 +155,19 @@
  
  	log.Debugf("mount MS_MOVE %s", rootfs)
  	if err := syscall.Mount(rootfs, "/", "", syscall.MS_MOVE, ""); err != nil {
 -		return err
-+		log.Warnf("MS_MOVE failed (%v). Continue by chrooting.", err)
++		log.Warnf("MS_MOVE failed (%v).", err)
++		dmsg, errb := exec.Command("bash", "-c", "dmesg | tail -10").Output()
++		if errb == nil {
++			log.Warnf("%s", string(dmsg))
++		}
++		log.Warnf("Continue by chrooting.", err)
++		if errb != nil {
++			log.Warnf("cannot exec dmesg (Error:%s)", string(errb))
++		}
  	}
  
  	log.Debug("chroot .")

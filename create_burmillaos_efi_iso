@@ -309,19 +309,27 @@ write_grub_script "$T"/grub.cfg <<'END'
 	# check this grub has been chainloaded
 
 	if [ -z "$installer" ];then
-		echo finding installer device ...
-		search --set=installer --label RANCHEROS;
-		if [ -n "$installer" ];then
-			echo installer device found ($installer).
-		else
+		for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19; do
+			f=(hd$i,mdos2)/efi/boot/grub.cfg
+			if [ -e $f ];then
+				if [ -n $installer ];then
+					echo "Error: extra installer(s) detected."
+					echo "       please detach it and reboot."
+					sleep 10000000
+				fi
+				installer=hd$i
+			fi
+		done
+		if [ -z "$installer" ];then
 			echo installer device is missing.
+		else
+			search --set=installer_r --label RANCHEROS;
+			if [ "$installer_r" != "$installer" ];then
+				echo "Error: Cannot find disk label 'RANCHEROS' with installer. Stop all."
+				echo "       Please do not modify label of this installer disk."
+				sleep 3000000
+			fi
 		fi
-	fi
-
-	if [ -z "$installer" ];then
-		echo "Cannot find disk label 'RANCHEROS'. Stop all."
-		echo "Please do not modify label of this installer disk."
-		sleep 3000000
 	fi
 
 	root=$installer,msdos1
@@ -427,18 +435,29 @@ write_grub_script "$T"/grub.cfg <<'END'
 
 	function search_efi_user_settings_during_installation {
 		for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19; do
-			u=(hd$i,gpt2)/.grub_env_for_installing
-			if [ -e $u ];then
-				source $u
-				INSTALLING=$i
-				break
-			fi
-			u=(hd$i,gpt2)/.reboot
-			if [ -e $u ];then
-				REBOOTING=$i
-				break
-			fi
+			u0=
+			for f in .topic .reboot; do
+				u=(hd$i,gpt2)/$f
+				if [ -e $u  ];then
+					if [ -z $TO_REBOOT_F -o $TO_REBOOT_F -ot $u ];then
+						TO_REBOOT_F=$u
+						REBOOT_NO=$i
+					fi
+				fi
+			done
 		done
+		if [ -e "$TO_REBOOT_F" ];then
+			case "${TO_REBOOT_F##*/}" in
+				.topic)
+					INSTALLING=$REBOOT_NO
+					;;
+				.reboot)
+					REBOOTING=$REBOOT_NO
+					;;
+				*)
+			esac
+			source $TO_REBOOT_F
+		fi
 	}
 
 
@@ -448,7 +467,10 @@ write_grub_script "$T"/grub.cfg <<'END'
 			l=(hd$i,gpt2)/.last_booted
 			if [ -e $u ];then
 				if [ -e $l ];then
-					last_booted="$i"
+					if [ -z "$last_booted_f" -o "$last_booted_f" -ot "$l" ];then
+						last_booted="$i"
+						last_booted_f="$l"
+					fi
 				else
 					if [ -z "$EFI_LIST" ];then
 						EFI_LIST="$i"
@@ -472,7 +494,7 @@ write_grub_script "$T"/grub.cfg <<'END'
 
 	# default parameters for installer boot
 	function boot_default_kernel {
-		linux   /boot/$KERNEL_FILE $VGA_ARGS $USER_SETTINGS $KERNEL_ARGS $SERIAL_ARGS ---
+		linux   /boot/$KERNEL_FILE $VGA_ARGS BURMILLAOS_VER=$BURMILLAOS_VER $USER_SETTINGS $KERNEL_ARGS $SERIAL_ARGS ---
 		if [ -e /boot/initrd-$BURMILLAOS_VER-mod ];then
 			initrd  /boot/initrd-$BURMILLAOS_VER-mod
 		else
@@ -578,7 +600,6 @@ write_grub_script "$T"/grub.cfg <<'END'
 					echo rebooting flag found
 					state=hd$REBOOTING,gpt5
 					efi=hd$REBOOTING,gpt2
-					echo ($state)/state_root/home not found
 					boot_hd
 				fi
 			fi
@@ -729,6 +750,17 @@ write_grub_script "$T"/grub.cfg <<'END'
 END
 
 sudo cp -f "$T"/grub.cfg $PD/boot/grub/grub.cfg
+
+
+VERSION=$BURMILLAOS_VER
+LINUX="/boot/$KERNEL_FILE panic=10 $VGA_ARGS BURMILLAOS_VER=$BURMILLAOS_VER $KERNEL_ARGS rancher.autologin=ttyS\$serial_port console=ttyS\$serial_port,115200n8"
+store_env -s $PD/boot/grub/LINUX
+LINUX_DEBUG="/boot/$KERNEL_FILE vga=ask rancher.debug=true DEBUG=1 BURMILLAOS_VER=$BURMILLAOS_VER $KERNEL_ARGS rancher.autologin=ttyS\$serial_port console=ttyS\$serial_port,115200n8"
+store_env -s $PD/boot/grub/LINUX_DEBUG
+store_env -s $PD/boot/grub/VERSION
+INITRD="initrd-$BURMILLAOS_VER"
+store_env -s $PD/boot/grub/INITRD
+
 
 BOOT_IMG_DATA=$ED
 BOOT_IMG=$ED2/efi.img
