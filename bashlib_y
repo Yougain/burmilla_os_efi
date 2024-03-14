@@ -718,7 +718,6 @@ require(){
 
 
 cleanup (){
-	info cleanup
 	if [ -n "$DEBUG" ];then
 		local tmp_files=`ls -A $SCRIPT_TMP_DIR`
 		if [ -n "$tmp_files" ];then
@@ -726,7 +725,6 @@ cleanup (){
 		fi
 	fi
 	if [ -z "$DEBUG" ];then
-		info rm_all $SCRIPT_TMP_DIR
 		rm_all $SCRIPT_TMP_DIR
 		local k
 		for k in "${SSH_PARAM_LIST[@]}"; do
@@ -755,7 +753,6 @@ trap_int(){
 	exit 1
 }
 
-info trap cleanup EXIT
 trap cleanup EXIT
 trap trap_int INT
 
