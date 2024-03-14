@@ -1000,6 +1000,7 @@ ssh_sudo <<'FINAL'
 	store_env -s /installing/efipart/LINUX
 	store_env -s /installing/efipart/LINUX_DEBUG
 	store_env -s /installing/efipart/INITRD
+	store_env -s /installing/efipart/VERSION
 	
 FINAL
 
