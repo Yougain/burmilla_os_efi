@@ -227,17 +227,22 @@ ssh_sudo <<'END'
 	apt-get update
 	apt-get install fdisk
 	version="`egrep '^\s*VERSION:\s+[^\s]+' /var/log/boot/init.log | awk '{print $2}'`"
+	dbv $version
 	mkdir -p /installing/installer
 	for d in `/sbin/blkid | grep LABEL=\"RANCHEROS\" | awk '{print substr($1, 0, index($1, ":") - 1 )}'`;do
 		mount $d /installing/installer
 		if [ -e /installing/installer/boot/grub/VERSION ];then
-			VERSION=
 			if source /installing/installer/boot/grub/VERSION; then
 				if [ "$VERSION" = "$version" ];then
 					INST_DRIVE=$d
 					break
 				fi
 			fi
+		elif grep "BURMILLAOS_VER=\"$version\"" /installing/installer/boot/grub/grub.cfg; then
+			INST_DRIVE=$d
+			break
+		else
+			dbv Not detected
 		fi
 		umount /installing/installer
 	done
@@ -246,7 +251,7 @@ ssh_sudo <<'END'
 	NETMASK=`ip address show dev $NET_DEV | grep 'inet ' | grep global | awk '{print $2}'| sed -e 's/.*\///'|head -1`
 	GATEWAY=`ip route |egrep 'default via'|awk '{print $3}'|head -1`
 	DS="`cat /etc/resolv.conf| sed -e 's/[ \t]*#.*//' | grep "nameserver" | sed -e 's/^[ \t]*//' | awk '{print $2}'`"
-	DNS_SETTINGS="`ssh_do /etc/resolv.conf| sed -e 's/[ \t]*#.*//' | grep "nameserver" | sed -e 's/^[ \t]*//' | awk '{print $2}' | sed -e 's/^/      - /'`"
+	DNS_SETTINGS="`cat /etc/resolv.conf| sed -e 's/[ \t]*#.*//' | grep "nameserver" | sed -e 's/^[ \t]*//' | awk '{print $2}' | sed -e 's/^/      - /'`"
 END
 
 
@@ -332,7 +337,7 @@ END
 # check oem drive for getting "user_config.yml" and "$TARGET_DEV"
 ssh_do sudo mkdir -p /installing/oem_part
 ssh_do sudo umount /installing/oem_part 2> /dev/null
-for DRV in ${TARGET_DEV#/dev/}`ssh_do sudo ls /dev | egrep ".*7$" | grep -v tty | grep -v loop`; do
+for DRV in ${TARGET_DEV#/dev/}7 `ssh_do sudo ls /dev | egrep ".*7$" | grep -v tty | grep -v loop`; do
 	if ssh_do sudo mount -t btrfs -odegraded,ro,subvol=/oem_root /dev/$DRV /installing/oem_part; then
 		PARAMS="`extract_uc_params`"
 		eval "$PARAMS"
