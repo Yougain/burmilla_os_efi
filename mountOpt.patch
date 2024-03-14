@@ -1,6 +1,6 @@
 diff -Naur '--exclude=.git' os.prev/cmd/control/install.go os.new/cmd/control/install.go
 --- os.prev/cmd/control/install.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/install.go	2024-03-14 20:38:00.097485300 +0900
++++ os.new/cmd/control/install.go	2024-03-14 21:15:41.367485300 +0900
 @@ -246,13 +246,21 @@
  				// TODO: also poke around looking for the /boot/vmlinuz and initrd...
  			}
@@ -10,9 +10,9 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/install.go os.new/cmd/control/in
 +			bpos := strings.Index(image, "-btrfs-")
 +			image_org := ""
 +			if bpos != -1 {
-+				image_org = image
-+			} else {
 +				image_org = image[0:bpos]
++			} else {
++				image_org = image
 +			}
  			installerCmd := []string{
  				"run", "--rm", "--net=host", "--privileged",
