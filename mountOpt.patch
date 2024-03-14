@@ -1,13 +1,13 @@
 diff -Naur '--exclude=.git' os.prev/cmd/control/install.go os.new/cmd/control/install.go
 --- os.prev/cmd/control/install.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/install.go	2024-03-14 20:31:52.597485300 +0900
++++ os.new/cmd/control/install.go	2024-03-14 20:38:00.097485300 +0900
 @@ -246,13 +246,21 @@
  				// TODO: also poke around looking for the /boot/vmlinuz and initrd...
  			}
  
 +			
  			log.Infof("starting installer container for %s (new)", image)
-+			bpos := string.Index(image, "-btrfs-")
++			bpos := strings.Index(image, "-btrfs-")
 +			image_org := ""
 +			if bpos != -1 {
 +				image_org = image
