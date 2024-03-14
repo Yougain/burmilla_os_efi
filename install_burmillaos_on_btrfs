@@ -319,8 +319,8 @@ END
 # check oem drive for getting "user_config.yml" and "$TARGET_DEV"
 ssh_do sudo mkdir -p /installing/oem_part
 ssh_do sudo umount /installing/oem_part 2> /dev/null
-for DRV in `ssh_do sudo ls /dev | egrep ".*7$" | grep -v tty | grep -v loop`; do
-	if ssh_do sudo mount -t btrfs -odegraded,rw,subvol=/oem_root /dev/$DRV /installing/oem_part; then
+for DRV in ${TARGET_DEV#/dev/}`ssh_do sudo ls /dev | egrep ".*7$" | grep -v tty | grep -v loop`; do
+	if ssh_do sudo mount -t btrfs -odegraded,ro,subvol=/oem_root /dev/$DRV /installing/oem_part; then
 		PARAMS="`extract_uc_params`"
 		eval "$PARAMS"
 		ssh_do sudo umount /installing/oem_part
