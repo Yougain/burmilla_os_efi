@@ -431,13 +431,14 @@ _rm_all(){
 	local l
 	for f in /dev/block/*;do
 		l="`readlink -f $f`"
-		if [ "${l:0:5}" = "/dev/" ];then
+		if [ -b "$l" -a "${l:0:5}" = "/dev/" ];then
 			blockDevs+=("${l#/dev/}")
 		fi
 	done
 	if [ -z "$blockDevs" ];then
 		_get_block_devs /dev
 	fi
+	dbv ${blockDevs[@]}
 	d=$(realpath $1)
 	if [ "$d" = "/" ];then
 		err "cannot use rm_all to '/'"
