@@ -223,6 +223,11 @@ fi
 
 
 # check uefi-grub-enabled installer
+if [ "`ssh_do sudo mount | grep /usr/bin/ros | awk '{print $1}'`" != "none" ]; then
+	die Not booted from installer disk
+fi
+
+# check installer disk is same version for installer booted machine
 ssh_sudo <<'END'
 	apt-get update
 	apt-get install fdisk
@@ -249,20 +254,16 @@ ssh_sudo <<'END'
 		fi
 		umount /installing/installer
 	done
-	# get network parameters from target server booted by installer
-	NET_DEV=`ip route show|grep default|awk '{print $5}'|head -1`
-	NETMASK=`ip address show dev $NET_DEV | grep 'inet ' | grep global | awk '{print $2}'| sed -e 's/.*\///'|head -1`
-	GATEWAY=`ip route |egrep 'default via'|awk '{print $3}'|head -1`
-	DS="`cat /etc/resolv.conf| sed -e 's/[ \t]*#.*//' | grep "nameserver" | sed -e 's/^[ \t]*//' | awk '{print $2}'`"
-	DNS_SETTINGS="`cat /etc/resolv.conf| sed -e 's/[ \t]*#.*//' | grep "nameserver" | sed -e 's/^[ \t]*//' | awk '{print $2}' | sed -e 's/^/      - /'`"
 END
 
-
-
-dbv $NET_DEV
+# get network parameters from target server booted by installer
+NET_DEV=`ssh_do ip route show|grep default|awk '{print $5}'|head -1`
 if [ -z "$NET_DEV" ]; then
 	die Cannot find net device for default route.
 fi
+DS="`ssh_do cat /etc/resolv.conf| sed -e 's/[ \t]*#.*//' | grep "nameserver" | sed -e 's/^[ \t]*//' | awk '{print $2}'`"
+DNS_SETTINGS="`ssh_do cat /etc/resolv.conf| sed -e 's/[ \t]*#.*//' | grep "nameserver" | sed -e 's/^[ \t]*//' | awk '{print $2}' | sed -e 's/^/      - /'`"
+
 
 function __set_dns__(){
 	local DSX=""
@@ -288,6 +289,7 @@ deb $DNS_SETTINGS_YQ2
 if [ -z "$DNS_SETTINGS" ]; then
 	die Cannot find DNS setting.
 fi
+NETMASK=`ssh_do ip address show dev $NET_DEV | grep 'inet ' | grep global | awk '{print $2}'| sed -e 's/.*\///'|head -1`
 if [ -z "$NETMASK" ]; then
 	die Cannot find net mask.
 else
@@ -300,6 +302,7 @@ else
 		die Unsupported netmask, $NETMASK
 	fi
 fi
+GATEWAY=`ssh_do ip route |egrep 'default via'|awk '{print $3}'|head -1`
 if [ -z "$GATEWAY" ]; then
 	die Cannot find default gateway.
 fi
@@ -1086,7 +1089,7 @@ END
 deb TARGET_DEV_S="'"$TARGET_DEV_S"'"
 deb TARGET_DEV="'"$TARGET_DEV"'"
 
-if [ "$TARGET_DEV" = "$TARGET_DEV_S" ]; then
+#if [ "$TARGET_DEV" = "$TARGET_DEV_S" ]; then
 	cyan_n Waiting initialization.
 	while [ -z "`ssh_do ps ax | grep 'containerd --config /var/run/docker/containerd/containerd.toml'`" ]; do
 		sleep 1
@@ -1097,7 +1100,7 @@ if [ "$TARGET_DEV" = "$TARGET_DEV_S" ]; then
 			install_vim
 		fi
 		mkdir -p /efipart
-		mount $TARGET_DEV2 /efipart
+		do_mount 2 /efipart
 		umount /efipart
 		rmdir /efipart
 		rm /var/lib/rancher/conf/cloud-config.d/user_config.yml
@@ -1112,9 +1115,9 @@ if [ "$TARGET_DEV" = "$TARGET_DEV_S" ]; then
 		reboot
 	END
 	wait_sshd_start
-else
-	die target disk not found
-fi
+#else
+#	die target disk not found
+#fi
 
 
 # installation 3rd phase : boot by installer
@@ -1129,18 +1132,20 @@ if [ -n "$INSTALL_VIM" ];then
 fi
 
 
-ssh_do sudo mkdir -p /installing/state /installing/oem_part
-ssh_do sudo mount $TARGET_DEV5 /installing/state
-if [ -z "`ssh_do ls -ld /installing/state/home`" ];then
-	die "Please boot from installed hard disk only ONCE."
-fi
-if [ -n "`ssh_do ls -ld /installing/state/home|grep oem`" ];then
-	die "Already installed with oem disk."
-fi
+#ssh_do sudo mkdir -p /installing/state /installing/oem_part
+#ssh_do sudo mount $TARGET_DEV5 /installing/state
+#if [ -z "`ssh_do ls -ld /installing/state/home`" ];then
+#	die "Please boot from installed hard disk only ONCE."
+#fi
+#if [ -n "`ssh_do ls -ld /installing/state/home|grep oem`" ];then#
+#	die "Already installed with oem disk."
+#fi
 
 UF=/installing/oem_part/var/lib/rancher/conf/cloud-config.d/user_config.yml
 ssh_sudo <<'FINAL'
 	#!/bin/bash
+
+	do_mount 5 /installing/state
 
  	create_initrd_mod 
 
@@ -1471,7 +1476,7 @@ ssh_sudo <<'FINAL'
 	fi
 
 	mkdir -p /installing/efipart
-	mount $TARGET_DEV2  /installing/efipart
+	do_mount 2  /installing/efipart
 	INITRD=$INITRD-mod
 	store_env -s /installing/efipart/INITRD
 	rm -f /installing/efipart/TOPIC
