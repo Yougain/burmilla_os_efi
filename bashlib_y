@@ -406,6 +406,18 @@ dbv(){
 }
 
 
+_get_block_devs(){
+	local f
+	for f in "$1"/*; do
+		if [ -d "$f" ];then
+			_get_block_devs "$f"
+		elif [ -b "$f" ];then
+			blockDevs+=("${f#/dev/}")
+		fi
+	done
+}
+
+
 _rm_all(){
 	if [ ! -e "$1" ];then
 		err "'$1' does not exist."
@@ -418,11 +430,14 @@ _rm_all(){
 	local f
 	local l
 	for f in /dev/block/*;do
-		l="`readlink f $f`"
+		l="`readlink -f $f`"
 		if [ "${l:0:5}" = "/dev/" ];then
 			blockDevs+=("${l#/dev/}")
 		fi
 	done
+	if [ -z "$blockDevs" ];then
+		_get_block_devs /dev
+	fi
 	d=$(realpath $1)
 	if [ "$d" = "/" ];then
 		err "cannot use rm_all to '/'"
