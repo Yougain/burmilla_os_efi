@@ -1,6 +1,6 @@
 diff -Naur '--exclude=.git' os.prev/cmd/control/install.go os.new/cmd/control/install.go
---- os.prev/cmd/control/install.go	2024-02-15 15:45:46.740000000 +0900
-+++ os.new/cmd/control/install.go	2024-03-14 18:56:15.687485300 +0900
+--- os.prev/cmd/control/install.go	2024-03-14 20:29:45.937485300 +0900
++++ os.new/cmd/control/install.go	2024-03-14 20:31:52.597485300 +0900
 @@ -246,13 +246,21 @@
  				// TODO: also poke around looking for the /boot/vmlinuz and initrd...
  			}
@@ -25,8 +25,8 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/install.go os.new/cmd/control/in
  				"-t", installType,
  				"-d", device,
 diff -Naur '--exclude=.git' os.prev/cmd/init/init.go os.new/cmd/init/init.go
---- os.prev/cmd/init/init.go	2024-02-15 15:45:46.740000000 +0900
-+++ os.new/cmd/init/init.go	2024-03-13 21:56:18.159787400 +0900
+--- os.prev/cmd/init/init.go	2024-03-14 20:29:45.937485300 +0900
++++ os.new/cmd/init/init.go	2024-03-14 20:31:52.597485300 +0900
 @@ -5,7 +5,7 @@
  
  import (
@@ -52,8 +52,8 @@ diff -Naur '--exclude=.git' os.prev/cmd/init/init.go os.new/cmd/init/init.go
  }
  
 diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
---- os.prev/config/types.go	2024-02-15 15:45:46.750000000 +0900
-+++ os.new/config/types.go	2024-02-20 16:23:46.720416200 +0900
+--- os.prev/config/types.go	2024-03-14 20:29:45.957485300 +0900
++++ os.new/config/types.go	2024-03-14 20:31:52.597485300 +0900
 @@ -210,6 +210,7 @@
  type StateConfig struct {
  	Directory  string   `yaml:"directory,omitempty"`
@@ -74,8 +74,8 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
  }
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/configfiles/configfiles.go os.new/pkg/init/configfiles/configfiles.go
---- os.prev/pkg/init/configfiles/configfiles.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/configfiles/configfiles.go	2024-02-21 14:40:15.265314500 +0900
+--- os.prev/pkg/init/configfiles/configfiles.go	2024-03-14 20:29:45.967485300 +0900
++++ os.new/pkg/init/configfiles/configfiles.go	2024-03-14 20:31:52.597485300 +0900
 @@ -55,6 +55,7 @@
  			ConfigFiles[name] = content
  		}
@@ -85,8 +85,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/configfiles/configfiles.go os.new/p
  }
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
---- os.prev/pkg/init/fsmount/fsmount.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2024-02-24 08:02:44.187919100 +0900
+--- os.prev/pkg/init/fsmount/fsmount.go	2024-03-14 20:29:45.967485300 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2024-03-14 20:31:52.597485300 +0900
 @@ -4,6 +4,8 @@
  	"fmt"
  	"strings"
@@ -187,8 +187,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  
  func tryMountState(cfg *config.CloudConfig) error {
 diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/prepare/prepare.go
---- os.prev/pkg/init/prepare/prepare.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/prepare/prepare.go	2024-02-20 16:23:46.720416200 +0900
+--- os.prev/pkg/init/prepare/prepare.go	2024-03-14 20:29:45.967485300 +0900
++++ os.new/pkg/init/prepare/prepare.go	2024-03-14 20:31:52.597485300 +0900
 @@ -3,6 +3,7 @@
  import (
  	"os"
@@ -212,8 +212,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
  	return cfg, nil
  }
 diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg/init/switchroot/switchroot.go
---- os.prev/pkg/init/switchroot/switchroot.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/init/switchroot/switchroot.go	2024-03-13 21:53:54.429787400 +0900
+--- os.prev/pkg/init/switchroot/switchroot.go	2024-03-14 20:29:45.967485300 +0900
++++ os.new/pkg/init/switchroot/switchroot.go	2024-03-14 20:31:52.597485300 +0900
 @@ -4,6 +4,7 @@
  	"fmt"
  	"io/ioutil"
@@ -252,8 +252,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  		return err
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
---- os.prev/pkg/log/log.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/log/log.go	2024-02-24 14:50:38.937919100 +0900
+--- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
++++ os.new/pkg/log/log.go	2024-03-14 20:31:52.597485300 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -561,8 +561,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	}
  }
 diff -Naur '--exclude=.git' os.prev/pkg/sysinit/sysinit.go os.new/pkg/sysinit/sysinit.go
---- os.prev/pkg/sysinit/sysinit.go	2024-02-15 15:45:46.760000000 +0900
-+++ os.new/pkg/sysinit/sysinit.go	2024-02-20 16:23:46.720416200 +0900
+--- os.prev/pkg/sysinit/sysinit.go	2024-03-14 20:29:45.967485300 +0900
++++ os.new/pkg/sysinit/sysinit.go	2024-03-14 20:31:52.597485300 +0900
 @@ -93,6 +93,14 @@
  }
  
@@ -579,8 +579,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/sysinit/sysinit.go os.new/pkg/sysinit/sy
  
  	if err := control.PreloadImages(docker.NewSystemClient, systemImagesPreloadDirectory); err != nil {
 diff -Naur '--exclude=.git' os.prev/scripts/version os.new/scripts/version
---- os.prev/scripts/version	2024-02-15 15:45:46.770000000 +0900
-+++ os.new/scripts/version	2024-02-20 16:23:46.720416200 +0900
+--- os.prev/scripts/version	2024-03-14 20:29:45.977485300 +0900
++++ os.new/scripts/version	2024-03-14 20:31:52.597485300 +0900
 @@ -1,18 +1,26 @@
  #!/bin/bash
  
