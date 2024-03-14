@@ -41,7 +41,7 @@ if [ "$1" = "-f" ];then
 	force=1
 	shift
 else
-	Emsg=" Exiting"
+	Emsg=" Exiting."
 fi
 
 
@@ -60,7 +60,7 @@ fi
 
 
 if [ -z "`git diff`" ];then
-	warn "Not modified.$Emsg."
+	warn "Not modified.$Emsg"
 	if [ -z "$force" ];then
 		exit 1
 	fi
