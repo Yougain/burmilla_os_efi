@@ -45,6 +45,14 @@ else
 fi
 
 
+if [ "$1" = "-F" ];then
+	force_pre_post=1
+	shift
+fi
+
+
+
+
 if [ -e .git/.g-pre-commit ];then
 	.git/.g-pre-commit
 fi
@@ -54,6 +62,9 @@ if [ -z "`git diff`" ];then
 	warn "Not modified.$Emsg."
 	if [ -z "$force" ];then
 		exit 1
+	fi
+	if [ -n "$force_pre_post" ];then
+		no_ver_mod=1
 	fi
 fi
 
@@ -71,6 +82,7 @@ else
 	die "The first word of file, 'version' cannot interpreted as version number ('$ver').
 Note that you cannot use non-numeric characters in it."
 fi
+
 
 
 function v(){
@@ -98,9 +110,11 @@ function v(){
 
 
 function commit(){
-	echo -E "`v` $*" > version
-	git commit -a -m "`v` $*"
-	git push
+	if [ -z "$no_ver_mod" ];then
+		echo -E "`v` $*" > version
+		git commit -a -m "`v` $*"
+		git push
+	fi
 	ssh_clone
 }
 
