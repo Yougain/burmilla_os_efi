@@ -61,11 +61,10 @@ fi
 
 if [ -z "`git diff`" ];then
 	warn "Not modified.$Emsg"
-	if [ -z "$force" ];then
-		exit 1
-	fi
 	if [ -n "$force_pre_post" ];then
 		no_ver_mod=1
+	elif [ -z "$force" ];then
+		exit 1
 	fi
 fi
 
