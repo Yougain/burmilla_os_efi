@@ -47,6 +47,7 @@ fi
 
 if [ "$1" = "-F" ];then
 	force_pre_post=1
+	Emsg=""
 	shift
 fi
 
@@ -114,6 +115,9 @@ function commit(){
 		echo -E "`v` $*" > version
 		git commit -a -m "`v` $*"
 		git push
+	fi
+	if [ -n "$no_ver_mod" ];then
+		echo "Only ssh clone."
 	fi
 	ssh_clone
 }
