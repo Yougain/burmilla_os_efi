@@ -226,7 +226,7 @@ fi
 ssh_sudo <<'END'
 	apt-get update
 	apt-get install fdisk
-	version="`egrep '^\s*VERSION:\s+[^\s]+' /var/log/boot/init.log | awk '{print $2}'`"
+	version="`egrep -o '\s+VERSION:\s+[^ \]+' /var/log/boot/init.log | awk '{print $2}'`"
 	dbv $version
 	mkdir -p /installing/installer
 	for d in `/sbin/blkid | grep LABEL=\"RANCHEROS\" | awk '{print substr($1, 0, index($1, ":") - 1 )}'`;do
@@ -238,10 +238,13 @@ ssh_sudo <<'END'
 					break
 				fi
 			fi
-		elif grep "BURMILLAOS_VER=\"$version\"" /installing/installer/boot/grub/grub.cfg; then
+		elif grep "BURMILLAOS_VER=\"$version\"" /installing/installer/boot/grub/grub.cfg >&2; then
+			dbv
 			INST_DRIVE=$d
 			break
 		else
+			dbv
+			grep "BURMILLAOS_VER" /installing/installer/boot/grub/grub.cfg >&2
 			dbv Not detected
 		fi
 		umount /installing/installer
@@ -896,6 +899,7 @@ ssh_sudo <<'FINAL'
 	# install on $TARGET_DEV4 (initial state drive, no boot, no state, no oem drive) first
 	ln $INST_DRIVE /dev/sr0
 	deb "`ls -la /dev/sr0`"
+	info ros install --no-reboot -f -t gptsyslinux -c cloud-config.yml -d $TARGET_DEV -p $TARGET_DEV4;
 	if ros install --no-reboot -f -t gptsyslinux -c cloud-config.yml -d $TARGET_DEV -p $TARGET_DEV4; then
 		info ros insall finished
 	else

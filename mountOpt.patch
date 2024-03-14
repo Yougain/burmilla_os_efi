@@ -1,3 +1,29 @@
+diff -Naur '--exclude=.git' os.prev/cmd/control/install.go os.new/cmd/control/install.go
+--- os.prev/cmd/control/install.go	2024-02-15 15:45:46.740000000 +0900
++++ os.new/cmd/control/install.go	2024-03-14 18:56:15.687485300 +0900
+@@ -246,13 +246,21 @@
+ 				// TODO: also poke around looking for the /boot/vmlinuz and initrd...
+ 			}
+ 
++			
+ 			log.Infof("starting installer container for %s (new)", image)
++			bpos := string.Index(image, "-btrfs-")
++			image_org := ""
++			if bpos != -1 {
++				image_org = image
++			} else {
++				image_org = image[0:bpos]
++			}
+ 			installerCmd := []string{
+ 				"run", "--rm", "--net=host", "--privileged",
+ 				// bind mount host fs to access its ros, vmlinuz, initrd and /dev (udev isn't running in container)
+ 				"-v", "/:/host",
+ 				"--volumes-from=all-volumes",
+-				image,
++				image_org,
+ 				//				"install",
+ 				"-t", installType,
+ 				"-d", device,
 diff -Naur '--exclude=.git' os.prev/cmd/init/init.go os.new/cmd/init/init.go
 --- os.prev/cmd/init/init.go	2024-02-15 15:45:46.740000000 +0900
 +++ os.new/cmd/init/init.go	2024-03-13 21:56:18.159787400 +0900
