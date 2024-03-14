@@ -24,7 +24,16 @@ if ! /usr/lib/docker/cli-plugins/docker-buildx; then
 	cd ~
 fi
 
-git-force-clone https://github.com/burmilla/os.git ~/os
+#git-force-clone https://github.com/burmilla/os.git ~/os
+
+
+rm ~/v2.0.0.tar.gz
+wget https://github.com/burmilla/os/archive/refs/tags/v2.0.0.tar.gz -O ~/v2.0.0.tar.gz
+cd ~
+tar zxf v2.0.0.tar.gz
+rm -rf os
+mv os-2.0.0 os
+
 cd ~/os
 PVER=`cat ~/burmilla_os_efi/version`
 sed "s/__PVER__/$PVER/" ~/burmilla_os_efi/mountOpt.patch > ~/burmilla_os_efi/mountOpt.patch.$PVER
