@@ -231,7 +231,7 @@ function info(){
 
 
 function warning_n(){
-	echo -ne "$warning""$@"  >&2
+	echo -ne "$warning""$@"$plain  >&2
 }
 function warning(){
 	warning_n "$@"
