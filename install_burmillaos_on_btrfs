@@ -125,30 +125,43 @@ if [ -z "$INST_IP" ]; then
 					exit 1
 				fi
 			fi
-			efi_blkid=$(ssh $INST_IP -p $INSTALLED_PORT -l rancher -o ConnectTimeout=3 -o ConnectionAttempts=3 <<'END'
-				BURMILLAOS_VER="`egrep '^\s*VERSION:\s+[^\s]+' /var/log/boot/init.log | awk '{print $2}'`"
+			ssh_param $INST_IP $INSTALLED_PORT -x -l rancher -o ConnectTimeout=3 -o ConnectionAttempts=3
+			ssh_sudo <<'END'
+				if [ -e /var/log/boot/init.log.0 ];then
+					sfx=.0
+				else
+					sfx=
+				fi
+				BURMILLAOS_VER="`egrep '^\s*VERSION:\s+[^\s]+' /var/log/boot/init.log$sfx | awk '{print $2}'`"
 				if [ -n "$BURMILLAOS_VER" ];then
 					# search installer with relevant version
 					devs=(`blkid2 LABEL=RANCHEROS`)
 					for d in ${devs[@]}; do
 						do_mount $d /installing/installer
-						if source_env /installing/installer/boot/grub/VERSION
+						if source_env /installing/installer/boot/grub/VERSION; then
+							info VERSION=$VERSION
+							info BURMILLAOS_VER=$BURMILLAOS_VER
 							if [ "$VERSION" = "$BURMILLAOS_VER" ];then
-								store_env /installing/efipart/TOPIC REINSTALL
+								store_env /boot/efi/TOPIC REINSTALL
 								umount /installing/installer
+								info rebooting
 								sudo reboot >/dev/null
+								RET=0
 								exit 0
 							fi
+						else
+							err cannot source /installing/installer/boot/grub/VERSION
 						fi
 						umount /installing/installer
 					done
+					RET=2
 					exit 2
 				else
+					RET=1
 					exit 1
 				fi
 END
-			)
-			case "$?" in
+			case "$RET" in
 				0) # logon the target and reboot
 					;;
 				1)
@@ -159,10 +172,10 @@ END
 					;;
 					
 				*) # Time out. Already booted by installer ?
+					err "Unknown error. Already booted by installer ?"
+					exit $?
 					;;
 			esac
-#			org_efi_uuid_with_tag=`echo "$efi_blkid"|egrep -o " UUID=\"[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]-[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]\""`
-#			ORG_EFI_UUID=${org_efi_uuid_with_tag:7:9}
 		fi
 	fi
 fi
