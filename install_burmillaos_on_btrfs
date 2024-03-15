@@ -981,6 +981,8 @@ ssh_sudo <<'FINAL'
 	cp -a /installing/state_top/state_root/boot/* /installing/boot_dev
 
 	cp -a /installing/installer/boot/grub /installing/boot_dev/
+	rm -f /installing/boot_dev/initrd*
+	cp -a /installing/installer/boot/initrd* /installing/boot_dev/
 	rm -f /installing/boot_dev/grub/*.cfg
 	ln -sf ../efi/EFI/boot/grub.cfg /installing/boot_dev/grub/grub.cfg
 	rm -rf /installing/state_top/state_root/boot/*
