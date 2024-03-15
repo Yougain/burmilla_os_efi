@@ -46,6 +46,8 @@ get_generated_source_for(){
 	local pf="`parse_info_d "$f"`/$func/$1-$lno"
 	if [ ! -e "$pf" -o "$pf" -ot $f ];then
 		rm -f "$pf"
+		mkdir -p ${pf%/*}
+		dbv ${pf%/*}
 		declare -f $func | generate_source_for_$1 > $pf
 		if [ $? != 0 ];then
 			exit $?
