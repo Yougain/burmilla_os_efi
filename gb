@@ -1,0 +1,111 @@
+#!/bin/bash
+
+
+source bashlib_y
+
+
+vers(){
+	echo $1 | awk '{print $1}' | tr '.' ' '
+}
+
+old_or_eq(){
+	local sbj=($(vers $1))
+	local obj=($(vers $2))
+	local i=0
+	for s in ${sbj[@]}; do
+		dbv $s
+		dbv ${obj[$i]}
+		if [ -z "${obj[$i]}" ];then
+			dbv
+			return 1
+		elif (( $s > ${obj[$i]} ));then
+			dbv
+			return 1
+		elif (( $s < ${obj[$i]} ));then
+			dbv
+			return 0
+		fi
+		i=$((i + 1))
+	done
+	dbv
+	return 0
+}
+
+
+getOldByCommit(){
+	local commit=$1
+	local f=$2
+	local ver=$3
+	local first=$4
+	dbv $f $ver
+	if ! mv $f $f.__preserve__; then
+		err "cannot preserve $f"
+		return 1
+	fi
+	dbv
+	if ! git checkout $commit $f; then
+		err "checkout failed for $f (commit = $commit)"
+		return 1
+	fi
+	dbv
+	if ! mv $f $f.$ver; then
+		err "cannot rename checkout file, $f to $f.$ver"
+		return 1
+	fi
+	dbv
+	if ! git checkout $first $f; then
+		err "checkout back failed for $f (commit = $first)"
+		return 1
+	fi
+	dbv
+	if ! mv -f $f.__preserve__ $f; then
+		err "cannot rename checkout file, $f to $f.$ver"
+		return 1
+	fi
+	echo "retrieved to $f.$ver"
+	dbv
+}
+
+
+get_file(){
+	dbv $f
+	dbv $v
+	local f="$1"
+	local v="$2"
+	(git log -1; git log "$f") | while read ln; do
+		if [[ "$ln" =~ ^commit\ ([0-9a-f]+)$ ]];then
+			commit=${BASH_REMATCH[1]}
+			dbv $commit
+			if [ -z "$first" ];then
+				first=$commit
+			fi
+		elif [[ "$ln" =~ ^\ *(([0-9]+)(\.[0-9]+)*) ]];then
+			lv=${BASH_REMATCH[1]}
+			dbv $lv
+			if old_or_eq $lv $v; then
+				dbv
+				getOldByCommit $commit $f $lv $first
+				return 0
+			fi
+		fi
+	done
+	err "cannot find older version of '$f' (< $v)"
+	return 1
+}
+
+
+for a in $@; do
+	if [[ "$a" =~ ^([0-9]+)(\.[0-9]+)*$ ]];then
+		ver_lst+=($a)
+	else
+		file_lst+=($a)
+	fi
+done
+
+
+for f in ${file_lst[@]}; do
+	for v in ${ver_lst[@]}; do
+		get_file "$f" "$v"
+	done
+done
+
