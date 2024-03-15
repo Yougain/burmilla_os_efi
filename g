@@ -55,6 +55,8 @@ function v(){
 
 
 function commit(){
+	dbv $@
+	dbv $*
 	if [ -z "$no_ver_mod" ];then
 		echo -E "`v` $*" > version
 		if [ $# -ge 0 ];then
