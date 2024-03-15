@@ -55,6 +55,7 @@ function v(){
 
 
 function commit(){
+	dbv $#
 	dbv $@
 	dbv $*
 	if [ -z "$no_ver_mod" ];then
