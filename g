@@ -82,7 +82,7 @@ require args
 
 function main(){
 	. args
-	
+	dbv $@
 	if opt -3; then
 		exec g3 $@
 	elif opt -2; then
@@ -93,6 +93,7 @@ function main(){
 		exec g0 $@
 	fi
 
+	dbv ${all_args[@]}
 	if opt -f; then
 		force=1
 	else
