@@ -60,7 +60,7 @@ function commit(){
 	dbv $*
 	if [ -z "$no_ver_mod" ];then
 		echo -E "`v` $*" > version
-		if [ $# -ge 0 ];then
+		if [ $# -gt 0 ];then
 			echo -E "`date` `v` $*
 `cat change_log`" > change_log.new
 			mv -f change_log.new change_log
