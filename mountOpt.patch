@@ -580,8 +580,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/sysinit/sysinit.go os.new/pkg/sysinit/sy
  	if err := control.PreloadImages(docker.NewSystemClient, systemImagesPreloadDirectory); err != nil {
 diff -Naur '--exclude=.git' os.prev/scripts/version os.new/scripts/version
 --- os.prev/scripts/version	2024-03-14 20:29:45.977485300 +0900
-+++ os.new/scripts/version	2024-03-16 14:35:37.859185600 +0900
-@@ -1,18 +1,26 @@
++++ os.new/scripts/version	2024-03-16 14:50:20.829185600 +0900
+@@ -1,18 +1,27 @@
  #!/bin/bash
  
 -if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
@@ -611,8 +611,9 @@ diff -Naur '--exclude=.git' os.prev/scripts/version os.new/scripts/version
 +if [ ! -e ../.git/packed-refs ]; then
 +	VERSION=`cat /tmp/version.patched`
 +else
-+	TTAG=`tail -1 ../.git/packed-refs`
-+	VERSION=${TTAG##*/}-btrfs-__PVER__
++	#TTAG=`tail -1 ../.git/packed-refs`
++	#VERSION=${TTAG##*/}-btrfs-__PVER__
++	VERSION=${GIT_TAG}-btrfs-__PVER__
 +	echo -n $VERSION > /tmp/version.patched
  fi
  
