@@ -975,35 +975,45 @@ ssh_sudo <<'FINAL'
 	EFI_UUID="`echo $EFI_UUID`"
 	echo EFI_UUID=$EFI_UUID
 	echo EFI_UUID_ARG=$EFI_UUID_ARG
-
 	# move all files from $TARGET_DEV4/boot (initial state drive) to $TARGET_DEV2 (boot drive).
 	mount $TARGET_DEV4 /installing/boot_dev
 	cp -a /installing/state_top/state_root/boot/* /installing/boot_dev
-
-	cp -a /installing/installer/boot/grub /installing/boot_dev/
-	rm -f /installing/boot_dev/initrd*
-	cp -a /installing/installer/boot/initrd* /installing/boot_dev/
-	rm -f /installing/boot_dev/grub/*.cfg
-	ln -sf ../efi/EFI/boot/grub.cfg /installing/boot_dev/grub/grub.cfg
-	rm -rf /installing/state_top/state_root/boot/*
-
 	# set up grub.cfg on EFI drive
-	VMLINUZ_FILE=`cd /installing/boot_dev;ls -d vmlinuz-*`
+	VMLINUZ_FILE_ROS=`cd /installing/boot_dev;ls -d vmlinuz-*`
+	VMLINUZ_FILE_ROS_COUNT=`echo "$VMLINUZ_FILE_ROS" | wc | awk '{print $1}'`
+	if [ "$VMLINUZ_FILE_ROS_COUNT" != "1" ];then
+	    die cannot detect linux kernel in installed boot drive.
+	fi
+	# set up grub.cfg on EFI drive
+	VMLINUZ_FILE=`cd /installing/installer/boot;ls -d vmlinuz-*`
 	VMLINUZ_FILE_COUNT=`echo "$VMLINUZ_FILE" | wc | awk '{print $1}'`
 	if [ "$VMLINUZ_FILE_COUNT" != "1" ];then
 	    die cannot detect linux kernel in iso image, or multiple kernel detected.
 	fi
-	INITRD_FILE=`cd /installing/boot_dev;ls -d initrd-*|grep -v mod`
+	cp -a /installing/installer/boot/vmlinuz* /installing/boot_dev
+	cp -a /installing/installer/boot/initrd* /installing/boot_dev
+	cp -a /installing/installer/boot/grub /installing/boot_dev/
+	rm -f /installing/boot_dev/grub/*.cfg
+	ln -sf ../efi/EFI/boot/grub.cfg /installing/boot_dev/grub/grub.cfg
+	rm -rf /installing/state_top/state_root/boot/*
+
+	INITRD_FILE=`cd /installing/boot_dev;ls -d initrd-*|grep -v mod| grep btrfs`
 	INITRD_FILE_COUNT=`echo "$INITRD_FILE" | wc | awk '{print $1}'`
 	if [ "$INITRD_FILE_COUNT" != "1" ];then
-	    die cannot detect initrd in iso image, or multiple initrd detected.
+	    die cannot detect patched initrd, or multiple initrd detected.
 	fi
-
+	INITRD_FILE_ROS=`cd /installing/boot_dev;ls -d initrd-*|grep -v mod| grep -v btrfs`
+	INITRD_FILE_ROS_COUNT=`echo "$INITRD_FILE_ROS" | wc | awk '{print $1}'`
+	if [ "$INITRD_FILE_ROS_COUNT" != "1" ];then
+	    die cannot detect original initrd, or multiple initrd detected.
+	fi
+	echo INITRD_FILE_ROS=$INITRD_FILE_ROS
+	echo INITRD_FILE=$INITRD_FILE
 	INITRD_VER=${INITRD_FILE#*-}
 	KERNEL_VER=${VMLINUZ_FILE#*-}
 
 
-	GLOBAL_APPEND=`cat /installing/boot_dev/global.cfg | sed "s/ rancher.state.dev=[^ ]*//g" | sed "s/ console=ttyS[^ ]*//g" | sed "s/ rancher.autologin=ttyS[^ ]*//g"`
+	GLOBAL_APPEND=`cat /installing/boot_dev/global.cfg | sed 's/ rancher.state.dev=[^ ]*//g' | sed 's/ console=ttyS[^ ]*//g' | sed 's/ rancher.autologin=ttyS[^ ]*//g'`
 	GLOBAL_APPEND_ARGS=${GLOBAL_APPEND#APPEND *}
 
 	KERNEL_ARGS="TZ=$TZL rancher.state.boot_mountopt=rw rancher.state.oem_mountopt=rw,subvol=/oem_root rancher.state.mountopt=rw,subvol=/state_root rancher.password=rancher $GLOBAL_APPEND_ARGS rw rootflags=rw,subvol=/state_root"
@@ -1021,9 +1031,9 @@ ssh_sudo <<'FINAL'
 	fi
 
 	store_env -s /installing/efipart/BOOT_UUID
-	LINUX="$VMLINUZ_FILE BURMILLAOS_VER=$VERSION $VGA_ARGS $KERNEL_ARGS $ROOT_ARGS panic=10"
-	LINUX_DEBUG="$VMLINUZ_FILE BURMILLAOS_VER=$VERSION vga=ask DEBUG=1 rancher.debug=true $KERNEL_ARGS $ROOT_ARGS"
-	INITRD="$INITRD_FILE"
+	LINUX="$VMLINUZ_FILE_ROS BURMILLAOS_VER=$VERSION $VGA_ARGS $KERNEL_ARGS $ROOT_ARGS panic=10"
+	LINUX_DEBUG="$VMLINUZ_FILE_ROS BURMILLAOS_VER=$VERSION vga=ask DEBUG=1 rancher.debug=true $KERNEL_ARGS $ROOT_ARGS"
+	INITRD="$INITRD_FILE_ROS"
 	store_env -s /installing/efipart/LINUX
 	store_env -s /installing/efipart/LINUX_DEBUG
 	store_env -s /installing/efipart/INITRD
@@ -1103,6 +1113,7 @@ deb TARGET_DEV="'"$TARGET_DEV"'"
 		fi
 		mkdir -p /efipart
 		do_mount 2 /efipart
+		store_env /efipart/TOPIC ""
 		umount /efipart
 		rmdir /efipart
 		rm /var/lib/rancher/conf/cloud-config.d/user_config.yml
@@ -1149,7 +1160,7 @@ ssh_sudo <<'FINAL'
 
 	do_mount 5 /installing/state
 
- 	create_initrd_mod 
+ 	create_initrd_mod $INITRD
 
 	if ! do_mount 4 /installing/boot_dev; then
 		die cannot mount
@@ -1479,7 +1490,7 @@ ssh_sudo <<'FINAL'
 
 	mkdir -p /installing/efipart
 	do_mount 2  /installing/efipart
-	INITRD=$INITRD-mod
+	INITRD=$INITRD_FILE-mod
 	store_env -s /installing/efipart/INITRD
 	rm -f /installing/efipart/TOPIC
 	umount /installing/efipart

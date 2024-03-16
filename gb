@@ -72,24 +72,29 @@ get_file(){
 	dbv $v
 	local f="$1"
 	local v="$2"
-	(git log -1; git log "$f") | while read ln; do
-		if [[ "$ln" =~ ^commit\ ([0-9a-f]+)$ ]];then
-			commit=${BASH_REMATCH[1]}
-			dbv $commit
-			if [ -z "$first" ];then
-				first=$commit
+	(git log -1; git log "$f") | (
+		while read ln; do
+			if [[ "$ln" =~ ^commit\ ([0-9a-f]+)$ ]];then
+				commit=${BASH_REMATCH[1]}
+				dbv $commit
+				if [ -z "$first" ];then
+					first=$commit
+				fi
+			elif [[ "$ln" =~ ^\ *(([0-9]+)(\.[0-9]+)*) ]];then
+				lv=${BASH_REMATCH[1]}
+				dbv $lv
+				if old_or_eq $lv $v; then
+					dbv
+					getOldByCommit $commit $f $lv $first
+					return 0
+				fi
 			fi
-		elif [[ "$ln" =~ ^\ *(([0-9]+)(\.[0-9]+)*) ]];then
-			lv=${BASH_REMATCH[1]}
-			dbv $lv
-			if old_or_eq $lv $v; then
-				dbv
-				getOldByCommit $commit $f $lv $first
-				return 0
-			fi
-		fi
-	done
-	err "cannot find older version of '$f' (< $v)"
+		done
+		return 1
+	)
+	if [ "$?" = 1 ]; then
+		err "cannot find older version of '$f' (< $v)"
+	fi
 	return 1
 }
 

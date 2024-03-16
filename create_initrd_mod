@@ -10,6 +10,7 @@ function create_initrd_mod(){
 	local TMPD="$SCRIPT_TMP_DIR/create_initrd_mod"
 	local IMGD="$TMPD/initrd"
 	local EXTD="$TMPD/extd"
+	local IMGD_INIT="$TMPD/initrd_init"
 	require -s initrd_support
 	require do_install
 	require chain_bak
@@ -72,10 +73,24 @@ function create_initrd_mod(){
 		fi
 	fi
 
+
 	mkdir -p $IMGD
 	cd $IMGD
 
-	zcat $EXTD/boot_dev/$INITRD_FILE | cpio -idm
+	if [ -n "$INITRD_FILE" -a "${1:0:7}" = "initrd-" ];then
+		echo extracting $1
+		zcat $EXTD/boot_dev/$1 | cpio -idm
+		mkdir -p $IMGD_INIT
+		cd $IMGD_INIT
+		echo extracting $INITRD_FILE # init is modified
+		zcat $EXTD/boot_dev/$INITRD_FILE | cpio -idm
+		cd $IMGD
+		mv -v ./usr/bin/ros{,.org}
+		cp -av $IMGD_INIT/usr/bin/ros ./usr/bin
+		ls -la ./usr/bin/ros*
+	else
+		zcat $EXTD/boot_dev/$INITRD_FILE | cpio -idm
+	fi
 
 	local d
 	for d in . $for_state; do
@@ -309,6 +324,7 @@ $libs"
 		ln -svf bash $for_state/bin/sh
 	fi
 	chown root:root usr/bin/busybox
+	ls -la init
 	find | cpio -o -H newc  | gzip -c > ../$INITRD_FILE-mod.new
 	if [ -z "$stand_alone" ];then
 		chain_bak -d ../$INITRD_FILE-mod.new $EXTD/boot_dev/$INITRD_FILE-mod
