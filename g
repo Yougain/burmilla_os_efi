@@ -85,10 +85,6 @@ require args
 
 function main(){
 	. args
-	for j in "$@" ;do
-		dbv $j
-	done
-	dbv "$@"
 	if opt -3; then
 		exec g3 "$@"
 	elif opt -2; then
@@ -180,8 +176,5 @@ function main(){
 	commit ${all_args[@]}
 }
 
-for i in "$@";do
-	dbv $i
-done
 main "$@"
 
