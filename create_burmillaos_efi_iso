@@ -369,7 +369,7 @@ rm $P_IMG
 if [ -n "$OVERWRITE_USB" ];then
 	if [ -x "`which usb_dev`" ];then
 		UD="`usb_dev | egrep -o "/dev/sd." | uniq`"
-		if [ "echo \"$UD\"|wc|awk '{print $1}" = 1 ]; then
+		if [ "echo \"$UD\"|wc|awk '{print $1}'" = 1 ]; then
 			if [ -e "$UD" ];then
 				sudo dd if=$P_ISO of=$UD bs=10M status=progress
 			else
