@@ -37,6 +37,7 @@ git-force-clone https://github.com/burmilla/os.git ~/os
 
 cd ~/os
 PVER=`cat ~/burmilla_os_efi/version`
+PVER=`echo $PVER|awk '{print $1}'`
 sed "s/__PVER__/$PVER/" ~/burmilla_os_efi/mountOpt.patch > ~/burmilla_os_efi/mountOpt.patch.$PVER
 patch -p1 < ~/burmilla_os_efi/mountOpt.patch.$PVER
 sudo make
