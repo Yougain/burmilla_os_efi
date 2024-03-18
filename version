@@ -1,1 +1,1 @@
-2.73.3 Execute system-docker load -i /installing/installer/rancheros/fullinstaller.tar.tz" before execiting "ros install"
+2.73.4 Execute system-docker load -i "/installing/installer/rancheros/fullinstaller.tar.tz" before execiting "ros install"
