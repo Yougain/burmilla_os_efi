@@ -177,5 +177,5 @@ function main(){
 	commit ${all_args[@]}
 }
 
-main $@
+main "$@"
 
