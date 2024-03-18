@@ -1,1 +1,1 @@
-2.73.5 Execute system-docker load -i "/installing/installer/rancheros/fullinstaller.tar.tz" before execiting "ros install"
+2.73.6 remove ros installed initrd and replace to installer's initrd
