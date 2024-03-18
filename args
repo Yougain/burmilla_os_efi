@@ -175,7 +175,7 @@ if [ "${BASH_SOURCE[1]##*/}" = "bashlib_y" ];then
 		local na=()
 		for ((j = 0 ; j < ${#all_args[@]} ; j++));do
 			if ! [ -n "${unsetter[$j]}" ]; then
-				na+=(${all_args[$j]})
+				na+=("${all_args[$j]}")
 			fi
 		done
 		all_args=("${na[@]}")
