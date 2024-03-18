@@ -368,11 +368,15 @@ rm $P_IMG
 
 if [ -n "$OVERWRITE_USB" ];then
 	if [ -x "`which usb_dev`" ];then
-		UD="`usb_dev | egrep -o "/dev/sd." | head -1`"
-		if [ -e "$UD" ];then
-			sudo dd if=$P_ISO of=$UD bs=10M status=progress
+		UD="`usb_dev | egrep -o "/dev/sd." | uniq`"
+		if [ "echo \"$UD\"|wc|awk '{print $1}" = 1 ]; then
+			if [ -e "$UD" ];then
+				sudo dd if=$P_ISO of=$UD bs=10M status=progress
+			else
+				echo Error: USB disk not found.
+			fi
 		else
-			echo Error: USB disk not found.
+			echo Error: Multiple USB disk, $UD found. Please detach extra USB disk.
 		fi
 	else
 		echo Error: command 'usb_dev' not found. 
