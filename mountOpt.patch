@@ -1,29 +1,24 @@
 diff -Naur '--exclude=.git' os.prev/cmd/control/install.go os.new/cmd/control/install.go
 --- os.prev/cmd/control/install.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/install.go	2024-03-16 14:35:37.859185600 +0900
-@@ -246,13 +246,21 @@
- 				// TODO: also poke around looking for the /boot/vmlinuz and initrd...
- 			}
++++ os.new/cmd/control/install.go	2024-03-18 12:38:59.950631200 +0900
+@@ -223,14 +223,14 @@
+ 			if err = mountBootIso(deviceName, deviceType); err != nil {
+ 				log.Debugf("Failed to mountBootIso: %v", err)
+ 			} else {
+-				log.Infof("trying to load /bootiso/rancheros/installer.tar.gz")
++				log.Infof("trying to load /bootiso/rancheros/fullinstaller.tar.gz")
+ 				if _, err := os.Stat("/bootiso/rancheros/"); err == nil {
+-					cmd := exec.Command("system-docker", "load", "-i", "/bootiso/rancheros/installer.tar.gz")
++					cmd := exec.Command("system-docker", "load", "-i", "/bootiso/rancheros/fullinstaller.tar.gz")
+ 					cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+ 					if err := cmd.Run(); err != nil {
+ 						log.Infof("failed to load images from /bootiso/rancheros: %v", err)
+ 					} else {
+-						log.Infof("Loaded images from /bootiso/rancheros/installer.tar.gz")
++						log.Infof("Loaded images from /bootiso/rancheros/fullinstaller.tar.gz")
  
-+			
- 			log.Infof("starting installer container for %s (new)", image)
-+			bpos := strings.Index(image, "-btrfs-")
-+			image_org := ""
-+			if bpos != -1 {
-+				image_org = image[0:bpos]
-+			} else {
-+				image_org = image
-+			}
- 			installerCmd := []string{
- 				"run", "--rm", "--net=host", "--privileged",
- 				// bind mount host fs to access its ros, vmlinuz, initrd and /dev (udev isn't running in container)
- 				"-v", "/:/host",
- 				"--volumes-from=all-volumes",
--				image,
-+				image_org,
- 				//				"install",
- 				"-t", installType,
- 				"-d", device,
+ 						//TODO: add if os-installer:latest exists - we might have loaded a full installer?
+ 						useIso = true
 diff -Naur '--exclude=.git' os.prev/cmd/init/init.go os.new/cmd/init/init.go
 --- os.prev/cmd/init/init.go	2024-03-14 20:29:45.937485300 +0900
 +++ os.new/cmd/init/init.go	2024-03-16 14:35:37.859185600 +0900
@@ -578,6 +573,40 @@ diff -Naur '--exclude=.git' os.prev/pkg/sysinit/sysinit.go os.new/pkg/sysinit/sy
  	cfg := config.LoadConfig()
  
  	if err := control.PreloadImages(docker.NewSystemClient, systemImagesPreloadDirectory); err != nil {
+diff -Naur '--exclude=.git' os.prev/scripts/package-installer os.new/scripts/package-installer
+--- os.prev/scripts/package-installer	2024-03-14 20:29:45.977485300 +0900
++++ os.new/scripts/package-installer	2024-03-18 12:42:02.710631200 +0900
+@@ -38,13 +38,14 @@
+ 
+ # installer base image - can be included in iso
+ # TODO: fix the fullinstaller Dockerfile to use the ${VERSION}${SUFFIX}
++# modified to include fullistaller.tar by Yougain: 20240318
+ docker build \
+     -t ${OS_REPO}/os-installer \
+     --build-arg VERSION=${VERSION} \
+     --build-arg KERNEL_VERSION=${KERNEL_VERSION} \
+     -f $BASEDOCKERFILE \
+     ./scripts/installer
+-docker save -o ${ARTIFACTS}/installer.tar ${OS_REPO}/os-installer
++docker save -o ${ARTIFACTS}/fullinstaller.tar ${OS_REPO}/os-installer
+ cp $DOCKERFILE ${ARTIFACTS}/
+ 
+ cp ${ARTIFACTS}/${INITRD} ./scripts/installer/build/boot
+diff -Naur '--exclude=.git' os.prev/scripts/package-iso os.new/scripts/package-iso
+--- os.prev/scripts/package-iso	2024-03-14 20:29:45.977485300 +0900
++++ os.new/scripts/package-iso	2024-03-18 12:19:45.690631200 +0900
+@@ -29,9 +29,9 @@
+ cp /usr/lib/syslinux/modules/bios/ldlinux.c32  ${CD}/boot/isolinux/
+ cp /usr/lib/syslinux/modules/bios/*.c32        ${CD}/boot/isolinux/
+ # add the installer image to the iso for non-network / dev/test
+-cp ${ARTIFACTS}/installer.tar                  ${CD}/rancheros/
++cp ${ARTIFACTS}/fullinstaller.tar                  ${CD}/rancheros/
+ cp ${ARTIFACTS}/Dockerfile.${ARCH}             ${CD}/rancheros/
+-gzip ${CD}/rancheros/installer.tar
++gzip ${CD}/rancheros/fullinstaller.tar
+ cd ${CD} && xorriso \
+     -as mkisofs \
+     -l -J -R -V "${DISTRIB_ID}" \
 diff -Naur '--exclude=.git' os.prev/scripts/version os.new/scripts/version
 --- os.prev/scripts/version	2024-03-14 20:29:45.977485300 +0900
 +++ os.new/scripts/version	2024-03-16 14:50:20.829185600 +0900
