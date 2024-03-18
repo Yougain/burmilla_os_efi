@@ -900,8 +900,8 @@ ssh_sudo <<'FINAL'
 	END
 
 	# install on $TARGET_DEV4 (initial state drive, no boot, no state, no oem drive) first
-	ln $INST_DRIVE /dev/sr0
-	deb "`ls -la /dev/sr0`"
+	# preload fullinstaller.tar.gz, or "ros install" fails
+	system-docker load -i /installing/installer/rancheros/fullinstaller.tar.gz
 	info ros install --no-reboot -f -t gptsyslinux -c cloud-config.yml -d $TARGET_DEV -p $TARGET_DEV4;
 	if ros install --no-reboot -f -t gptsyslinux -c cloud-config.yml -d $TARGET_DEV -p $TARGET_DEV4; then
 		info ros insall finished
@@ -1052,7 +1052,7 @@ ssh_sudo <<'FINAL'
 	umount /installing/installer
 	umount /installing/efipart
 	sleep 5
-	echo -e $green"rebooting by target disk ...."
+	echo -e $green"rebooting by target disk ....$normal"
 	reboot
 FINAL
 
