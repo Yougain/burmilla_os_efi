@@ -3,7 +3,7 @@
 
 function create_initrd_mod(){
 	apt-get -y update
-	apt-get -y install cpio btrfs-progs strace
+	apt-get -y install cpio btrfs-progs strace nginx
 
 	local tmpd=`pwd`
 	local PATH="$tmpd:$PATH"
@@ -11,6 +11,7 @@ function create_initrd_mod(){
 	local IMGD="$TMPD/initrd"
 	local EXTD="$TMPD/extd"
 	local IMGD_INIT="$TMPD/initrd_init"
+	local GITD="$TMPD/gitd"
 	require -s initrd_support
 	require do_install
 	require chain_bak
@@ -169,6 +170,63 @@ function create_initrd_mod(){
 			fi
 		done
 	}
+
+	function setup_nginx_files(){
+		local v="${INITRD_FILE##*-}"
+		local ln
+		local first
+		local commit
+		mkdir -p $GITD
+		pushd $GITD
+		git clone https://github.com/Yougain/burmilla_os_efi
+		while read ln; do
+			if [[ "$ln" =~ ^commit\ ([0-9a-f]+)$ ]];then
+				commit=${BASH_REMATCH[1]}
+				dbv $commit
+				if [ -z "$first" ];then
+					first=$commit
+				fi
+			elif [[ "$ln" =~ ^\ *(([0-9]+)(\.[0-9]+)*) ]];then
+				lv=${BASH_REMATCH[1]}
+				dbv $lv
+				if [ "$lv" =  "$v" ]; then
+					dbv
+					git checkout $commit
+					break
+				fi
+			fi
+		done < $<(git log)
+		rm -rf .git
+		mv burmilla_os_efi burmilla_os_efi-$v
+		tar cvfz burmilla_os_efi-$v.tar.gz burmilla_os_efi-$v/
+		rm -rf burmilla_os_efi-$v
+		cat <<"END"
+#!/bin/bash
+
+wget %IP%/burmilla_os_efi-$v.tar.gz
+tar zxf burmilla_os_efi-$v.tar.gz
+cd burmilla_os_efi-$v
+./install_burmillaos_on_btrfs %IP% "$@"
+
+END > install.sh.tmpl
+		popd
+		mkdir -p ./var/www/html
+		mv $GITD/* ./var/www/html
+		mkdir -p ./etc
+		cp -a /etc/nginx ./etc
+		cp -a /usr/lib/nginx ./usr/lib
+		mkdir -p ./usr/share
+		cp -a /usr/share/nginx ./usr/share
+		cat <<'END'
+#!/bin/bash
+
+IP=$(/sbin/ifconfig | grep -B1 "inet" |awk '{ if ( $1 == "inet" ) { print $2 } else if ( $3 == "mtu" ) { printf "%s:" ,$1 } }' |awk -F: '{ print $1 ": " $3}' | egrep -o ': [0-9a-f:\.]+' | head -1 | egrep -o '[0-9a-fA-F][0-9a-fA-F:\.]+')
+sed s/%IP%/$IP/g /opt/initrd/var/www/html/install.sh.tmpl > /opt/initrd/var/www/html/install.sh
+chroot /opt/initrd nginx &
+
+END > ./opt/rancher/bin/start.sh
+		chmod +x ./opt/rancher/bin/start.sh
+	}
 	
 	function cp_bin(){
 		local libs=""
@@ -276,6 +334,7 @@ $libs"
 		diff
 		tail
 		dmesg
+		nginx
 	END
 	mkdir -p ./idev # for logger
 	mknod ./idev/null c 1 3
@@ -325,6 +384,9 @@ $libs"
 	fi
 	chown root:root usr/bin/busybox
 	ls -la init
+	
+	setup_nginx_files
+	
 	find | cpio -o -H newc  | gzip -c > ../$INITRD_FILE-mod.new
 	if [ -z "$stand_alone" ];then
 		chain_bak -d ../$INITRD_FILE-mod.new $EXTD/boot_dev/$INITRD_FILE-mod

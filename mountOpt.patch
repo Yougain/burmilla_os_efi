@@ -1,7 +1,43 @@
+diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/control/console_init.go
+--- os.prev/cmd/control/console_init.go	2024-03-14 20:29:45.937485300 +0900
++++ os.new/cmd/control/console_init.go	2024-03-23 16:59:58.881414300 +0900
+@@ -259,6 +259,20 @@
+ 	if err := cmd.Run(); err != nil {
+ 		log.Error(err)
+ 	}
++	
++	cmd = exec.Command("stat", "-f", "-c", "%T", "/opt")
++	out, errb := cmd.Output()
++	if errb != nil {
++		log.Infof("exec stat -f -c %T /opt, failed.")
++		return err
++	}else{
++		if strings.Index(string(out), "ramfs") != -1 {
++			cmd = exec.Command("bash", "-c", `echo For installation, please execute \'wget http://$(/sbin/ifconfig | grep -B1 "inet" |awk '{ if ( $1 == "inet" ) { print $2 } else if ( $3 == "mtu" ) { printf "%s:" ,$1 } }' |awk -F: '{ print $1 ": " $3}' | egrep -o ': [0-9a-f:\.]+' | head -1 | egrep -o '[0-9a-fA-F][0-9a-fA-F:\.]+')/install.sh -q -O \| bash -s SERVER_NAME FIXED_IP\' from your terminal. >> /etc/issue`)
++			if err := cmd.Run(); err != nil {
++				log.Error(err)
++			}
++		}
++	}
+ 
+ 	cloudinitexecute.ApplyConsole(cfg)
+ 
 diff -Naur '--exclude=.git' os.prev/cmd/control/install.go os.new/cmd/control/install.go
 --- os.prev/cmd/control/install.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/install.go	2024-03-18 12:38:59.950631200 +0900
-@@ -223,14 +223,14 @@
++++ os.new/cmd/control/install.go	2024-03-21 18:05:26.254686000 +0900
+@@ -201,6 +201,11 @@
+ func runInstall(image, installType, cloudConfig, device, partition, statedir, kappend string, force, kexec, isoinstallerloaded, debug bool, savedImages []string) error {
+ 	fmt.Printf("Installing from %s\n", image)
+ 
++	if os.Getenv("ROS_BTRFS_WRAPPER") == "" {
++		log.Errorf("You cannot execute ros install or upgrade command directly.")
++		fmt.Println("You cannot execute ros install or upgrade command directly, terminate the task.")
++		os.Exit(1)
++	}
+ 	if !force {
+ 		if util.IsRunningInTty() && !yes("Continue") {
+ 			log.Infof("Not continuing with installation due to user not saying 'yes'")
+@@ -223,14 +228,14 @@
  			if err = mountBootIso(deviceName, deviceType); err != nil {
  				log.Debugf("Failed to mountBootIso: %v", err)
  			} else {

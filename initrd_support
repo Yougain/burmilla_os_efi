@@ -29,6 +29,10 @@ before_sysinit(){
 	killall udevd
 	info killall udevd: result = $?
 	info udev stopped
+	if [ "$(stat -f -c '%T' /opt)" = "ramfs" ];then
+		mkdir -p /opt/initrd
+		mount --bind / /opt/initrd
+	fi
 }
 
 

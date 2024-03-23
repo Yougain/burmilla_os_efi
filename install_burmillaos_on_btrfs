@@ -902,6 +902,7 @@ ssh_sudo <<'FINAL'
 	# install on $TARGET_DEV4 (initial state drive, no boot, no state, no oem drive) first
 	# preload fullinstaller.tar.gz, or "ros install" fails
 	system-docker load -i /installing/installer/rancheros/fullinstaller.tar.gz
+	export ROS_BTRFS_WRAPPER=1
 	info ros install --no-reboot -f -t gptsyslinux -c cloud-config.yml -d $TARGET_DEV -p $TARGET_DEV4;
 	if ros install --no-reboot -f -t gptsyslinux -c cloud-config.yml -d $TARGET_DEV -p $TARGET_DEV4; then
 		info ros insall finished
