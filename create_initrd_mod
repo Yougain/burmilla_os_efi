@@ -216,9 +216,19 @@ END
 		mv $GITD/* ./var/www/html
 		mkdir -p ./etc
 		cp -a /etc/nginx ./etc
+		rm -rf ./etc/nginx/ene
 		cp -a /usr/lib/nginx ./usr/lib
 		mkdir -p ./usr/share
 		cp -a /usr/share/nginx ./usr/share
+		rm -rf ./etc/nginx/modules-enabled
+		mkdir -p ./dev
+		mkdir -p ./run
+		mkdir -p ./var/log/nginx
+		echo >> /etc/passwd
+		echo "nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin" >> /etc/passwd
+		echo "www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin" >> /etc/passwd
+		echo "root:x:0:" > /etc/group
+		echo "nogroup:x:65534:" >> /etc/group
 		mkdir -p ./opt/rancher/bin/
 		cat <<'END' > ./opt/rancher/bin/start.sh
 #!/bin/bash
@@ -229,6 +239,7 @@ chroot /opt/initrd nginx &
 
 END
 		chmod +x ./opt/rancher/bin/start.sh
+		cp /lib/x86_64-linux-gnu/libcrypt.so.1 ./lib64
 	}
 	
 	function cp_bin(){
@@ -307,6 +318,7 @@ $libs"
 
 	cp_lib libatomic.so.1 . $for_state
 	cp_lib libpcre.so.3 . $for_state
+	cp_lib libGeoIP.so.1 . $for_state
 	
 	cp_bin . $for_state <<"	END"
 		bash
