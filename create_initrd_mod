@@ -224,11 +224,11 @@ END
 		mkdir -p ./dev
 		mkdir -p ./run
 		mkdir -p ./var/log/nginx
-		echo >> /etc/passwd
-		echo "nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin" >> /etc/passwd
-		echo "www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin" >> /etc/passwd
-		echo "root:x:0:" > /etc/group
-		echo "nogroup:x:65534:" >> /etc/group
+		echo >> ./etc/passwd
+		echo "nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin" >> ./etc/passwd
+		echo "www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin" >> ./etc/passwd
+		echo "root:x:0:" > ./etc/group
+		echo "nogroup:x:65534:" >> ./etc/group
 		mkdir -p ./opt/rancher/bin/
 		cat <<'END' > ./opt/rancher/bin/start.sh
 #!/bin/bash
