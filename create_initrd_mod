@@ -217,6 +217,7 @@ END
 		cp -a /usr/lib/nginx ./usr/lib
 		mkdir -p ./usr/share
 		cp -a /usr/share/nginx ./usr/share
+		mkdir -p ./opt/rancher/bin/
 		cat <<'END' > ./opt/rancher/bin/start.sh
 #!/bin/bash
 
