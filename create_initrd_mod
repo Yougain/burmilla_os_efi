@@ -179,6 +179,7 @@ function create_initrd_mod(){
 		mkdir -p $GITD
 		pushd $GITD
 		git clone https://github.com/Yougain/burmilla_os_efi
+		pushd burmilla_os_efi
 		while read ln; do
 			if [[ "$ln" =~ ^commit\ ([0-9a-f]+)$ ]];then
 				commit=${BASH_REMATCH[1]}
@@ -197,6 +198,7 @@ function create_initrd_mod(){
 			fi
 		done < $<(git log)
 		rm -rf .git
+		popd
 		mv burmilla_os_efi burmilla_os_efi-$v
 		tar cvfz burmilla_os_efi-$v.tar.gz burmilla_os_efi-$v/
 		rm -rf burmilla_os_efi-$v
