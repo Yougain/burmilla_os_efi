@@ -200,7 +200,7 @@ function create_initrd_mod(){
 		mv burmilla_os_efi burmilla_os_efi-$v
 		tar cvfz burmilla_os_efi-$v.tar.gz burmilla_os_efi-$v/
 		rm -rf burmilla_os_efi-$v
-		cat <<"END"
+		cat <<"END" > install.sh.tmpl
 #!/bin/bash
 
 wget %IP%/burmilla_os_efi-$v.tar.gz
@@ -208,7 +208,7 @@ tar zxf burmilla_os_efi-$v.tar.gz
 cd burmilla_os_efi-$v
 ./install_burmillaos_on_btrfs %IP% "$@"
 
-END > install.sh.tmpl
+END
 		popd
 		mkdir -p ./var/www/html
 		mv $GITD/* ./var/www/html
@@ -217,14 +217,14 @@ END > install.sh.tmpl
 		cp -a /usr/lib/nginx ./usr/lib
 		mkdir -p ./usr/share
 		cp -a /usr/share/nginx ./usr/share
-		cat <<'END'
+		cat <<'END' > ./opt/rancher/bin/start.sh
 #!/bin/bash
 
 IP=$(/sbin/ifconfig | grep -B1 "inet" |awk '{ if ( $1 == "inet" ) { print $2 } else if ( $3 == "mtu" ) { printf "%s:" ,$1 } }' |awk -F: '{ print $1 ": " $3}' | egrep -o ': [0-9a-f:\.]+' | head -1 | egrep -o '[0-9a-fA-F][0-9a-fA-F:\.]+')
 sed s/%IP%/$IP/g /opt/initrd/var/www/html/install.sh.tmpl > /opt/initrd/var/www/html/install.sh
 chroot /opt/initrd nginx &
 
-END > ./opt/rancher/bin/start.sh
+END
 		chmod +x ./opt/rancher/bin/start.sh
 	}
 	
