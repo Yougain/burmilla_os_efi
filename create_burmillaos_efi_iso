@@ -12,7 +12,7 @@ UB_CERT_URL=https://letsencrypt.org/certs/lets-encrypt-r3.pem
 BM_RELEASE_URL=https://github.com/burmilla/os/releases
 UB_RELEASE_URL=https://releases.ubuntu.com
 
-PATH="$(realpth .):$PATH"
+PATH="$(realpath .):$PATH"
 
 function check_cmd {
 	while (( "$#" )); do
