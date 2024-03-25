@@ -119,8 +119,14 @@ initialize_support_lib(){
 			declare -p SSH_PARAM_LIST
 		fi
 		local f="`__FILE_NAME__`"
-		mkdir -p /tmp/$f
-		chmod 777 /tmp/$f
+		if [ ! -d /tmp/$f ]; then
+			mkdir -p /tmp/$f
+			chmod 777 /tmp/$f
+		fi
+		if [ ! -d /tmp/$f/${0##*/} ];then
+			mkdir -p /tmp/$f/${0##*/}
+			chmod 777 /tmp/$f/${0##*/}
+		fi
 		SCRIPT_TMP_DIR=/tmp/$f/${0##*/}/`date +"%y-%m-%d_%H:%M:%S.%N%z"`-$$
 		SCRIPT_VAR_DIR=/var/tmp/$f
 		if ! mkdir -p $SCRIPT_TMP_DIR; then

@@ -1,7 +1,11 @@
 # bash source
 
 
+require args
+
+
 function do_mount(){
+	. args
 	function _info(){
 		if [ -n $verbose ];then
 			echo $@
@@ -54,111 +58,45 @@ function do_mount(){
 	declare -A moptsWithDeg
 	local tmopts=()
 	local i
-	while (( "$#" )); do
-		if [ "${1:0:1}" = "-" ];then
-			if [ -n "$moptShift" ];then
-				_die "missing mount option operand"
-			fi
-			if [ "${1:0:2}" = "--" ];then
-				case $1 in
-					--options)
-						moptShift=1
-						;;
-					--fake)
-						opts[-f]=1
-						;;
-					--verbose)
-						opts[-v]=1
-						;;
-					--rw)
-						if [ -n "${mopts[ro]}" ];then
-							_die "both 'rw' and 'ro' mount option specified"
-						fi
-						mopts[rw]=1
-						;;
-					--read-write)
-						if [ -n "${mopts[ro]}" ];then
-							_die "both 'rw' and 'ro' mount option specified"
-						fi
-						mopts[rw]=1
-						;;
-					--read-only)
-						if [ -n "${mopts[rw]}" ];then
-							_die "both 'rw' and 'ro' mount option specified"
-						fi
-						mopts[ro]=1
-						;;
-					--force-degraded)
-						forceDegraded=1
-						;;
-					--verbose)
-						verbose=1
-						;;
-					*)
-						_die "not supported option '$1'"
-						;;
-				esac
-			else
-				local i
-				local mustLast=""
-				for (( i=1; i<${#1}; i++ )); do
-					if [ -n "$mustLast" ];then
-						_die "missing mount option operand"
-					fi
-					local o="${1:$i:1}"
-					case "$o" in
-						f)
-							opts[-f]=1
-							;;
-						v)
-							opts[-v]=1
-							;;
-						w)
-							if [ -n "${mopts[ro]}" ];then
-								_die "both 'rw' and 'ro' mount option specified"
-							fi
-							mopts[rw]=1
-							;;
-						r)
-							if [ -n "${mopts[rw]}" ];then
-								_die "both 'rw' and 'ro' mount option specified"
-							fi
-							mopts[ro]=1
-							;;
-						o)
-							mustLast=1
-							moptShift=1
-							;;
-						*)
-							_die "unknown option '-$o'"
-							;;
-							
-					esac
-				done
-			fi
-		else
-			if [ -n "$moptShift" ];then
-				moptShift=
-				split tmopts "$1" ,
-				for i in "${tmopts[@]}"; do
-					if [ "$i" = "rw" -a "${mopts[ro]}" = 1 ]; then
-						_die "both 'rw' and 'ro' mount option specified"
-					fi
-					if [ "$i" = "ro" -a "${mopts[rw]}" = 1 ]; then
-						_die "both 'rw' and 'ro' mount option specified"
-					fi
-					mopts[$i]=1
-				done
-			else
-				args+=($1)
-				i=${#args[@]}
-				if ((i > 2)); then
-					_die "extra arguments specified"
-				fi
-			fi
+	
+	if opt --fake -f; then
+		opts[-f]=1
+	fi
+	if opt --vervose -v; then
+		opts[-v]=1
+		verbose=1
+	fi
+	if opt --rw  --read-write -w; then
+		if [ -n "${mopts[ro]}" ];then
+			_die "both 'rw' and 'ro' mount option specified"
 		fi
-		shift
-	done
+		mopts[rw]=1
+	fi
+	if opt --read-only -r; then
+		if [ -n "${mopts[rw]}" ];then
+			_die "both 'rw' and 'ro' mount option specified"
+		fi
+		mopts[ro]=1
+	fi
+	if opt --force-degraded; then
+		forceDegraded=1
+	fi
+	if opt --options -o op_arg; then
+		split tmopts "$op_arg" ,
+		for i in "${tmopts[@]}"; do
+			if [ "$i" = "rw" -a "${mopts[ro]}" = 1 ]; then
+				_die "both 'rw' and 'ro' mount option specified"
+			fi
+			if [ "$i" = "ro" -a "${mopts[rw]}" = 1 ]; then
+				_die "both 'rw' and 'ro' mount option specified"
+			fi
+			mopts[$i]=1
+		done
+	fi
+	i=${#all_args[@]}
+	if ((i > 2)); then
+		_die "extra arguments specified"
+	fi
 	local opts="${!opts[@]}"
 	for i in "${!mopts[@]}"; do
 		if [ "$i" != "degraded" ];then
@@ -175,8 +113,8 @@ function do_mount(){
 	mopts=$(joinopt "-o " , "${!mopts[@]}")
 	moptsNoDeg=$(joinopt "-o " , "${!moptsNoDeg[@]}")
 	moptsWithDeg=$(joinopt "-o " , "${!moptsWithDeg[@]}")
-	local src=${args[0]}
-	local dst=${args[1]}
+	local src=${all_args[0]}
+	local dst=${all_args[1]}
 	declare -A to_mount_cand
 	local to_mount
 	require partNum2Dev

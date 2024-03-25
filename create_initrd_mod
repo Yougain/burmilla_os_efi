@@ -44,6 +44,10 @@ function create_initrd_mod(){
 				die "installer disk not found"
 			fi
 			mount --bind $EXTD/installer/boot $EXTD/boot_dev
+		elif [ -n "$BURMILLA_ISO" ]; then
+			stand_alone=for_efi_iso
+			mkdir -p $EXTD/boot_dev
+			mount $BURMILLA_ISO $EXTD/boot_dev
 		else
 			stand_alone=1
 			do_mount 4 $EXTD/boot_dev
@@ -236,7 +240,26 @@ END
 
 IP=$(/sbin/ifconfig | grep -B1 "inet" |awk '{ if ( $1 == "inet" ) { print $2 } else if ( $3 == "mtu" ) { printf "%s:" ,$1 } }' |awk -F: '{ print $1 ": " $3}' | egrep -o ': [0-9a-f:\.]+' | head -1 | egrep -o '[0-9a-fA-F][0-9a-fA-F:\.]+')
 sed s/%IP%/$IP/g /opt/initrd/var/www/html/install.sh.tmpl > /opt/initrd/var/www/html/install.sh
-chroot /opt/initrd nginx &
+chroot /opt/initrd nginx
+
+BOOT_UUID="`cat /proc/cmdline|egrep -o 'ref_boot_uuid=[-0-9A-Fa-f]+'|egrep -o '[-0-9A-Fa-f]+'`"
+
+if [ -n "$BOOT_UUID" ];then
+	for boot_dev in `blkid2 --get-siblings BOOT_UUID=$BOOT_UUID`; do
+		if [[ "${boot_dev}" =~ ^(.*[^0-9])([0-9]+)$ ]];then
+			if [ ${BASH_REMATCH[2]} = 2 ];then
+				if mount -o degraded,ro "${BASH_REMATCH[1]}7" /mnt; then
+					if [ -d /mnt/etc/ssh ]; then
+						cp -av /mnt/etc/ssh/* /etc/ssh
+						kill -HUP $(ps ax |grep 'sshd -D' | grep -v grep | awk '{ print $1 }')
+						break
+					fi
+				fi
+			fi
+		fi
+	done
+fi
+
 
 END
 		chmod +x ./opt/rancher/bin/start.sh
