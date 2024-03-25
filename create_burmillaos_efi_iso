@@ -12,8 +12,7 @@ UB_CERT_URL=https://letsencrypt.org/certs/lets-encrypt-r3.pem
 BM_RELEASE_URL=https://github.com/burmilla/os/releases
 UB_RELEASE_URL=https://releases.ubuntu.com
 
-require -s initrd_support
-require create_initrd_mod
+PATH="$(realpth .):$PATH"
 
 function check_cmd {
 	while (( "$#" )); do
@@ -321,6 +320,7 @@ LINUX_DEBUG="$KERNEL_FILE vga=ask rancher.debug=true DEBUG=1 BURMILLAOS_VER=$BUR
 store_env -s $PD/boot/grub/LINUX_DEBUG
 store_env -s $PD/boot/grub/VERSION
 
+require create_initrd_mod
 pushd $PD/boot
 create_initrd_mod
 popd
