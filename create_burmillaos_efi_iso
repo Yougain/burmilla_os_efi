@@ -375,7 +375,6 @@ sudo xorriso -as mkisofs \
 
 echo Iso created.
 
-mv $P_ISO $ISO_DIR
 
 #sudo umount $UD $RD $PD
 sudo losetup -D $LDEVH
@@ -383,17 +382,58 @@ sudo losetup -D $LDEVH
 #rm -rf $ED2
 rm $P_IMG
 
+require "vercmp"
+
+new_ver(){
+	vercmp "${2#*-btrfs-}" "${!1#*-btrfs-}"
+	case $? in
+	0) # new
+		eval "$1=\"\$2\""
+		;;
+	2) # same
+		if vercmp "${2%%-btrfs-*}" "${!1%%-btrfs-*}"; then
+			eval "$1=\"\$2\""
+		fi
+		;;
+	esac
+}
+
 if [ -n "$OVERWRITE_USB" ];then
 	if [ -x "`which usb_dev`" ];then
 		UD="`usb_dev | egrep -o "/dev/sd." | uniq`"
-		if [ "`echo \"$UD\"|wc|awk '{print $1}'`" = 1 ]; then
-			if [ -e "$UD" ];then
+		for u in $UD; do
+			if [ -n "`blkid \"$u\"1`" | grep 'LABEL="RANCHEROS" TYPE="iso9660"'`" ];then
+				UD_INSTALLERS="$UD_INSTALLERS $u"
+			elif [ -z "`blkid \"$u\"7`" | grep 'LABEL="RANCHER_OEM_SIBLING" TYPE="btrfs"'`" ];then
+				UD_OTHERS="$UD_OTHERS $u"
+			fi
+		done
+		if [ -n "$UD_INSTALLERS" ];then
+			mkdir -p $SCRIPT_TMP_DIR/test_usb
+			for u in $UD_INSTALLERS; do
+				mount $u $SCRIPT_TMP_DIR/test_usb
+				if [ -f "$SCRIPT_TMP_DIR/boot/grub/VERSION" ];then
+					O_VER=`cat $SCRIPT_TMP_DIR/boot/grub/VERSION`
+					if new_ver VER_NEW $O_VER; then
+						TO_OVERWRITE=$u
+					fi
+				fi
+				umount $SCRIPT_TMP_DIR/test_usb
+			done
+			if [ -n "$TO_OVERWRITE" ];then
+				info Writing $BURMILLAOS_VER over $O_VER.
 				sudo dd if=$P_ISO of=$UD bs=10M status=progress
+				exit $?
+			fi
+		fi
+		if [ "`echo \"$UD_OTHERS\"|wc|awk '{print $1}'`" = 1 ]; then
+			if [ -e "$UD_OTHERS" ];then
+				sudo dd if=$P_ISO of=$UD_OTHERS bs=10M status=progress
 			else
 				echo Error: USB disk not found.
 			fi
 		else
-			echo Error: Multiple USB disk, $UD found. Please detach extra USB disk.
+			echo Error: Multiple USB disk, $UD_OTHERS found. Please detach extra USB disk.
 		fi
 	else
 		echo Error: command 'usb_dev' not found. 
