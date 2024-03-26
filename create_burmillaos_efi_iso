@@ -327,6 +327,8 @@ popd
 
 INITRD="initrd-$BURMILLAOS_VER"-mod
 store_env -s $PD/boot/grub/INITRD
+info INITRD=$INITRD
+info $PD/boot/grub/INITRD : `cat $PD/boot/grub/INITRD`
 
 
 BOOT_IMG_DATA=$ED
