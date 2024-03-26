@@ -225,7 +225,7 @@ PD="$T"/tmpproduct
 ED="$T"/tmpefiimg
 ED2="$T"/tmpefiimg2
 P_IMG="$T"/burmillaos-$BURMILLAOS_VER.efi.img
-P_ISO="$T"/burmillaos-$BURMILLAOS_VER.efi.iso
+P_ISO="$ISO_DIR"/burmillaos-$BURMILLAOS_VER.efi.iso
 
 info $P_ISO
 
@@ -374,6 +374,8 @@ sudo xorriso -as mkisofs \
     $PD
 
 echo Iso created.
+
+mv 
 
 #sudo umount $UD $RD $PD
 sudo losetup -D $LDEVH
