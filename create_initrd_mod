@@ -70,7 +70,8 @@ function create_initrd_mod(){
 				INITRD_FILE=initrd-$1
 			fi
 		else
-			INITRD_FILE=`cd $EXTD/boot_dev;ls -d initrd-*|egrep -v '\-mod$'`
+			INITRD_FILE=`cd $EXTD/boot_dev/boot;ls -d initrd-*|egrep -v '\-mod$'`
+			info INITRD_FILE=$INITRD_FILE
 			local INITRD_FILE_COUNT=`echo "$INITRD_FILE" | wc | awk '{print $1}'`
 			if [ "$INITRD_FILE_COUNT" != "1" ];then
 			    die cannot detect initrd in iso image, or multiple initrd detected.
