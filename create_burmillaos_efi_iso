@@ -37,7 +37,8 @@ if [ -n "$NO_CMD" ];then
 fi
 
 
-T=/home/$SUDO_USER/burmilla_os_iso
+T=$SCRIPT_TMP_DIR
+ISO_DIR=/home/$SUDO_USER/burmilla_os_iso
 
 if [ ! -d $T ];then
 	mkdir $T
@@ -50,7 +51,7 @@ function ver {
 }
 
 F_VERSIONS=`wget $BM_RELEASE_URL --quiet -O - |egrep -o 'expanded_assets/v[0-9].*"'|awk '{sub(/.$/, "", $0);print substr($0,17)}'`
-VERSIONS=`ls $T/ | grep -v efi | grep iso | grep burmillaos | sed -s 's/burmillaos-//;s/.iso//'`"
+VERSIONS=`ls /home/$SUDO_USER/burmilla_os_iso | grep -v efi | grep iso | grep burmillaos | sed -s 's/burmillaos-//;s/.iso//'`"
 "$F_VERSIONS
 echo "$VERSIONS" > $SCRIPT_TMP_DIR/$0.ver
 echo "--`cat $SCRIPT_TMP_DIR/$0.ver`--"
@@ -92,14 +93,14 @@ while (( "$#" )); do
 			;;
 		"now" )
 			ARG_FOUND=1
-			isofile=`ls -t "$T"/burmillaos-*.iso | grep -v .efi.iso | head -1`
+			isofile=`ls -t "$ISO_DIR"/burmillaos-*.iso | grep -v .efi.iso | head -1`
 			tmp=${isofile##*burmillaos-}
 			BURMILLAOS_VER=${tmp%.iso}
 			;;
 		* )
 			ARG_FOUND=1
-			echo "$T"/burmillaos-$1.iso
-			if [ -e "$T"/burmillaos-$1.iso ];then
+			echo "$ISO_DIR"/burmillaos-$1.iso
+			if [ -e "$ISO_DIR"/burmillaos-$1.iso ];then
 				BURMILLAOS_VER=$1
 			else
 				for i in $VERSIONS; do
@@ -123,7 +124,7 @@ if [ -z "$BURMILLAOS_VER" ];then
 	exit 1
 fi
 
-UB_CERT=$T/${UB_CERT_URL##*/}
+#UB_CERT=$T/${UB_CERT_URL##*/}
 
 
 function WG(){
@@ -192,14 +193,14 @@ function WG(){
 
 BURMILLAOS_VER=${BURMILLAOS_VER%$'\n'*}
 info BurmillaOS Version: $BURMILLAOS_VER
-BURMILLA_ISO="$T"/burmillaos-$BURMILLAOS_VER.iso
+BURMILLA_ISO="$ISO_DIR"/burmillaos-$BURMILLAOS_VER.iso
 
 #LATEST_U=`WG --ca-certificate=$UB_CERT -O - $UB_RELEASE_URL/ 2>/dev/null|awk '/Ubuntu [0-9]+(\.[0-9]+)+ LTS/{print $0}'|head -1|awk '{match($0, /Ubuntu [0-9]+(\.[0-9]+)+ LTS \([^)]+\)/); print substr($0, RSTART, RLENGTH)}'`
 LATEST_U=`WG --no-check-certificate -O - $UB_RELEASE_URL/ 2>/dev/null|awk '/Ubuntu [0-9]+(\.[0-9]+)+ LTS/{print $0}'|head -1|awk '{match($0, /Ubuntu [0-9]+(\.[0-9]+)+ LTS \([^)]+\)/); print substr($0, RSTART, RLENGTH)}'`
 LATEST_UV=`echo $LATEST_U | awk '{print $2}'`
 #UDIR=`WG --ca-certificate=$UB_CERT -O - $UB_RELEASE_URL/ 2>/dev/null|grep "$LATEST_U"|grep href| head -1|awk '{match($0,/href="[^"]+"/);print substr($0,RSTART+6,RLENGTH-7)}'`
 UDIR=`WG --no-check-certificate -O - $UB_RELEASE_URL/ 2>/dev/null|grep "$LATEST_U"|grep href| head -1|awk '{match($0,/href="[^"]+"/);print substr($0,RSTART+6,RLENGTH-7)}'`
-UBUNTU_ISO="$T"/ubuntu-$LATEST_UV-live-server-amd64.iso
+UBUNTU_ISO="$ISO_DIR"/ubuntu-$LATEST_UV-live-server-amd64.iso
 info Ubuntu Version: $LATEST_UV
 
 if [ ! -e $BURMILLA_ISO ];then
@@ -312,9 +313,7 @@ sudo cp -ar $UD/EFI $PD/
 #echo /rancheros/Dockerfile.amd64
 #cat $PD/rancheros/Dockerfile.amd64
 
-cp $(__FILE_DIR__)/grub.cfg "$T"/grub.cfg
-
-sudo cp -f "$T"/grub.cfg $PD/boot/grub/grub.cfg
+cp $(__FILE_DIR__)/grub.cfg $PD/boot/grub/grub.cfg
 
 ISO_UUID_ARG="`date -u +%Y-%m-%d-%H-%M-%S-00`"
 ISO_UUID="UUID=$ISO_UUID_ARG"
@@ -344,10 +343,10 @@ mkfs.vfat -n ROS_EFI $BOOT_IMG
 sudo mount $BOOT_IMG $BOOT_IMG_DATA
 sudo mkdir -p $BOOT_IMG_DATA/efi/boot
 
-cat - > "$T"/early-config.cfg <<'END'
-search --no-floppy --set=root --label RANCHEROS
-configfile /boot/grub/grub.cfg
-END
+#cat - > "$T"/early-config.cfg <<'END'
+#search --no-floppy --set=root --fs-uuid $ISO_UUID_ARG
+#configfile /boot/grub/grub.cfg
+#END
 
 
 sudo cp -av $UD/EFI/boot/*  $BOOT_IMG_DATA/efi/boot
