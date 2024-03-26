@@ -43,6 +43,8 @@ function create_initrd_mod(){
 			if ! mount /home/$SUDO_USER/burmilla_os_iso/burmillaos-$1.iso $EXTD/installer;then
 				die "installer disk not found"
 			fi
+			ls -la $EXTD/installer
+			ls -la $EXTD/installer/boot
 			mount --bind $EXTD/installer/boot $EXTD/boot_dev
 		elif [ -n "$BURMILLA_ISO" ]; then
 			stand_alone=for_efi_iso
@@ -71,7 +73,7 @@ function create_initrd_mod(){
 			fi
 		else
 			ls -la $EXTD/boot_dev
-			INITRD_FILE=`cd $EXTD/boot_dev;ls -d initrd-*|egrep -v '\-mod$'`
+			INITRD_FILE="`cd $EXTD/boot_dev;ls -d initrd-*|egrep -v '\-mod$'`"
 			info INITRD_FILE=$INITRD_FILE
 			local INITRD_FILE_COUNT=`echo "$INITRD_FILE" | wc | awk '{print $1}'`
 			if [ "$INITRD_FILE_COUNT" != "1" ];then
