@@ -286,7 +286,7 @@ LDEV=$LDEVH"p1"
 ls $LDEV
 GLOBAL_APPEND=`cat $RD/boot/global.cfg|sed "s/ console=ttyS[^ ]*//g"|sed "s/ rancher.autologin=ttyS[^ ]*//g"` 
 GLOBAL_APPEND_ARGS=${GLOBAL_APPEND#APPEND *}
-KERNEL_ARGS="rancher.password=rancher $GLOBAL_APPEND_ARGS root=LABEL=RANCHEROS"
+KERNEL_ARGS="rancher.password=rancher $GLOBAL_APPEND_ARGS"
 VGA_ARGS="nomodeset vga=775 video=1024x768"
 
 sudo mkfs.fat $LDEV
