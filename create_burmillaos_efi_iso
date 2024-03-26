@@ -375,7 +375,7 @@ sudo xorriso -as mkisofs \
 
 echo Iso created.
 
-mv 
+mv $P_ISO $ISO_DIR
 
 #sudo umount $UD $RD $PD
 sudo losetup -D $LDEVH
