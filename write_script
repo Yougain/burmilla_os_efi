@@ -23,8 +23,10 @@ function store_env(){
 		else
 			eval "local dec_vname=\"\$2\""
 		fi
+		info dec_vname=$dec_vname
 		local dec="`declare -p $dec_vname 2> /dev/null`"
 		if [ "$?" = 0 ];then
+			info dec=$dec
 			echo ${dec#*-* } > $1
 		else
 			die "cannot store variable '$dec_vname'"
