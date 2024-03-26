@@ -51,7 +51,7 @@ function create_initrd_mod(){
 		elif [ -n "$BURMILLA_ISO" ]; then
 			info BURMILLA_ISO=$BURMILLA_ISO
 			stand_alone=for_efi_iso
-			mkdir -p $EXTD/boot_dev
+			mkdir -p $EXTD/{boot_dev,installer}
 			mount $BURMILLA_ISO $EXTD/installer
 			mount --bind $EXTD/installer/boot $EXTD/boot_dev
 		else
