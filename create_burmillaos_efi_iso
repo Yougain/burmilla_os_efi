@@ -92,6 +92,7 @@ while (( "$#" )); do
 			;;
 		"--force" )
 			FORCE=1
+			;;
 		* )
 			if ! detect NON_EFI_BTRFS_VERSIONS $1; then
 				die "Cannot use version, '$1'. Non-efi version is not found."
