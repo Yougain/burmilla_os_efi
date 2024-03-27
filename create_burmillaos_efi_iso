@@ -391,7 +391,7 @@ if [ -n "$OVERWRITE_USB" ];then
 				UD_INSTALLERS+=($u)
 			elif [ -z "`blkid \"$u\"7 | grep 'LABEL=\"RANCHER_OEM_SIBLING\"'`" ];then
 				UD_OTHERS+=($u)
-				i=`blkid "$u"7 | egrep -o 'LABEL=".*"'`
+				i=`blkid "$u" | egrep -o 'LABEL="[^"]*"'`
 				if [ -n "$i" ];then
 					UD_OTHERS_LABEL+=(" ($i)")
 				else
