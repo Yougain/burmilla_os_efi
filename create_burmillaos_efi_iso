@@ -84,6 +84,14 @@ while (( "$#" )); do
 		"--overwrite-usb" )
 			OVERWRITE_USB=1
 			;;
+		"--skip-rebuild" )
+			SKIP_REBUILD=1
+			;;
+		"--skip-recreate" )
+			SKIP_RECREATE=1
+			;;
+		"--force" )
+			FORCE=1
 		* )
 			if ! detect NON_EFI_BTRFS_VERSIONS $1; then
 				die "Cannot use version, '$1'. Non-efi version is not found."
@@ -96,15 +104,17 @@ while (( "$#" )); do
 done
 
 
-if [ -z "$BURMILLAOS_VER" ];then
+if [ -z "$BURMILLAOS_VER" ]; then
 	BURMILLAOS_VER=$LATEST_STABLE-btrfs-$LATEST_B_VERSION
 fi
-if ! detect NON_EFI_BTRFS_VERSIONS $BURMILLAOS_VER; then
-	su $SUDO_USER -c ./build_burmillaos
-fi
-NON_EFI_BTRFS_VERSIONS=(`ls /home/$SUDO_USER/burmilla_os_iso | grep -v efi | grep iso | grep burmillaos | sed -s 's/burmillaos-//;s/.iso//'`)
-if ! detect NON_EFI_BTRFS_VERSIONS $BURMILLAOS_VER; then
-	die "cannot build $BURMILLAOS_VER"
+if [ "$LATEST_STABLE-btrfs-$LATEST_B_VERSION" = "$BURMILLAOS_VER" ]; then
+	if ! detect NON_EFI_BTRFS_VERSIONS $BURMILLAOS_VER; then
+		su $SUDO_USER -c ./build_burmillaos
+	fi
+	NON_EFI_BTRFS_VERSIONS=(`ls /home/$SUDO_USER/burmilla_os_iso | grep -v efi | grep iso | grep burmillaos | sed -s 's/burmillaos-//;s/.iso//'`)
+	if ! detect NON_EFI_BTRFS_VERSIONS $BURMILLAOS_VER; then
+		die "cannot build $BURMILLAOS_VER"
+	fi
 fi
 
 
@@ -189,19 +199,21 @@ UBUNTU_ISO="$ISO_DIR"/ubuntu-$LATEST_UV-live-server-amd64.iso
 info Ubuntu Version: $LATEST_UV
 
 if [ ! -e "$BURMILLA_ISO" ];then
-	for i in $F_VERSION;do
-		if [ "$i" = "$BURMILLAOS_VER" ];then
-			info download $BURMILLAOS_VER
-			WG $BM_RELEASE_URL/download/$BURMILLAOS_VER/burmillaos-$BURMILLAOS_VER.iso -O $BURMILLA_ISO
-			break
-		fi
-	done
-	if [ ! -e "$BURMILLA_ISO" ];then
-		die cannot download burmillaos-$BURMILLAOS_VER.iso
-	fi
+#	for i in $F_VERSION;do
+#		if [ "$i" = "${BURMILLAOS_VER%-btrfs*}" ];then
+#			info download $i
+#			WG $BM_RELEASE_URL/download/$BURMILLAOS_VER/burmillaos-$i.iso -O $BURMILLA_ISO
+#			break
+#		fi
+#	done
+#	if [ ! -e "$BURMILLA_ISO" ];then
+		die cannot find burmillaos-$BURMILLAOS_VER.iso
+#	fi
 fi
 #WG --ca-certificate=$UB_CERT $UB_RELEASE_URL/$UDIR"ubuntu-$LATEST_UV-live-server-amd64.iso" -O $UBUNTU_ISO
-WG --no-check-certificate $UB_RELEASE_URL/$UDIR"ubuntu-$LATEST_UV-live-server-amd64.iso" -O $UBUNTU_ISO
+if [ ! -e "$UBUNTU_ISO" ];then
+	WG --no-check-certificate $UB_RELEASE_URL/$UDIR"ubuntu-$LATEST_UV-live-server-amd64.iso" -O $UBUNTU_ISO
+fi
 
 
 UD="$T"/tmpubuntu
@@ -214,6 +226,7 @@ P_ISO="$ISO_DIR"/burmillaos-$BURMILLAOS_VER.efi.iso
 
 info $P_ISO
 
+if [ -z "$SKIP_RECREATE" ];then
 
 #require create_initrd_mod write_script
 #create_initrd_mod $BURMILLAOS_VER
@@ -360,12 +373,14 @@ sudo xorriso -as mkisofs \
 echo Iso created.
 
 
+
 #sudo umount $UD $RD $PD
 sudo losetup -D $LDEVH
 #rmdir $UD $RD $PD
 #rm -rf $ED2
 rm $P_IMG
 
+fi
 
 new_ver(){
 	vercmp "${2#*-btrfs-}" "${!1#*-btrfs-}"
@@ -400,6 +415,21 @@ if [ -n "$OVERWRITE_USB" ];then
 				fi
 			fi
 		done
+		write_iso(){
+			if [ -z "$FORCE" ]; then
+				whiteBgRed_n "Really overwrite? "
+				yellowBgRed_n  "[y/n]:"
+				echo -n " "
+				if ask_yes_no; then
+					FORCE=1
+				else
+					info "Terminated by user."
+				fi
+			fi
+			if [ -n "$FORCE" ]; then
+				sudo dd if=$P_ISO of=$1 bs=10M status=progress
+			fi
+		}
 		if [ "${#UD_INSTALLERS[@]}" -ge 1 ];then
 			mkdir -p $SCRIPT_TMP_DIR/test_usb
 			for u in "${UD_INSTALLERS[@]}"; do
@@ -421,28 +451,14 @@ if [ -n "$OVERWRITE_USB" ];then
 			done
 			if [ -n "$TO_OVERWRITE" ];then
 				info Writing $BURMILLAOS_VER over $O_VER \($TO_OVERWRITE\).
-				whiteBgRed_n "Really overwrite? "
-				yellowBgRed_n  "[y/n]:"
-				echo -n " "
-				if ask_yes_no; then
-					sudo dd if=$P_ISO of=$TO_OVERWRITE bs=10M status=progress
-				else
-					info "Terminated by user."
-				fi
+				write_iso $TO_OVERWRITE
 				exit $?
 			fi
 		fi
 		if [ "${#UD_OTHERS[@]}" = 1 ]; then
 			if [ -e "${UD_OTHERS[0]}" ];then
 				info Writing $BURMILLAOS_VER over ${UD_OTHERS[0]}${UD_OTHERS_LABEL[0]}.
-				whiteBgRed_n "Really overwrite? "
-				yellowBgRed_n  "[y/n]:"
-				echo -n " "
-				if ask_yes_no; then
-					sudo dd if=$P_ISO of=${UD_OTHERS[0]} bs=10M status=progress
-				else
-					info "Terminated by user."
-				fi
+				write_iso ${UD_OTHERS[0]}
 			else
 				echo Error: USB disk not found.
 			fi
