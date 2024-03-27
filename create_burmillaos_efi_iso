@@ -419,7 +419,7 @@ if [ -n "$OVERWRITE_USB" ];then
 				umount $SCRIPT_TMP_DIR/test_usb
 			done
 			if [ -n "$TO_OVERWRITE" ];then
-				info Writing $BURMILLAOS_VER over $O_VER ($TO_OVERWRITE).
+				info Writing $BURMILLAOS_VER over $O_VER \($TO_OVERWRITE\).
 				if ask_yes_no "Really overwrite"; then
 					sudo dd if=$P_ISO of=$TO_OVERWRITE bs=10M status=progress
 				fi
