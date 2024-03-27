@@ -384,9 +384,9 @@ if [ -n "$OVERWRITE_USB" ];then
 	if [ -x "`which usb_dev`" ];then
 		UD="`usb_dev | egrep -o \"/dev/sd.\" | uniq`"
 		for u in $UD; do
-			if [ -n "`blkid \"$u\"1`" | grep 'LABEL=\"RANCHEROS\" TYPE=\"iso9660\"'`" ];then
+			if [ -n "`blkid \"$u\"1 | grep 'LABEL=\"RANCHEROS\" TYPE=\"iso9660\"'`" ];then
 				UD_INSTALLERS="$UD_INSTALLERS $u"
-			elif [ -z "`blkid \"$u\"7`" | grep 'LABEL=\"RANCHER_OEM_SIBLING\" TYPE=\"btrfs\"'`" ];then
+			elif [ -z "`blkid \"$u\"7 | grep 'LABEL=\"RANCHER_OEM_SIBLING\" TYPE=\"btrfs\"'`" ];then
 				UD_OTHERS="$UD_OTHERS $u"
 			fi
 		done
