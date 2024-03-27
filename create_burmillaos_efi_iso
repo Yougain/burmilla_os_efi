@@ -100,7 +100,7 @@ if [ -z "$BURMILLAOS_VER" ];then
 	BURMILLAOS_VER=$LATEST_STABLE-btrfs-$LATEST_B_VERSION
 fi
 if ! detect NON_EFI_BTRFS_VERSIONS $BURMILLAOS_VER; then
-	./build_burmillaos
+	su $SUDO_USER -c ./build_burmillaos
 fi
 if ! detect NON_EFI_BTRFS_VERSIONS $BURMILLAOS_VER; then
 	die "cannot build $BURMILLAOS_VER"
