@@ -420,8 +420,13 @@ if [ -n "$OVERWRITE_USB" ];then
 			done
 			if [ -n "$TO_OVERWRITE" ];then
 				info Writing $BURMILLAOS_VER over $O_VER \($TO_OVERWRITE\).
-				if ask_yes_no "Really overwrite"; then
+				whiteBgRed_n "Really overwrite? "
+				yellowBgRed_n  "[y/n]:"
+				echo -n " "
+				if ask_yes_no; then
 					sudo dd if=$P_ISO of=$TO_OVERWRITE bs=10M status=progress
+				else
+					info "Terminated by user."
 				fi
 				exit $?
 			fi
@@ -429,8 +434,13 @@ if [ -n "$OVERWRITE_USB" ];then
 		if [ "${#UD_OTHERS[@]}" = 1 ]; then
 			if [ -e "${UD_OTHERS[0]}" ];then
 				info Writing $BURMILLAOS_VER over ${UD_OTHERS[0]}${UD_OTHERS_LABEL[0]}.
-				if ask_yes_no "Really overwrite"; then
+				whiteBgRed_n "Really overwrite? "
+				yellowBgRed_n  "[y/n]:"
+				echo -n " "
+				if ask_yes_no; then
 					sudo dd if=$P_ISO of=${UD_OTHERS[0]} bs=10M status=progress
+				else
+					info "Terminated by user."
 				fi
 			else
 				echo Error: USB disk not found.
