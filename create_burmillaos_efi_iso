@@ -63,7 +63,7 @@ if vercmp $LATEST_STABLE $LATEST_RC;then
 	LATEST_RC=
 fi
 
-LATEST_B_VERSION=`cat version`
+LATEST_B_VERSION=`cat version|awk '{print $1}'`
 
 
 # argument analysis
@@ -188,7 +188,7 @@ UDIR=`WG --no-check-certificate -O - $UB_RELEASE_URL/ 2>/dev/null|grep "$LATEST_
 UBUNTU_ISO="$ISO_DIR"/ubuntu-$LATEST_UV-live-server-amd64.iso
 info Ubuntu Version: $LATEST_UV
 
-if [ ! -e $BURMILLA_ISO ];then
+if [ ! -e "$BURMILLA_ISO" ];then
 	for i in $F_VERSION;do
 		if [ "$i" = "$BURMILLAOS_VER" ];then
 			info download $BURMILLAOS_VER
@@ -196,7 +196,7 @@ if [ ! -e $BURMILLA_ISO ];then
 			break
 		fi
 	done
-	if [ ! -e $BURMILLA_ISO ];then
+	if [ ! -e "$BURMILLA_ISO" ];then
 		die cannot download burmillaos-$BURMILLAOS_VER.iso
 	fi
 fi
