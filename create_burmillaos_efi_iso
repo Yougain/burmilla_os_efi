@@ -382,35 +382,56 @@ new_ver(){
 
 if [ -n "$OVERWRITE_USB" ];then
 	if [ -x "`which usb_dev`" ];then
-		UD="`usb_dev | egrep -o \"/dev/sd.\" | uniq`"
-		for u in $UD; do
+		UD=(`usb_dev | egrep -o "/dev/sd." | uniq`)
+		UD_INSTALLERS=()
+		UD_OTHERS=()
+		UD_OTHERS_LABEL=()
+		for u in "${UD[@]}"; do
 			if [ -n "`blkid \"$u\"1 | grep 'LABEL=\"RANCHEROS\" TYPE=\"iso9660\"'`" ];then
-				UD_INSTALLERS="$UD_INSTALLERS $u"
-			elif [ -z "`blkid \"$u\"7 | grep 'LABEL=\"RANCHER_OEM_SIBLING\" TYPE=\"btrfs\"'`" ];then
-				UD_OTHERS="$UD_OTHERS $u"
+				UD_INSTALLERS+=($u)
+			elif [ -z "`blkid \"$u\"7 | grep 'LABEL=\"RANCHER_OEM_SIBLING\"'`" ];then
+				UD_OTHERS+=($u)
+				i=`blkid "$u"7 | egrep -o 'LABEL=".*"'`
+				if [ -n "$i" ];then
+					UD_OTHERS_LABEL+=(" ($i)")
+				else
+					UD_OTHERS_LABEL+=("")
+				fi
 			fi
 		done
-		if [ -n "$UD_INSTALLERS" ];then
+		if [ "${#UD_INSTALLERS[@]}" -ge 1 ];then
 			mkdir -p $SCRIPT_TMP_DIR/test_usb
-			for u in $UD_INSTALLERS; do
+			for u in "${UD_INSTALLERS[@]}"; do
 				mount $u $SCRIPT_TMP_DIR/test_usb
-				if [ -f "$SCRIPT_TMP_DIR/boot/grub/VERSION" ];then
-					O_VER=`cat $SCRIPT_TMP_DIR/boot/grub/VERSION`
-					if new_ver VER_NEW $O_VER; then
+				if [ -f "$SCRIPT_TMP_DIR/test_usb/boot/grub/VERSION" ];then
+					O_VER=`cat $SCRIPT_TMP_DIR/test_usb/boot/grub/VERSION`
+					O_VER=`eval echo ${O_VER#*=}`
+					info installer $u \($O_VER\) found.
+					if [ -n "$VER_NEW" ];then
+						if new_ver VER_NEW $O_VER; then
+							TO_OVERWRITE=$u
+						fi
+					else
+						VER_NEW=$O_VER
 						TO_OVERWRITE=$u
 					fi
 				fi
 				umount $SCRIPT_TMP_DIR/test_usb
 			done
 			if [ -n "$TO_OVERWRITE" ];then
-				info Writing $BURMILLAOS_VER over $O_VER.
-				sudo dd if=$P_ISO of=$UD bs=10M status=progress
+				info Writing $BURMILLAOS_VER over $O_VER ($TO_OVERWRITE).
+				if ask_yes_no "Really overwrite"; then
+					sudo dd if=$P_ISO of=$TO_OVERWRITE bs=10M status=progress
+				fi
 				exit $?
 			fi
 		fi
-		if [ "`echo \"$UD_OTHERS\"|wc|awk '{print $1}'`" = 1 ]; then
-			if [ -e "$UD_OTHERS" ];then
-				sudo dd if=$P_ISO of=$UD_OTHERS bs=10M status=progress
+		if [ "${#UD_OTHERS[@]}" = 1 ]; then
+			if [ -e "${UD_OTHERS[0]}" ];then
+				info Writing $BURMILLAOS_VER over ${UD_OTHERS[0]}${UD_OTHERS_LABEL[0]}.
+				if ask_yes_no "Really overwrite"; then
+					sudo dd if=$P_ISO of=${UD_OTHERS[0]} bs=10M status=progress
+				fi
 			else
 				echo Error: USB disk not found.
 			fi
