@@ -59,8 +59,8 @@ function commit(){
 	dbv $@
 	dbv $*
 	if [ -z "$no_ver_mod" ];then
-		echo -E "`v` $*" > version
 		if [ $# -gt 0 ];then
+			echo -E "`v` $*" > version
 			echo -E "`date` `v` $*
 `cat change_log`" > change_log.new
 			mv -f change_log.new change_log
@@ -68,6 +68,8 @@ function commit(){
 			if [ -z "$log_exist" ];then
 				git add change_log
 			fi
+		else
+			echo -E "`v`" > version
 		fi
 		local version_exist=$(echo "`git ls-files`" | egrep "^version$")
 		if [ -z "$version_exist" ];then
