@@ -8,6 +8,9 @@ if [ "`id -u`" != 0 -o -z "$SUDO_USER" ];then
 	die "not sudo"
 fi
 
+require write_script vercmp
+
+
 UB_CERT_URL=https://letsencrypt.org/certs/lets-encrypt-r3.pem
 BM_RELEASE_URL=https://github.com/burmilla/os/releases
 UB_RELEASE_URL=https://releases.ubuntu.com
@@ -40,89 +43,70 @@ fi
 T=$SCRIPT_TMP_DIR
 ISO_DIR=/home/$SUDO_USER/burmilla_os_iso
 
-if [ ! -d $T ];then
-	mkdir $T
-fi
-
-function vc { printf "%03d%03d%03d" $(echo "$1" | tr '.' ' '); }
-function ver { 
-	local tmp=${1:1}
-	echo -n ${tmp%%-*}
-}
 
 F_VERSIONS=`wget $BM_RELEASE_URL --quiet -O - |egrep -o 'expanded_assets/v[0-9].*"'|awk '{sub(/.$/, "", $0);print substr($0,17)}'`
-VERSIONS=`ls /home/$SUDO_USER/burmilla_os_iso | grep -v efi | grep iso | grep burmillaos | sed -s 's/burmillaos-//;s/.iso//'`"
-"$F_VERSIONS
-echo "$VERSIONS" > $SCRIPT_TMP_DIR/$0.ver
-echo "--`cat $SCRIPT_TMP_DIR/$0.ver`--"
-echo "$VERSIONS" | awk '{gsub(/^v/,"");gsub(/$/, ".2"); gsub(/-rc/,".1.");gsub(/-beta/,".0.");print}' | tr '.' ' ' | awk '{printf "%03d%03d%03d%03d%03d %01d\n", $1, $2, $3, $4, $5, $4}' > $SCRIPT_TMP_DIR/$0.vernum
-paste -d " " $SCRIPT_TMP_DIR/$0.vernum $SCRIPT_TMP_DIR/$0.ver | sort -r | uniq |awk '{print $3}' > $SCRIPT_TMP_DIR/$0.list
-VERSIONS=`cat $SCRIPT_TMP_DIR/$0.list`
+NON_EFI_BTRFS_VERSIONS=(`ls /home/$SUDO_USER/burmilla_os_iso | grep -v efi | grep iso | grep burmillaos | sed -s 's/burmillaos-//;s/.iso//'`)
 
-LATEST_STABLE=`echo "$VERSIONS"  | egrep -v '\-rc' | egrep -v '\-beta' | head -1`
-LATEST_BETA=`echo "$VERSIONS" | egrep '\-beta' | head -1`
-LATEST_RC=`echo "$VERSIONS" | egrep '\-rc' | head -1`
+LATEST_STABLE=$(latest_ver `echo "$F_VERSIONS"|grep -v rc|grep -v beta`)
+LATEST_BETA=$(latest_ver `echo "$F_VERSIONS"|grep rc`)
+LATEST_RC=$(latest_ver `echo "$F_VERSIONS"|grep beta`)
 
-LATEST_STABLE_V=$(ver $LATEST_STABLE)
-LATEST_BETA_V=$(ver $LATEST_BETA)
-LATEST_RC_V=$(ver $LATEST_RC)
+if vercmp $LATEST_STABLE $LATEST_BETA;then
+	LATEST_BETA=
+fi
+
+if vercmp $LATEST_RC $LATEST_BETA;then
+	LATEST_BETA=
+fi
+
+if vercmp $LATEST_STABLE $LATEST_RC;then
+	LATEST_RC=
+fi
+
+LATEST_B_VERSION=`cat version`
 
 
 # argument analysis
 while (( "$#" )); do
 	case "$1" in
 		"rc" )
-			if [ $(vc $LATEST_STABLE_V) -ge $(vc $LATEST_RC_V) ];then
+			if [ -z "$LATEST_RC" ];then
 				die "latest rc not found"
 			fi
-			ARG_FOUND=1
-			BURMILLAOS_VER=$LATEST_RC
+			BURMILLAOS_VER=$LATEST_RC-btrfs-$LATEST_B_VERSION
 			;;
 		"beta" )
-			if [ $(vc $LATEST_STABLE_V) -ge $(vc $LATEST_BETA_V) ];then
+			if [ -z "$LATEST_BETA" ];then
 				die "latest beta not found"
 			fi
-			if [ $(vc $LATEST_RC_V) -ge $(vc $LATEST_BETA_V) ];then
-				die "latest beta not found"
-			fi
-			ARG_FOUND=1
-			BURMILLAOS_VER=$LATEST_BETA
+			BURMILLAOS_VER=$LATEST_BETA-btrfs-$LATEST_B_VERSION
 			;;
 		"--overwrite-usb" )
 			OVERWRITE_USB=1
 			;;
-		"now" )
-			ARG_FOUND=1
-			isofile=`ls -t "$ISO_DIR"/burmillaos-*.iso | grep -v .efi.iso | head -1`
-			tmp=${isofile##*burmillaos-}
-			BURMILLAOS_VER=${tmp%.iso}
-			;;
 		* )
-			ARG_FOUND=1
-			echo "$ISO_DIR"/burmillaos-$1.iso
-			if [ -e "$ISO_DIR"/burmillaos-$1.iso ];then
-				BURMILLAOS_VER=$1
+			if ! detect NON_EFI_BTRFS_VERSIONS $1; then
+				die "Cannot use version, '$1'. Non-efi version is not found."
 			else
-				for i in $VERSIONS; do
-					if [ "$i" = "$1" ];then
-						BURMILLAOS_VER=$1
-					fi
-				done
+				BURMILLAOS_VER=$1
 			fi
+			;;
 	esac
 	shift
 done
 
-if [ -z "$ARG_FOUND" ];then
-	BURMILLAOS_VER=$LATEST_STABLE
-fi
 
 if [ -z "$BURMILLAOS_VER" ];then
-	echo -e  $error"Version, $1 is not found"$normal
-	info "Available Versions:"
-	echo -e $cyan"$VERSIONS"$normal
-	exit 1
+	BURMILLAOS_VER=$LATEST_STABLE-btrfs-$LATEST_B_VERSION
 fi
+if ! detect NON_EFI_BTRFS_VERSIONS $BURMILLAOS_VER; then
+	./build_burmillaos
+fi
+if ! detect NON_EFI_BTRFS_VERSIONS $BURMILLAOS_VER; then
+	die "cannot build $BURMILLAOS_VER"
+fi
+
+
 
 #UB_CERT=$T/${UB_CERT_URL##*/}
 
@@ -231,7 +215,6 @@ info $P_ISO
 
 
 #require create_initrd_mod write_script
-require write_script
 #create_initrd_mod $BURMILLAOS_VER
 #if [ -z "$INITRD_FILE" ];then
 #	die initrd file, not detected
@@ -382,7 +365,6 @@ sudo losetup -D $LDEVH
 #rm -rf $ED2
 rm $P_IMG
 
-require "vercmp"
 
 new_ver(){
 	vercmp "${2#*-btrfs-}" "${!1#*-btrfs-}"

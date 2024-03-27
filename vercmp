@@ -213,4 +213,14 @@ vercmp(){
 	vercmp_elem "" ${b[$i]}
 }
 
+latest_ver(){
+	local latest="$1"
+	shift
+	for i in "$@"; do
+		if vercmp "$i" "$latest"; then
+			latest="$i"
+		fi
+	done
+	echo "$latest"
+}
 

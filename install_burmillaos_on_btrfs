@@ -1448,11 +1448,12 @@ ssh_sudo <<'FINAL'
 		# clear booting flags on all sibling drives
 		/sbin/blkid | grep LABEL=\"EFI\" | awk '{print substr($1, 1, length($1) - 1)}' | while read efi; do
 			mount $efi /mnt_efi_test
-			rm -f /mnt_efi_test/.last_booted
+			rm -f /mnt_efi_test/LAST_BOOTED_VER
 			umount /mnt_efi_test
 		done
 		do_mount 2 /mnt_efi_test
-		touch /mnt_efi_test/.last_booted
+		LAST_BOOTED_VER="`cat /proc/cmdline|egrep -o ' BURMILLAOS_VER=[^ ]+'|egrep -o '[^=]+$'`"
+		echo "LAST_BOOTED_VER=$LAST_BOOTED_VER"  > /mnt_efi_test/LAST_BOOTED_VER
 		umount /mnt_efi_test
 		rmdir /mnt_efi_test
 		mkdir -p $(__FILE_DIR__)/startup.d
