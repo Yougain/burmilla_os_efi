@@ -1025,9 +1025,9 @@ ssh_sudo <<'FINAL'
 	INITRD="$INITRD_FILE"
 	VERSION="$BURMILLAOS_VER"
 	echo VERSION="$VERSION"
-	store_env -s /installing/efipart/LINUX
-	store_env -s /installing/efipart/LINUX_DEBUG
-	store_env -s /installing/efipart/INITRD
+	store_env -s /installing/efipart/LINUX-$VERSION
+	store_env -s /installing/efipart/LINUX_DEBUG-$VERSION
+	store_env -s /installing/efipart/INITRD-$VERSION
 	store_env -s /installing/efipart/VERSION
 	
 FINAL
