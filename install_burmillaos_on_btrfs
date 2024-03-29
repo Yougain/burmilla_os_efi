@@ -964,7 +964,7 @@ ssh_sudo <<'FINAL'
 		echo btrfs subvolume set-default `btrfs subvolume list /installing/oem_top|grep oem_root|awk '{print $2}'` /installing/oem_top
 		btrfs subvolume set-default `btrfs subvolume list /installing/oem_top|grep oem_root|awk '{print $2}'` /installing/oem_top
 		mkdir -p /installing/oem_top/oem_root/opt/rancher/conf/grub
-		echo -n "USER_SETTINGS='rancher.network.interfaces.$NET_DEV.address=$IP/$NETMASK rancher.network.interfaces.$NET_DEV.gateway=$GATEWAY rancher.network.dns.nameservers=$DNS_SETTINGS_YQ'" > /installing/oem_top/oem_root/opt/rancher/conf/grub/USER_SETTINGS
+		echo -n "USER_SETTINGS='TZ="$TZL" rancher.network.interfaces.$NET_DEV.address=$IP/$NETMASK rancher.network.interfaces.$NET_DEV.gateway=$GATEWAY rancher.network.dns.nameservers=$DNS_SETTINGS_YQ'" > /installing/oem_top/oem_root/opt/rancher/conf/grub/USER_SETTINGS
 		chmod +x /installing/oem_top/oem_root/opt/rancher/conf/grub/USER_SETTINGS
 		umount /installing/oem_top
 	else
@@ -1005,7 +1005,7 @@ ssh_sudo <<'FINAL'
 	GLOBAL_APPEND=`cat /installing/boot_dev/global.cfg | sed 's/ rancher.state.dev=[^ ]*//g' | sed 's/ console=ttyS[^ ]*//g' | sed 's/ rancher.autologin=ttyS[^ ]*//g'`
 	GLOBAL_APPEND_ARGS=${GLOBAL_APPEND#APPEND *}
 
-	KERNEL_ARGS="TZ=$TZL rancher.state.boot_mountopt=rw rancher.state.oem_mountopt=rw,subvol=/oem_root rancher.state.mountopt=rw,subvol=/state_root rancher.password=rancher $GLOBAL_APPEND_ARGS rw rootflags=rw,subvol=/state_root"
+	KERNEL_ARGS="rancher.state.boot_mountopt=rw rancher.state.oem_mountopt=rw,subvol=/oem_root rancher.state.mountopt=rw,subvol=/state_root rancher.password=rancher $GLOBAL_APPEND_ARGS rw rootflags=rw,subvol=/state_root"
 	VGA_SIZE=1024x768
 	VGA_MODE=775
 	VGA_ARGS="i915.force_probe vga=$VGA_MODE video=$VGA_SIZE"
