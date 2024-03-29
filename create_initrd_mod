@@ -215,7 +215,7 @@ function create_initrd_mod(){
 		mv burmilla_os_efi burmilla_os_efi-$v
 		tar cvfz burmilla_os_efi-$v.tar.gz burmilla_os_efi-$v/
 		rm -rf burmilla_os_efi-$v
-		cat <<"END" > install.sh.tmpl
+		cat <<END > install.sh.tmpl
 #!/bin/bash
 
 wget %IP%/burmilla_os_efi-$v.tar.gz
