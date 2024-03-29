@@ -279,7 +279,7 @@ fi
 
 
 SSH_PORT=`egrep '^[	 ]*Port[	 ]+[0-9]+' /etc/ssh/sshd_config|awk '{print $2}'`
-if [ -z "$PORT" ];then
+if [ -z "$SSH_PORT" ];then
 	SSH_PORT=22
 fi
 sed s/%IP%/$IP/g /opt/initrd/var/www/html/install.sh.tmpl | sed s/%SSH_PORT%/$SSH_PORT/g > /opt/initrd/var/www/html/install.sh
