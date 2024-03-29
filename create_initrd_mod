@@ -257,14 +257,17 @@ if [ -n "$BOOT_UUID" ];then
 	tar zxf /opt/initrd/var/www/html/burmilla_os_efi*
 	cd burmilla_os_efi*
 	for boot_dev in `./bashlib_y blkid2 --get-siblings BOOT_UUID=$BOOT_UUID`; do
-		if [[ "${boot_dev}" =~ ^(.*[^0-9])([0-9]+)$ ]];then
-			if [ ${BASH_REMATCH[2]} = 2 ];then
+		if [[ ${boot_dev} =~ ^(.*[^0-9])([0-9]+)$ ]];then
+			if [ ${BASH_REMATCH[2]} = 4 ];then
 				if mount -o degraded,ro "${BASH_REMATCH[1]}7" /mnt; then
 					if [ -d /mnt/etc/ssh ]; then
 						cp -av /mnt/etc/ssh/* /etc/ssh
 						kill -HUP $(ps ax |grep 'sshd -D' | grep -v grep | awk '{ print $1 }')
 						break
 					fi
+					umount /mnt
+				else
+					echo "failed: mount -o degraded,ro "${BASH_REMATCH[1]}7" /mnt"
 				fi
 			fi
 		fi
