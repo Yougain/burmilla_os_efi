@@ -221,7 +221,7 @@ function create_initrd_mod(){
 wget %IP%/burmilla_os_efi-$v.tar.gz
 tar zxf burmilla_os_efi-$v.tar.gz
 cd burmilla_os_efi-$v
-./install_burmillaos_on_btrfs %IP% "\$@"
+./install_burmillaos_on_btrfs %IP%:%SSH_PORT% "\$@"
 
 END
 		popd
@@ -248,10 +248,7 @@ END
 #!/bin/bash
 
 IP=$(/sbin/ifconfig | grep -v docker | grep -B1 "inet" |awk '{ if ( $1 == "inet" ) { print $2 } else if ( $3 == "mtu" ) { printf "%s:" ,$1 } }' |awk -F: '{ print $1 ": " $3}' | egrep -o ': [0-9a-f:\.]+' | head -1 | egrep -o '[0-9a-fA-F][0-9a-fA-F:\.]+')
-sed s/%IP%/$IP/g /opt/initrd/var/www/html/install.sh.tmpl > /opt/initrd/var/www/html/install.sh
-chmod 775 /opt/initrd/var/www/html/install.sh
 
-chroot /opt/initrd nginx
 
 BOOT_UUID="`cat /proc/cmdline|egrep -o 'ref_boot_uuid=[-0-9A-Fa-f]+'`"
 BOOT_UUID="${BOOT_UUID:14}"
@@ -279,6 +276,16 @@ if [ -n "$BOOT_UUID" ];then
 		fi
 	done
 fi
+
+
+SSH_PORT=`egrep '^[	 ]*Port[	 ]+[0-9]+' /etc/ssh/sshd_config|awk '{print $2}'`
+if [ -z "$PORT" ];then
+	SSH_PORT=22
+fi
+sed s/%IP%/$IP/g /opt/initrd/var/www/html/install.sh.tmpl | sed s/%SSH_PORT%/$SSH_PORT/g > /opt/initrd/var/www/html/install.sh
+chmod 775 /opt/initrd/var/www/html/install.sh
+
+chroot /opt/initrd nginx
 
 
 END

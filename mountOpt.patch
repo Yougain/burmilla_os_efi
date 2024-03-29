@@ -1,6 +1,6 @@
 diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/control/console_init.go
 --- os.prev/cmd/control/console_init.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/console_init.go	2024-03-23 16:59:58.881414300 +0900
++++ os.new/cmd/control/console_init.go	2024-03-29 20:52:55.375128900 +0900
 @@ -259,6 +259,20 @@
  	if err := cmd.Run(); err != nil {
  		log.Error(err)
@@ -13,7 +13,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/contr
 +		return err
 +	}else{
 +		if strings.Index(string(out), "ramfs") != -1 {
-+			cmd = exec.Command("bash", "-c", `echo For installation, please execute \'wget http://$(/sbin/ifconfig | grep -B1 "inet" |awk '{ if ( $1 == "inet" ) { print $2 } else if ( $3 == "mtu" ) { printf "%s:" ,$1 } }' |awk -F: '{ print $1 ": " $3}' | egrep -o ': [0-9a-f:\.]+' | head -1 | egrep -o '[0-9a-fA-F][0-9a-fA-F:\.]+')/install.sh -q -O \| bash -s SERVER_NAME FIXED_IP\' from your terminal. >> /etc/issue`)
++			cmd = exec.Command("bash", "-c", `echo For installation, please execute \'wget http://$(/sbin/ifconfig | grep -B1 "inet" |awk '{ if ( $1 == "inet" ) { print $2 } else if ( $3 == "mtu" ) { printf "%s:" ,$1 } }' |awk -F: '{ print $1 ": " $3}' | egrep -o ': [0-9a-f:\.]+' | head -1 | egrep -o '[0-9a-fA-F][0-9a-fA-F:\.]+')/install.sh -q -O - \| bash -s SERVER_NAME FIXED_IP\' from your terminal. >> /etc/issue`)
 +			if err := cmd.Run(); err != nil {
 +				log.Error(err)
 +			}
