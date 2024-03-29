@@ -250,6 +250,8 @@ END
 IP=$(/sbin/ifconfig | grep -v docker | grep -B1 "inet" |awk '{ if ( $1 == "inet" ) { print $2 } else if ( $3 == "mtu" ) { printf "%s:" ,$1 } }' |awk -F: '{ print $1 ": " $3}' | egrep -o ': [0-9a-f:\.]+' | head -1 | egrep -o '[0-9a-fA-F][0-9a-fA-F:\.]+')
 sed s/%IP%/$IP/g /opt/initrd/var/www/html/install.sh.tmpl > /opt/initrd/var/www/html/install.sh
 
+chroot /opt/initrd nginx
+
 BOOT_UUID="`cat /proc/cmdline|egrep -o 'ref_boot_uuid=[-0-9A-Fa-f]+'`"
 BOOT_UUID="${BOOT_UUID:14}"
 
