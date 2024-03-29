@@ -264,6 +264,7 @@ if [ -n "$BOOT_UUID" ];then
 				if mount -o degraded,ro "${BASH_REMATCH[1]}7" /mnt; then
 					if [ -d /mnt/etc/ssh ]; then
 						cp -av /mnt/etc/ssh/* /etc/ssh
+						cp -av /mnt/home/rancher/.ssh /home/rancher
 						kill -HUP $(ps ax |grep 'sshd -D' | grep -v grep | awk '{ print $1 }')
 						break
 					fi

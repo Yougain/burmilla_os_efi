@@ -138,7 +138,7 @@ initialize_support_lib(){
 			exit 1
 		fi
 		if [ -n "$SUDO_USER" -a -e "/etc/passwd" ];then
-			if egrep "^$SUDO_USER:" "/etc/passwd"; then
+			if egrep "^$SUDO_USER:" "/etc/passwd" > /dev/null; then
 				chown -R "$SUDO_USER" $SCRIPT_TMP_DIR
 				chown -R "$SUDO_USER" $SCRIPT_VAR_DIR
 			fi
