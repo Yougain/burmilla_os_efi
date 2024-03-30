@@ -445,6 +445,7 @@ $libs"
 					chain_bak					\
 					partNum2Dev					\
 					after_save_cmd_line                \
+					args						\
 					before_sysinit; do
 				dbv $f $d
 				do_install $f $d
