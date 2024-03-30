@@ -193,23 +193,25 @@ function create_initrd_mod(){
 		pushd $GITD
 		git clone https://github.com/Yougain/burmilla_os_efi
 		pushd burmilla_os_efi
-		git log |while read ln; do
-			if [[ "$ln" =~ ^commit\ ([0-9a-f]+)$ ]];then
-				commit=${BASH_REMATCH[1]}
-				dbv $commit
-				if [ -z "$first" ];then
-					first=$commit
+		if false; then
+			git log |while read ln; do
+				if [[ "$ln" =~ ^commit\ ([0-9a-f]+)$ ]];then
+					commit=${BASH_REMATCH[1]}
+					dbv $commit
+					if [ -z "$first" ];then
+						first=$commit
+					fi
+				elif [[ "$ln" =~ ^\ *(([0-9]+)(\.[0-9]+)*) ]];then
+					lv=${BASH_REMATCH[1]}
+					dbv $lv
+					if [ "$lv" =  "$v" ]; then
+						dbv
+						git checkout $commit
+						break
+					fi
 				fi
-			elif [[ "$ln" =~ ^\ *(([0-9]+)(\.[0-9]+)*) ]];then
-				lv=${BASH_REMATCH[1]}
-				dbv $lv
-				if [ "$lv" =  "$v" ]; then
-					dbv
-					git checkout $commit
-					break
-				fi
-			fi
-		done
+			done
+		fi
 		rm -rf .git
 		popd
 		mv burmilla_os_efi burmilla_os_efi-$v
