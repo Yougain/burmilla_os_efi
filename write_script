@@ -15,7 +15,7 @@ function store_env(){
 	fi
 	local vname="${1##*/}"
 	if [ -n "$vname" ];then
-		if [[ $vname =~ ^([A-Za-z][A-Za-z0-9]*) ]];then
+		if [[ $vname =~ ^([A-Za-z_][A-Za-z0-9_]*) ]];then
 			vname=${BASH_REMATCH[1]}
 		else
 			die "store_env: illeagal variable name, '$vname'"

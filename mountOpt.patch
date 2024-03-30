@@ -24,7 +24,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/contr
  
 diff -Naur '--exclude=.git' os.prev/cmd/control/install.go os.new/cmd/control/install.go
 --- os.prev/cmd/control/install.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/install.go	2024-03-30 12:30:51.652754500 +0900
++++ os.new/cmd/control/install.go	2024-03-30 15:25:00.122754500 +0900
 @@ -201,6 +201,11 @@
  func runInstall(image, installType, cloudConfig, device, partition, statedir, kappend string, force, kexec, isoinstallerloaded, debug bool, savedImages []string) error {
  	fmt.Printf("Installing from %s\n", image)
@@ -55,17 +55,21 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/install.go os.new/cmd/control/in
  
  						//TODO: add if os-installer:latest exists - we might have loaded a full installer?
  						useIso = true
-@@ -286,6 +291,10 @@
- 			if len(savedImages) > 0 {
- 				installerCmd = append(installerCmd, "--save")
+@@ -247,11 +252,14 @@
  			}
-+			ros_btrfs_wrapper := os.Getenv("ROS_BTRFS_WRAPPER")
-+			if ros_btrfs_wrapper != "" {
-+				installerCmd = append(installerCmd, "-e", "ROS_BTRFS_WRAPPER=" + ros_btrfs_wrapper)
-+			}
  
- 			// TODO: mount at /mnt for shared mount?
- 			if useIso {
+ 			log.Infof("starting installer container for %s (new)", image)
++			ros_btrfs_wrapper := os.Getenv("ROS_BTRFS_WRAPPER")
+ 			installerCmd := []string{
+ 				"run", "--rm", "--net=host", "--privileged",
+ 				// bind mount host fs to access its ros, vmlinuz, initrd and /dev (udev isn't running in container)
+ 				"-v", "/:/host",
+ 				"--volumes-from=all-volumes",
++				"-e",
++				"ROS_BTRFS_WRAPPER=" + ros_btrfs_wrapper,
+ 				image,
+ 				//				"install",
+ 				"-t", installType,
 diff -Naur '--exclude=.git' os.prev/cmd/init/init.go os.new/cmd/init/init.go
 --- os.prev/cmd/init/init.go	2024-03-14 20:29:45.937485300 +0900
 +++ os.new/cmd/init/init.go	2024-03-16 14:35:37.859185600 +0900

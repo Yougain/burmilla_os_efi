@@ -125,7 +125,7 @@ if [ -z "$INST_IP" ]; then
 			INST_IP=${CTMP//:*}
 			INSTALLED_PORT=${CTMP##*:}
 			dbv ssh $INST_IP -p $INSTALLED_PORT -l rancher -o ConnectTimeout=3 -o ConnectionAttempts=3 echo -n
-			if ssh $INST_IP -p $INSTALLED_PORT -l rancher -o ConnectTimeout=3 -o ConnectionAttempts=3 echo -n; then
+			if [ $(ssh $INST_IP -p $INSTALLED_PORT -l rancher -o ConnectTimeout=3 -o ConnectionAttempts=3 stat -f -c '%T' /opt) != "ramfs" ]; then
 				whiteBgRed_n "Server "
 				cyanBgRed_n "'$CMD_HNAME'"
 				whiteBgRed_n ", still working. Really overwrite it with new installation? "
@@ -926,7 +926,6 @@ ssh_sudo <<'FINAL'
 	else
 		die ros install failed
 	fi
-
 	# move all files from installer's efi directory to $TARGET_DEV2 (efi drive).
 	mkdir -p /installing/efipart
 	mount $TARGET_DEV2 /installing/efipart
@@ -935,6 +934,8 @@ ssh_sudo <<'FINAL'
 	# move all files from $TARGET_DEV4 (initial state drive) to $TARGET_DEV5 (state drive) first
 	mkdir -p /installing/boot_dev
 	mount $TARGET_DEV4 /installing/boot_dev
+	info ls /installing/boot_dev/var/lib/rancher/conf/cloud-config.d
+	info "`ls /installing/boot_dev/var/lib/rancher/conf/cloud-config.d`"
 	mkfs.btrfs -L RANCHER_STATE_SIBLING -f $TARGET_DEV5
 	partprobe
 	STATE_UUID_SUB=`/sbin/blkid $TARGET_DEV5 | awk '{print $4}'`
@@ -956,6 +957,7 @@ ssh_sudo <<'FINAL'
 	BOOT_UUID_SUB=`/sbin/blkid $TARGET_DEV4 | awk '{print $4}'`
 	BOOT_UUID=$(eval "echo `/sbin/blkid $TARGET_DEV4 | awk '{print $3}'`")
 	BOOT_UUID=${BOOT_UUID#UUID=}
+	info BOOT_UUID=$BOOT_UUID
 	if [ -z "$BOOT_UUID_SUB" ];then
 		die cannot detect uuid of boot device, $TARGET_DEV4.
 	fi
@@ -1037,6 +1039,7 @@ ssh_sudo <<'FINAL'
 	fi
 
 	store_env -s /installing/efipart/BOOT_UUID
+	info BOOT_UUID=`cat /installing/efipart/BOOT_UUID`
 	LINUX="$VMLINUZ_FILE BURMILLAOS_VER=$VERSION $VGA_ARGS $KERNEL_ARGS $ROOT_ARGS panic=10"
 	LINUX_DEBUG="$VMLINUZ_FILE BURMILLAOS_VER=$VERSION vga=ask DEBUG=1 rancher.debug=true $KERNEL_ARGS $ROOT_ARGS"
 	INITRD="$INITRD_FILE"
