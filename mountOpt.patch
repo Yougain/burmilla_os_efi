@@ -22,6 +22,18 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/contr
  
  	cloudinitexecute.ApplyConsole(cfg)
  
+diff -Naur '--exclude=.git' os.prev/cmd/control/install/install.go os.new/cmd/control/install/install.go
+--- os.prev/cmd/control/install/install.go	2024-03-14 20:29:45.937485300 +0900
++++ os.new/cmd/control/install/install.go	2024-03-30 17:36:43.342754500 +0900
+@@ -64,7 +64,7 @@
+ 	}
+ 	os.MkdirAll(baseName, 0755)
+ 	cmd := exec.Command("mount", partition, baseName)
+-	//cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
++	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+ 	log.Debugf("mountdevice return2 -> d: %s, p: %s", device, partition)
+ 	return device, partition, cmd.Run()
+ }
 diff -Naur '--exclude=.git' os.prev/cmd/control/install.go os.new/cmd/control/install.go
 --- os.prev/cmd/control/install.go	2024-03-14 20:29:45.937485300 +0900
 +++ os.new/cmd/control/install.go	2024-03-30 15:25:00.122754500 +0900
