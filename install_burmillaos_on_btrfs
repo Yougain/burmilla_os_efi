@@ -892,7 +892,9 @@ ssh_sudo <<'FINAL'
 
 	# initial cloud-config.yml
 	write_env_file cloud-config.yml <<'END'
-		rancher:
+		environment:
+		  ROS_BTRFS_WRAPPER: 1
+ 		rancher:
 		  network:
 		    dns:
 		      nameservers:
