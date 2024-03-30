@@ -24,7 +24,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/contr
  
 diff -Naur '--exclude=.git' os.prev/cmd/control/install.go os.new/cmd/control/install.go
 --- os.prev/cmd/control/install.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/install.go	2024-03-30 12:25:56.332754500 +0900
++++ os.new/cmd/control/install.go	2024-03-30 12:30:51.652754500 +0900
 @@ -201,6 +201,11 @@
  func runInstall(image, installType, cloudConfig, device, partition, statedir, kappend string, force, kexec, isoinstallerloaded, debug bool, savedImages []string) error {
  	fmt.Printf("Installing from %s\n", image)
@@ -59,9 +59,9 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/install.go os.new/cmd/control/in
  			if len(savedImages) > 0 {
  				installerCmd = append(installerCmd, "--save")
  			}
-+			ros_btrfs_wrapper_env_def := "ROS_BTRFS_WRAPPER=" + os.Getenv("ROS_BTRFS_WRAPPER")
-+			if ros_btrfs_wrapper_env_def != "" {
-+				installerCmd = append(installerCmd, "-e", ros_btrfs_wrapper_env_def)
++			ros_btrfs_wrapper := os.Getenv("ROS_BTRFS_WRAPPER")
++			if ros_btrfs_wrapper != "" {
++				installerCmd = append(installerCmd, "-e", "ROS_BTRFS_WRAPPER=" + ros_btrfs_wrapper)
 +			}
  
  			// TODO: mount at /mnt for shared mount?
