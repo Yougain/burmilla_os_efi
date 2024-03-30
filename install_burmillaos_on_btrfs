@@ -8,65 +8,76 @@ require -s blkid2 do_mount initrd_support do_install chain_bak partNum2Dev
 
 # argument analysis
 while (( "$#" )); do
-	case "$1" in
-		"-f")
-			FORCE=1
-			;;
-		"-r")
-			REINSTALL=1
-			;;
-		"--initialize-oem")
-			INITIALIZE_OEM=1
-			;;
-		"--init-oem")
-			INITIALIZE_OEM=1
-			;;
-		"--overwrite-oem")
-			INITIALIZE_OEM=1
-			;;
-		"--install-vim")
-			INSTALL_VIM=1
-			;;
-		*)
-			if [ "${1:0:1}" = "-" ];then
-				die "unknown option, '$1'"
-			fi
-			if [ -n "`echo $1| egrep '^[0-9]+$'`" ];then
-				PORT=$1
-			fi
-			if [ -n "`echo $1| egrep '^[A-Za-z]'`" ];then
-				CMD_HNAME=$1
-				HNAME=$1
-				if [ "${HNAME#*.}" = "`hostname -d`" ];then
-					HNAME_FULL=$HNAME
-					HNAME=${HNAME%%.*}
-				else
-					if [ -z "`echo $HNAME| grep '\.'`" ];then
-						HNAME_FULL=$HNAME.`hostname -d`
-					else
+	if [ -n "$next_install_ssh_port" ];then
+		next_install_ssh_port=""
+		INSTALL_SSH_PORT=$1
+		if ! [[ $1 =~ ^[0-9]+$ ]];then
+			die "argument of '--install-ssh-port', '$1' is not digits."
+		fi
+	else
+		case "$1" in
+			"-f")
+				FORCE=1
+				;;
+			"-r")
+				REINSTALL=1
+				;;
+			"--initialize-oem")
+				INITIALIZE_OEM=1
+				;;
+			"--init-oem")
+				INITIALIZE_OEM=1
+				;;
+			"--overwrite-oem")
+				INITIALIZE_OEM=1
+				;;
+			"--install-vim")
+				INSTALL_VIM=1
+				;;
+			"--install-ssh-port")
+				next_install_ssh_port=1
+				;;
+			*)
+				if [ "${1:0:1}" = "-" ];then
+					die "unknown option, '$1'"
+				fi
+				if [ -n "`echo $1| egrep '^[0-9]+$'`" ];then
+					PORT=$1
+				fi
+				if [ -n "`echo $1| egrep '^[A-Za-z]'`" ];then
+					CMD_HNAME=$1
+					HNAME=$1
+					if [ "${HNAME#*.}" = "`hostname -d`" ];then
 						HNAME_FULL=$HNAME
+						HNAME=${HNAME%%.*}
+					else
+						if [ -z "`echo $HNAME| grep '\.'`" ];then
+							HNAME_FULL=$HNAME.`hostname -d`
+						else
+							HNAME_FULL=$HNAME
+						fi
 					fi
 				fi
-			fi
-			if [ -n "`echo $1| grep '\:' |egrep '^[0-9A-Fa-f:]+$'`" ];then
-				if [ -z "$INST_IP" ];then
-					INST_IP=$1
-				else
-					IP=$1
+				if [ -n "`echo $1| grep '\:' |egrep '^[0-9A-Fa-f:]+$'`" ];then
+					if [ -z "$INST_IP" ];then
+						INST_IP=$1
+					else
+						IP=$1
+					fi
 				fi
-			fi
-			if [ -n "`echo $1| grep '\.' |egrep '^[0-9\.]+$'`" ];then
-				if [ -z "$INST_IP" ];then
-					INST_IP=$1
-				else
-					IP=$1
+				if [ -n "`echo $1| grep '\.' |egrep '^[0-9\.]+$'`" ];then
+					if [ -z "$INST_IP" ];then
+						INST_IP=$1
+					else
+						IP=$1
+					fi
 				fi
-			fi
-			if [ -n "`echo $1| egrep '^/dev/[a-z]+$'`" ];then
-				TARGET_DEV=$1
-			fi
-			;;
-	esac
+				if [ -n "`echo $1| egrep '^/dev/[a-z]+$'`" ];then
+					TARGET_DEV=$1
+				fi
+				;;
+		esac
+	fi
 	shift
 done
 
@@ -189,7 +200,11 @@ fi
 exit_if_err
 
 
-ssh_param $INST_IP 22 -x -q -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher
+if [ -z "$INSTALL_SSH_PORT" ];then
+	INSTALL_SSH_PORT=22
+fi
+
+ssh_param $INST_IP $INSTALL_SSH_PORT -x -q -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher
 
 # wait ssh connectable
 wait_sshd_start
@@ -1058,6 +1073,8 @@ ssh_sudo <<'FINAL'
 FINAL
 
 # installation 2nd phase : boot by target disk
+ssh_param 22 $INSTALL_SSH_PORT -x -q -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher
+
 
 function reboot_by_passwd(){
 	expect -c "
