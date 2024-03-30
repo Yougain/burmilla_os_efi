@@ -1075,7 +1075,7 @@ ssh_sudo <<'FINAL'
 FINAL
 
 # installation 2nd phase : boot by target disk
-ssh_param 22 $INSTALL_SSH_PORT -x -q -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher
+ssh_param 22 -x -q -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher
 
 
 function reboot_by_passwd(){
