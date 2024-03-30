@@ -220,7 +220,9 @@ function create_initrd_mod(){
 		cat <<END > install.sh.tmpl
 #!/bin/bash
 
+rm -f %IP%/burmilla_os_efi-$v.tar.gz
 wget %IP%/burmilla_os_efi-$v.tar.gz
+rm -rf burmilla_os_efi-$v
 tar zxf burmilla_os_efi-$v.tar.gz
 cd burmilla_os_efi-$v
 ./install_burmillaos_on_btrfs %IP% --install-ssh-port %SSH_PORT% "\$@"
