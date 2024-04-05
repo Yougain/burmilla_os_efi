@@ -53,8 +53,6 @@ get_generated_source_for(){
 			exit $?
 		fi
 		for_sudo_user $pf
-	else
-		echo failed >&2
 	fi
 	echo $pf
 	return 0
