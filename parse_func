@@ -39,7 +39,7 @@ get_generated_source_for(){
 	if [ -z "$1" ];then
 		die "Missing argument."
 	fi
-	local frame=(`caller 1`)
+	local frame=($(caller 1))
 	local func="${frame[1]}"
 	local f="${frame[2]}"
 	local lno="${frame[0]}"
@@ -53,8 +53,10 @@ get_generated_source_for(){
 			exit $?
 		fi
 		for_sudo_user $pf
+	else
+		echo failed >&2
 	fi
-	echo "$pf"
+	echo $pf
 	return 0
 }
 

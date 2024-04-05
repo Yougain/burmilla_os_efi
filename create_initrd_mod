@@ -13,6 +13,8 @@ function create_initrd_mod(){
 	local IMGD_INIT="$TMPD/initrd_init"
 	local GITD="$TMPD/gitd"
 	require -s initrd_support
+	require -s args
+	require -s parse_func
 	require do_install
 	require chain_bak
 	require do_mount
@@ -446,6 +448,7 @@ $libs"
 					partNum2Dev					\
 					after_save_cmd_line                \
 					args						\
+					parse_func				\
 					before_sysinit; do
 				dbv $f $d
 				do_install $f $d

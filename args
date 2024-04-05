@@ -1,10 +1,10 @@
 # bash source
 
 
-if [ "${BASH_SOURCE[1]##*/}" = "bashlib_y" ];then
 
-	require parse_func
-	
+require parse_func
+
+if [ "${BASH_SOURCE[1]##*/}" = "bashlib_y" ];then
 	generate_source_for_args(){
 		echo 'local all_args=("$@")'
 		echo 'local args=()'
@@ -95,6 +95,7 @@ if [ "${BASH_SOURCE[1]##*/}" = "bashlib_y" ];then
 		declare -A local unsetter
 		local optId
 		local gettingArg
+		local j
 		for ((i = 0 ; i < ${#all_args[@]} ; i++)); do
 			a="${all_args[$i]}"
 			if [ -n "$gettingArg" ];then
@@ -173,6 +174,7 @@ if [ "${BASH_SOURCE[1]##*/}" = "bashlib_y" ];then
 			fi
 		done
 		local na=()
+		local j
 		for ((j = 0 ; j < ${#all_args[@]} ; j++));do
 			if ! [ -n "${unsetter[$j]}" ]; then
 				na+=("${all_args[$j]}")
@@ -253,10 +255,13 @@ if [ "${BASH_SOURCE[1]##*/}" = "bashlib_y" ];then
 	}
 
 else
-	local f="`get_generated_source_for args`"
-	if [ -e "$f" -a "$?" = 0 ];then
-		. $f
+	f__=`get_generated_source_for args`
+	dbv $f__
+	if [ -e "$f__" -a "$?" = 0 ];then
+		. $f__
+		unset f__
 	else
+		unset f__
 		exit 1
 	fi
 fi

@@ -4,7 +4,7 @@
 source $(dirname "$(realpath -s "$0")")/bashlib_y
 
 require create_initrd_mod ssh_do write_script
-require -s blkid2 do_mount initrd_support do_install chain_bak partNum2Dev
+require -s blkid2 do_mount initrd_support do_install chain_bak partNum2Dev args parse_func
 
 # argument analysis
 while (( "$#" )); do
@@ -125,7 +125,11 @@ if [ -z "$INST_IP" ]; then
 			INST_IP=${CTMP//:*}
 			INSTALLED_PORT=${CTMP##*:}
 			dbv ssh $INST_IP -p $INSTALLED_PORT -l rancher -o ConnectTimeout=3 -o ConnectionAttempts=3 echo -n
-			if [ $(ssh $INST_IP -p $INSTALLED_PORT -l rancher -o ConnectTimeout=3 -o ConnectionAttempts=3 stat -f -c '%T' /opt) != "ramfs" ]; then
+			test_drv="$(ssh $INST_IP -p $INSTALLED_PORT -l rancher -o ConnectTimeout=3 -o ConnectionAttempts=3 stat -f -c '%T' /opt)"
+			if [ -z "test_drv" ];then
+				die "cannot ssh $INST_IP -p $INSTALLED_PORT"
+			fi
+			if [ -n "test_drv" -a "$test_drv" != "ramfs" ]; then
 				whiteBgRed_n "Server "
 				cyanBgRed_n "'$CMD_HNAME'"
 				whiteBgRed_n ", still working. Really overwrite it with new installation? "
@@ -1125,7 +1129,15 @@ deb TARGET_DEV="'"$TARGET_DEV"'"
 			install_vim
 		fi
 		mkdir -p /efipart
-		do_mount 2 /efipart
+		do_install args
+		do_install do_mount
+		do_install blkid2
+		do_install chain_bak
+		DEBUG=1 do_install do_install
+		DEBUG=1 /usr/bin/do_install partNum2Dev
+		DEBUG=1 /usr/bin/do_install parse_func
+		ls -la /usr/bin/do_mount
+		DEBUG=1 /usr/bin/do_mount 2 /efipart
 		store_env /efipart/TOPIC ""
 		umount /efipart
 		rmdir /efipart
@@ -1133,10 +1145,6 @@ deb TARGET_DEV="'"$TARGET_DEV"'"
 		apt-get -y update
 		apt-get -y upgrade
 		apt-get install btrfs-progs
-		do_install do_mount
-		do_install blkid2
-		do_install chain_bak
-		do_install partNum2Dev
 		green Switch to boot by installer
 		reboot
 	END
@@ -1171,11 +1179,14 @@ UF=/installing/oem_part/var/lib/rancher/conf/cloud-config.d/user_config.yml
 ssh_sudo <<'FINAL'
 	#!/bin/bash
 
-	do_mount 5 /installing/state
+	do_install args
+	do_install do_mount
+
+	/usr/bin/do_mount 5 /installing/state
 
  	create_initrd_mod $INITRD
 
-	if ! do_mount 4 /installing/boot_dev; then
+	if ! /usr/bin/do_mount 4 /installing/boot_dev; then
 		die cannot mount
 	fi
 	ls -la /installing/boot_dev
@@ -1197,7 +1208,7 @@ ssh_sudo <<'FINAL'
 		exit 1
 	fi
 
-	if ! do_mount 7 /installing/oem_part; then
+	if ! /usr/bin/do_mount 7 /installing/oem_part; then
 		die cannot mount
 	fi
 	mkdir -p /installing/oem_part/var/lib/rancher/conf/cloud-config.d
@@ -1473,7 +1484,7 @@ ssh_sudo <<'FINAL'
 			rm -f /mnt_efi_test/LAST_BOOTED_VER
 			umount /mnt_efi_test
 		done
-		do_mount 2 /mnt_efi_test
+		/usr/bin/do_mount 2 /mnt_efi_test
 		LAST_BOOTED_VER="`cat /proc/cmdline|egrep -o ' BURMILLAOS_VER=[^ ]+'|egrep -o '[^=]+$'`"
 		echo "LAST_BOOTED_VER=$LAST_BOOTED_VER"  > /mnt_efi_test/LAST_BOOTED_VER
 		umount /mnt_efi_test
@@ -1503,7 +1514,7 @@ ssh_sudo <<'FINAL'
 	fi
 
 	mkdir -p /installing/efipart
-	do_mount 2  /installing/efipart
+	/usr/bin/do_mount 2  /installing/efipart
 	INITRD=$INITRD_FILE-mod
 	store_env -s /installing/efipart/INITRD
 	rm -f /installing/efipart/TOPIC

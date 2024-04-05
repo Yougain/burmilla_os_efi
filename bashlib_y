@@ -127,7 +127,7 @@ initialize_support_lib(){
 			mkdir -p /tmp/$f/${0##*/}
 			chmod 777 /tmp/$f/${0##*/}
 		fi
-		SCRIPT_TMP_DIR=/tmp/$f/${0##*/}/`date +"%y-%m-%d_%H:%M:%S.%N%z"`-$$
+		SCRIPT_TMP_DIR=/tmp/$f/${0##*/}/`date +"%y-%m-%d_%H-%M-%S.%N%z"`-$$
 		SCRIPT_VAR_DIR=/var/tmp/$f
 		if ! mkdir -p $SCRIPT_TMP_DIR; then
 			echo -e "$error"cannot create script dir$normal
@@ -320,7 +320,7 @@ emerge_file_content(){
 	if [ -e "$f" ];then
 		if [ -z "${SCRIPT_FILES[$f]}" ];then
 			sid=SCRIPT_FILE_$RANDOM$RANDOM$RANDOM
-			dbv $sid
+			#dbv $sid
 			SCRIPT_FILES["$f"]=$sid
 			local ln
 			eval "
@@ -385,28 +385,69 @@ for_sudo_user(){
 
 dbv(){
 	if [ -n "$DEBUG" ];then
-		local frame=(`caller 0`)
-		local f="`readlink -f "${frame[2]}"`"
-		local lno="${frame[0]}"
-		local ln
-		local sid
-		if [ -e "$f" ];then
-			if [ -z "${SCRIPT_FILES[$f]}" ];then
-				sid=SCRIPT_FILE_$RANDOM$RANDOM$RANDOM
-				SCRIPT_FILES["$f"]=$sid
-				eval "
-					$sid=()
-					while read ln;do
-						$sid+=(\"\$ln\")
-					done < $f
-				"
+		local position
+		local caption
+		if [ "$1" = "--position" ];then
+			shift
+			position="$1"
+			shift
+			if [ "$1" = "--caption" ];then
+				shift
+				caption="$1"
+				shift
+			fi
+			if [ -n "$caption" ] && [[ $caption =~ \`|\$|\(\( ]] ;then
+				deb $position "'$yellow"$caption"$green'" = "'$cyan""$@""$green'"
 			else
+				deb $position $cyan$@
+			fi
+		else
+			local frame=(`caller 0`)
+			local f="`readlink -f "${frame[2]}"`"
+			local lno="${frame[0]}"
+			local ln
+			local sid
+			if [ -n "$SSH_ID" ];then
+				local tdir="$SCRIPT_TMP_DIR/$SSH_ID/file_transferred/"
+				local tdsz=${#tdir}
+				if [ "${f}" = "$SCRIPT_TMP_DIR/$SSH_ID/do_content" -o "$f" = "$SCRIPT_TMP_DIR/$SSH_ID/env" -o "$f" = "$SCRIPT_TMP_DIR/$SSH_ID/main" ];then
+					sid=__ssh_dbv_sid__${f##*/}$SSH_ID$RANDOM
+					SCRIPT_FILES["$f"]=$sid
+					eval "
+						$sid=()
+						local i=0
+						local IFS=""
+						while read -r ln;do
+							$sid+=(\"\$ln
+		\")
+							i=\$((i + 1))
+						done < $f
+					"
+				elif [ "${f:0:$tdsz}" = "$SCRIPT_TMP_DIR/$SSH_ID/file_transferred/" ];then
+					local s
+					for s in ${!SCRIPT_FILES[@]}; do
+						if [ "${s##*/}" = "${f##*/}" ];then
+							sid=${SCRIPT_FILES[$s]}
+							break
+						fi
+					done
+				fi
+			else
+				emerge_file_content "$f"
 				sid=${SCRIPT_FILES["$f"]}
 			fi
-			ln="`eval 'echo -E ${'"$sid"'['"$((lno - 1))"']}'`"
-			deb ${f##*/}:$lno "'$yellow"${ln#*dbv }"$green'" = "'$cyan""$@""$green'"
-		else
-			deb ${f##*/}:$lno $cyan$@
+			if [ -n "$sid" ];then
+				ln="`eval 'echo -E ${'"$sid"'['"$((lno - 1))"']}'`"
+				ln="${ln#*dbv }"
+				ln="${ln%%;*}"
+				if [[ $ln =~ \`|\$|\(\( ]] ;then
+					deb ${f##*/}:$lno "'$yellow"${ln#*dbv }"$green'" = "'$cyan""$@""$green'"
+				else
+					deb ${f##*/}:$lno $cyan$@
+				fi
+			else
+				deb ${f##*/}:$lno $cyan$@
+			fi
 		fi
 	fi
 }
@@ -470,10 +511,12 @@ _rm_all(){
 		lnLen1=$((${#dln} + 1))
 		if [ "${d:0:$lnLen1}" = "$dln/" -o "$d" = "$dln" -o "$dln" = "/" ];then
 			fsType="`echo $ln | awk '{print $2}'`"
+			dbv $fsType
 			if [ "$fsType" = "overlay" ];then
 				doRm=1
 			else
 				if [ "${fsType:0:5}" = "/dev/" ];then
+					fsType="`readlink -f \"$fsType\"`"
 					for b in ${blockDevs[@]}; do
 						if [ "$b" = "${fsType#/dev/}" ];then
 							doRm=1
@@ -590,7 +633,7 @@ function join(){
 	for i in "$@";do
 		ret="$ret$sep$i"
 	done
-	echo -n $ret
+	echo -nE "$ret"
 }
 
 
@@ -658,10 +701,14 @@ SOURCES_LOADED=()
 declare -A FUNC_SOURCE
 
 require(){
+	if [ -n "$REQUIRE_INVALID" ];then
+		return 0
+	fi
 	local requireFunc
 	local requireSource
 	local PATH="./:/usr/share/bashlib_y:$PATH"
 	local to_load
+	local ret=255
 	while (( "$#" )); do
 		case "$1" in
 			"-f")
@@ -696,6 +743,7 @@ require(){
 				fi
 				to_load="$(readlink -f "$to_load")"
 				if [ -n "$requireSource" ];then
+					dbv loading source "$to_load"
 					emerge_file_content "$to_load"
 				fi
 				if detect SOURCES_LOADED "$to_load";then
@@ -703,12 +751,28 @@ require(){
 				fi
 				SOURCES_LOADED+=("$to_load")
 				local funcs="$(declare -F)"
-				if ! source "$to_load";then
-					die "require '$1', failed"
+				local ln
+				local lno
+				if [ -r "$to_load" ];then
+					dbv $to_load
+					source <(
+						lno=1
+						IFS=
+						while read -r ln; do
+							if [[ $ln =~ ^([\ \	]*dbv)([\ \	]+(.*)|)$ ]];then
+								echo -E "${BASH_REMATCH[1]}" --position "\"${to_load##*/}:$lno\"" --caption "'${BASH_REMATCH[3]}'" ${BASH_REMATCH[3]}
+							else
+								echo -E "$ln"
+							fi
+							((++lno))
+						done < "$to_load"
+					)
+					ret=$?
+				else
+					die "cannot require '$to_load'."
 				fi
-				local f
 				for f in `(echo -E "$funcs"; declare -F) | sort | uniq -u | awk '{print $3}'`; do
-					dbv FUNC_SOURCE["$f"]="$to_load"
+					#dbv FUNC_SOURCE["$f"]="$to_load"
 					FUNC_SOURCE["$f"]="$to_load"
 				done
 				if [ -n "$requireFunc" ];then
@@ -720,26 +784,22 @@ require(){
 		esac
 		shift
 	done
+	return $ret
 }
 
 
 cleanup (){
-	if [ -n "$DEBUG" ];then
-		local tmp_files=`ls -A $SCRIPT_TMP_DIR`
-		if [ -n "$tmp_files" ];then
-			deb "ls -A $SCRIPT_TMP_DIR = $tmp_files"
-		fi
-	fi
+	dbv `ls -A $SCRIPT_TMP_DIR`
 	if [ -z "$DEBUG" ];then
 		rm_all $SCRIPT_TMP_DIR
 		local k
-		for k in "${SSH_PARAM_LIST[@]}"; do
-			if [ -n "$k" ];then
-				ssh "${SSH_PARAM_LIST[$k]}" <<END
-					rm_all $SCRIPT_TMP_DIR
-END
-			fi
-		done
+#		for k in "${SSH_PARAM_LIST[@]}"; do
+#			if [ -n "$k" ];then
+#				ssh "${SSH_PARAM_LIST[$k]}" <<END
+#					rm_all $SCRIPT_TMP_DIR
+#END
+#			fi
+#		done
 	fi
 	if [[ "$DEBUG" =~ erase|ERASE|delete|DELETE ]];then
 		rm_all $SCRIPT_TMP_DIR/..

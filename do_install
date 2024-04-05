@@ -80,6 +80,7 @@ ${to_inst##*/} \$@
 							local f
 							local fn
 							local sid
+							dbv ${!SCRIPT_FILES[@]}
 							for f in ${!SCRIPT_FILES[@]};do
 								if [ "${f##*/}" = "$to_inst" ];then
 									sid="${SCRIPT_FILES["$f"]}"
@@ -91,7 +92,7 @@ ${to_inst##*/} \$@
 									return 0
 								fi
 							done
-							dbv
+							dbv ${!FUNC_SOURCE[@]}
 							for fn in ${!FUNC_SOURCE[@]}; do
 								if [ "$fn" = "$to_inst" ];then
 									f="${FUNC_SOURCE[$to_inst]}"

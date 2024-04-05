@@ -83,11 +83,9 @@ function ssh_param(){
 		local SSH_CON_LINE=`egrep -o 'debug1: Connecting to .* port [0-9]+' $SCRIPT_TMP_DIR/test_ssh`
 		SSH_PORT=`echo $SSH_CON_LINE| egrep -o '[0-9]+$'`
 		SSH_PORT_OPT=" -p $SSH_PORT"
-		SSH_HOST_IP=`echo $SSH_CON_LINE| egrep -o '\[[0-9/A-Fa-f\.:]+\]'| egrep -o [0-9/A-Fa-f\.:]+`
-		if [ -z "$SSH_HOST_IP" ];then
-			SSH_HOST_IP=`echo $SSH_CON_LINE| egrep -o 'to [0-9/A-Fa-f\.:]+' | egrep -o [0-9/A-Fa-f\.:]+`
-		fi
-		dbv $SSH_HOST_IP $SSH_PORT
+		SSH_HOST_IP=`echo $SSH_CON_LINE| egrep -o 'to [0-9/A-Fa-f\.:]{7,}'| egrep -o '[0-9/A-Fa-f\.:]{7,}'`
+		dbv $SSH_HOST_IP
+		dbv $SSH_PORT
 		dbv $SSH_CON_LINE
 	else
 		local pc=`egrep "debug1: channel_connect_stdio_fwd " $SCRIPT_TMP_DIR/test_ssh`
@@ -177,9 +175,9 @@ function ssh_do(){
 	local CMD=($SSH_CMD $SSH_PORT_OPT "${SSH_OPTS[@]}" $SSH_HOST $sudoing)
 	dbv "${CMD[@]} $@"
 	if [ "$#" = "0" ];then
-		if [ -n "$sudoing" ];then
-			CMD+=(bash)
-		fi
+		#if [ -n "$sudoing" ];then
+		#	CMD+=(bash)
+		#fi
 		SSH_PARAM_LIST["$SSH_HOST $SSH_PORT_OPT"]="$SSH_PORT_OPT ""${SSH_PORT_OPT[@]}"" $SSH_HOST"
 		local set_env_lines="(declare -p|egrep -o '^declare -A [^=]*';set) | awk '!/^(SSH_PARAM_LIST|SUDO_USER|BASH_ARGV|BASH_ARGC|BASH_LINENO|BASH_SOURCE|GROUPS|FUNCNAME|BASHOPTS|BASH_VERSINFO|EUID|PPID|SHELLOPTS|UID)=/ {print \$0}'"
 		local SET_ENV_LINES="`eval $set_env_lines`"
@@ -195,7 +193,7 @@ function ssh_do(){
 				mkdir -p $SCRIPT_TMP_DIR/$SSH_ID
 				chmod 777 $SCRIPT_TMP_DIR/../.. $SCRIPT_TMP_DIR/..
 				if [ -n "$SUDO_USER" -a -e /etc/passwd ];then
-					if egrep "^$SUDO_USER:" /etc/passwd;then
+					if egrep "^$SUDO_USER:" /etc/passwd > /dev/null;then
 						chown -R "$SUDO_USER" $SCRIPT_TMP_DIR
 					fi
 				fi
@@ -210,14 +208,14 @@ function ssh_do(){
 				$set_env_lines > $SCRIPT_TMP_DIR/$SSH_ID/env
 				
 				# set client environment
-				if [ ! -e $SCRIPT_TMP_DIR/$SSH_ID/env.cont ];then # missing previous host environment 
+				#if [ ! -e $SCRIPT_TMP_DIR/$SSH_ID/env.cont ];then # missing previous host environment 
 					# set client command line argument
 					$TRANSFER_ARGUMENTS
 					$SET_ENV_LINES
-				else # found previous host environment 
-					source $SCRIPT_TMP_DIR/$SSH_ID/env.cont
-					rm $SCRIPT_TMP_DIR/$SSH_ID/env.cont
-				fi
+				#else # found previous host environment 
+				#	source $SCRIPT_TMP_DIR/$SSH_ID/env.cont
+				#	rm $SCRIPT_TMP_DIR/$SSH_ID/env.cont
+				#fi
 				
 				# restore host environment
 				source $SCRIPT_TMP_DIR/$SSH_ID/env;
@@ -227,18 +225,36 @@ function ssh_do(){
 				# execute script from standard input
 				set_diff_begin
 				# preserve environment after script execution
-				function transfer_new_env$SCRIPT_ID(){
-					echo
+				function cleanup$SCRIPT_ID(){
 					set_diff_end
 					#cat $SCRIPT_TMP_DIR/$SSH_ID/env.diff
-					$set_env_lines > $SCRIPT_TMP_DIR/$SSH_ID/env.cont
-					unset -f transfer_new_env$SCRIPT_ID
+					#$set_env_lines > $SCRIPT_TMP_DIR/$SSH_ID/env.cont
+					if [ -z "$DEBUG" ];then
+						rm_all $SCRIPT_TMP_DIR
+					fi
+					unset -f cleanup$SCRIPT_ID
 				}
 				function int_exit(){
 					exit 1
 				}
-				trap transfer_new_env$SCRIPT_ID EXIT
+				trap cleanup$SCRIPT_ID EXIT
 				trap int_exit INT HUP
+				mkdir -p $SCRIPT_TMP_DIR/$SSH_ID/file_transferred
+				PATH="$SCRIPT_TMP_DIR/$SSH_ID/file_transferred:$PATH"
+				for fxx__ in ${!SCRIPT_FILES[@]}; do
+					fcn__=${SCRIPT_FILES[$fxx__]}
+					lns__=
+					eval "
+						for ln__ in \"\${$fcn__[@]}\";do
+							lns__=\"\$lns__\$ln__\"
+						done
+					"
+					echo -E "$lns__" > $SCRIPT_TMP_DIR/$SSH_ID/file_transferred/${fxx__##*/}
+				done
+				unset lns__
+				unset fcn__
+				unset fxx__
+				unset ln__
 				cat <<'__DO_CONTENT' > $SCRIPT_TMP_DIR/$SSH_ID/do_content
 			__INNER
 			if [ -n "$DEBUG" ];then
@@ -247,9 +263,12 @@ function ssh_do(){
 			trim_indent
 			write_env_file << '			__INNER'
 				__DO_CONTENT
+				REQUIRE_INVALID=1
 				source $SCRIPT_TMP_DIR/$SSH_ID/do_content
+				unset REQUIRE_INVALID
 			__INNER
-		) | "${CMD[@]}" "$@" | while read -r ln; do
+		) > $SCRIPT_TMP_DIR/$SSH_ID/main
+		cat $SCRIPT_TMP_DIR/$SSH_ID/main | "${CMD[@]}" bash -c '"mkdir -p '$SCRIPT_TMP_DIR/$SSH_ID'";tee '$SCRIPT_TMP_DIR/$SSH_ID'/main >/dev/null; chmod +x '$SCRIPT_TMP_DIR/$SSH_ID'/main ;bash -c '$SCRIPT_TMP_DIR/$SSH_ID'/main'  | while read -r ln; do
 			if [ -z "$trans_started" ]; then
 				if [ "$ln" = "__TRANS_ENV_$SCRIPT_ID$SSH_ID" ];then
 					trans_started=1
@@ -268,11 +287,13 @@ function ssh_do(){
 		fi
 		. $SCRIPT_TMP_DIR/$SSH_ID/remote_env.diff
 		dbv $INITRD_FILE
+		SSH_ID=
 		return $res
 	else
 		#info "$SSH_PORT_OPT $SSH_OPTS $SSH_HOST $sudoing $@"
 		"${CMD[@]}" $@
 	fi
+	SSH_ID=
 }
 
 function ssh_i(){
@@ -385,6 +406,9 @@ function set_diff_end(){
 				[ "$vn" = EPOCHREALTIME ] && continue
 				[ "$vn" = EPOCHSECONDS ] && continue
 				[ "$vn" = SRANDOM ] && continue
+				[ "$vn" = SCRIPT_FILES ] && continue
+				[ "$vn" = PATH ] && continue
+				[[ $vn =~ ^__ssh_dbv_sid__ ]] && continue
 				vname_end=__SET_DIFF_END_PRESERVE_EACH_$vn
 				vname_end_dec="`declare -p $vname_end`"
 				vname_end_content=${vname_end_dec#declare -* __SET_DIFF_END_PRESERVE_EACH_}
