@@ -357,10 +357,12 @@ for_sudo_user(){
 		local rpe
 		local ac
 		local us
-		local fn=$(__FILE__NAME__)
+		local fn=$(__FILE_NAME__)
+		local fnn=${#fn}
 		for pth in "$@";do
 			rp="$(realpath "$pth")"
-			if "${rp:0:$((#fn + 6))}" = "/tmp/$fn/"; then
+			fnn=
+			if [ "${rp:0:$((fnn + 6))}" = "/tmp/$fn/" ]; then
 				while true;do
 					ac="$(stat -c %a "$rp")"
 					us="$(stat -c %u "$rp")"
@@ -410,19 +412,31 @@ dbv(){
 			if [ -n "$SSH_ID" ];then
 				local tdir="$SCRIPT_TMP_DIR/$SSH_ID/file_transferred/"
 				local tdsz=${#tdir}
-				if [ "${f}" = "$SCRIPT_TMP_DIR/$SSH_ID/do_content" -o "$f" = "$SCRIPT_TMP_DIR/$SSH_ID/env" -o "$f" = "$SCRIPT_TMP_DIR/$SSH_ID/main" ];then
-					sid=__ssh_dbv_sid__${f##*/}$SSH_ID$RANDOM
-					SCRIPT_FILES["$f"]=$sid
-					eval "
-						$sid=()
-						local i=0
-						local IFS=""
-						while read -r ln;do
-							$sid+=(\"\$ln
-		\")
-							i=\$((i + 1))
-						done < $f
-					"
+				if [ "$f" = "$SCRIPT_TMP_DIR/$SSH_ID/do_content" -o "$f" = "$SCRIPT_TMP_DIR/$SSH_ID/env" -o "$f" = "$SCRIPT_TMP_DIR/$SSH_ID/main" ];then
+					if [ -z "${SCRIPT_FILES[$f]}" ];then
+						sid=__ssh_dbv_sid__${f##*/}$SSH_ID$RANDOM
+						SCRIPT_FILES["$f"]=$sid
+						local line_conv
+						eval "
+							$sid=()
+							local i=0
+							local IFS=
+							while read -r ln;do
+								if [ \"\${ln:0:6}\" = \"#line \" -o \"\${ln:0:6}\" = \"#line	\" ];then
+									line_conv=\"\$((i + 1)) \${ln:6}\"
+								fi
+								$sid+=(\"\$ln
+			\")
+								i=\$((i + 1))
+							done < $f
+						"
+						if [ -n "$line_conv" ];then
+							local difL=$(($(echo "$line_conv" | awk '{print $2}') - $(echo "$line_conv" | awk '{print $1}')))
+							local altF=$(echo "$line_conv" | awk '{print $4}')
+							eval "difL_$sid=$difL"
+							eval "altF_$sid=$altF"
+						fi
+					fi
 				elif [ "${f:0:$tdsz}" = "$SCRIPT_TMP_DIR/$SSH_ID/file_transferred/" ];then
 					local s
 					for s in ${!SCRIPT_FILES[@]}; do
@@ -437,13 +451,27 @@ dbv(){
 				sid=${SCRIPT_FILES["$f"]}
 			fi
 			if [ -n "$sid" ];then
+				local difL_sid=difL_$sid
+				local rlno
+				if [ -n "${!difL_sid}" ];then
+					local difL=${!difL_sid}
+					local altF_sid=altF_$sid
+					rlno=$((lno + difL))
+					f=${!altF_sid}
+				else
+					rlno=$lno
+				fi
 				ln="`eval 'echo -E ${'"$sid"'['"$((lno - 1))"']}'`"
 				ln="${ln#*dbv }"
 				ln="${ln%%;*}"
+				if [[ $ln =~ ^(.*)[\ \
+\	]+$ ]]; then
+					ln="${BASH_REMATCH[1]}"
+				fi
 				if [[ $ln =~ \`|\$|\(\( ]] ;then
-					deb ${f##*/}:$lno "'$yellow"${ln#*dbv }"$green'" = "'$cyan""$@""$green'"
+					deb ${f##*/}:$rlno "'$yellow"${ln#*dbv }"$green'" = "'$cyan""$@""$green'"
 				else
-					deb ${f##*/}:$lno $cyan$@
+					deb ${f##*/}:$rlno $cyan$@
 				fi
 			else
 				deb ${f##*/}:$lno $cyan$@
@@ -526,7 +554,11 @@ _rm_all(){
 				fi
 			fi
 			if [ -n "$doRm" ];then
-				/bin/rm --one-file-system -rf "$d"
+				if [ -e /bin/rm ];then
+					/bin/rm --one-file-system -rf "$d"
+				elif [ -e /usr/bin/rm ];then
+					/usr/bin/rm --one-file-system -rf "$d"
+				fi
 			else
 				err "cannot delete '$d'"
 				return 1
@@ -700,7 +732,9 @@ function detect_if(){
 SOURCES_LOADED=()
 declare -A FUNC_SOURCE
 
+
 require(){
+	dbv $@
 	if [ -n "$REQUIRE_INVALID" ];then
 		return 0
 	fi
@@ -710,6 +744,7 @@ require(){
 	local to_load
 	local ret=255
 	while (( "$#" )); do
+		dbv $@
 		case "$1" in
 			"-f")
 				requireFunc=1
@@ -720,7 +755,8 @@ require(){
 			*)
 				if [ -n "$requireFunc" ];then
 					if declare -F "${1#**/}" > /dev/null ;then
-						return 0
+						shift
+						continue
 					fi
 				fi
 				if [ "${1:0:1}" != "/" ];then
@@ -735,7 +771,8 @@ require(){
 						if ! detect_if SOURCES_LOADED s '[ "${s##*/}" = '$1' ]';then
 							die "'$1' not found in PATH"
 						else
-							return 0
+							shift
+							continue
 						fi
 					fi
 				else
@@ -747,7 +784,8 @@ require(){
 					emerge_file_content "$to_load"
 				fi
 				if detect SOURCES_LOADED "$to_load";then
-					return 0
+					shift
+					continue
 				fi
 				SOURCES_LOADED+=("$to_load")
 				local funcs="$(declare -F)"
@@ -755,24 +793,31 @@ require(){
 				local lno
 				if [ -r "$to_load" ];then
 					dbv $to_load
-					source <(
-						lno=1
-						IFS=
-						while read -r ln; do
-							if [[ $ln =~ ^([\ \	]*dbv)([\ \	]+(.*)|)$ ]];then
-								echo -E "${BASH_REMATCH[1]}" --position "\"${to_load##*/}:$lno\"" --caption "'${BASH_REMATCH[3]}'" ${BASH_REMATCH[3]}
-							else
-								echo -E "$ln"
-							fi
-							((++lno))
-						done < "$to_load"
-					)
-					ret=$?
+					if [ -n "$DEBUG" -a "$(stat -f -c '%T' /)" != "ramfs"  ]; then
+						source <(
+							lno=1
+							IFS=
+							while read -r ln; do
+								if [[ $ln =~ ^([\ \	]*dbv)([\ \	]+(.*)|)$ ]];then
+									echo -E "${BASH_REMATCH[1]}" --position "\"${to_load##*/}:$lno\"" --caption "'${BASH_REMATCH[3]}'" ${BASH_REMATCH[3]}
+								else
+									echo -E "$ln"
+								fi
+								#echo -E "$ln" >&2
+								((++lno))
+							done < "$to_load"
+						)
+						ret=$?
+					else
+						source "$to_load"
+					fi
+					dbv $to_load $ret
 				else
 					die "cannot require '$to_load'."
 				fi
 				for f in `(echo -E "$funcs"; declare -F) | sort | uniq -u | awk '{print $3}'`; do
 					#dbv FUNC_SOURCE["$f"]="$to_load"
+					dbv $f
 					FUNC_SOURCE["$f"]="$to_load"
 				done
 				if [ -n "$requireFunc" ];then

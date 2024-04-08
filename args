@@ -4,7 +4,8 @@
 
 require parse_func
 
-if [ "${BASH_SOURCE[1]##*/}" = "bashlib_y" ];then
+
+if [ "`caller 0|awk '{print $2}'`" = "require" ];then
 	generate_source_for_args(){
 		echo 'local all_args=("$@")'
 		echo 'local args=()'

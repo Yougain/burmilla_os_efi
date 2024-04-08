@@ -1,6 +1,7 @@
 # bash source
 
 function do_install(){
+	dbv $@
 	local to_inst=$1
 	if [ -z "$to_inst" ];then
 		die "missing argument"
@@ -13,6 +14,7 @@ function do_install(){
 		sudo=sudo
 	fi
 	function _do_install_each(){
+		dbv $1
 		local d="$1"
 		if [ -n "$d" -a ! -d "$d" ];then
 			if [ -e "$d" ];then

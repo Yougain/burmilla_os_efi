@@ -260,6 +260,11 @@ function ssh_do(){
 			if [ -n "$DEBUG" ];then
 				echo DEBUG=\"$DEBUG\"
 			fi
+			dbv `caller 0`
+			dbv `caller 1`
+			dbv `caller 2`
+			dbv `caller 3`
+			echo "#line `caller 1`"
 			trim_indent
 			write_env_file << '			__INNER'
 				__DO_CONTENT
@@ -268,7 +273,15 @@ function ssh_do(){
 				unset REQUIRE_INVALID
 			__INNER
 		) > $SCRIPT_TMP_DIR/$SSH_ID/main
-		cat $SCRIPT_TMP_DIR/$SSH_ID/main | "${CMD[@]}" bash -c '"mkdir -p '$SCRIPT_TMP_DIR/$SSH_ID'";tee '$SCRIPT_TMP_DIR/$SSH_ID'/main >/dev/null; chmod +x '$SCRIPT_TMP_DIR/$SSH_ID'/main ;bash -c '$SCRIPT_TMP_DIR/$SSH_ID'/main'  | while read -r ln; do
+		dbv ${CMD[@]}
+		local resPref="result$SSH_ID"
+		local resPrefLen1=${#resPref}
+		((++resPrefLen1))
+		local res
+		cat $SCRIPT_TMP_DIR/$SSH_ID/main | "${CMD[@]}" bash -c '"mkdir -p '$SCRIPT_TMP_DIR/$SSH_ID';tee '$SCRIPT_TMP_DIR/$SSH_ID'/main >/dev/null; chmod +x '$SCRIPT_TMP_DIR/$SSH_ID'/main ;if ! bash -c '$SCRIPT_TMP_DIR/$SSH_ID'/main; then echo result'$SSH_ID':$?; fi"'  | while read -r ln; do
+			if [ "${ln:0:$resPrefLen1}" = "result$SSH_ID:" ];then
+				res="${ln:$resPrefLen1}"
+			fi
 			if [ -z "$trans_started" ]; then
 				if [ "$ln" = "__TRANS_ENV_$SCRIPT_ID$SSH_ID" ];then
 					trans_started=1
@@ -279,14 +292,13 @@ function ssh_do(){
 				echo -E $ln >> $SCRIPT_TMP_DIR/$SSH_ID/remote_env.diff
 			fi
 		done
-		local res=$?
 		if [ -n "$DEBUG" ];then
 			dbv "transfer env ----"
 			cat $SCRIPT_TMP_DIR/$SSH_ID/remote_env.diff >&2
 			dbv "-----------------"
 		fi
 		. $SCRIPT_TMP_DIR/$SSH_ID/remote_env.diff
-		dbv $INITRD_FILE
+		dbv $res
 		SSH_ID=
 		return $res
 	else
