@@ -304,7 +304,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-04-08 11:25:39.090672000 +0900
++++ os.new/pkg/log/log.go	2024-04-08 14:37:19.590672000 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -565,8 +565,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		if isInitrd() {
 +			Infof("logger started in initrd.")
 +		}
++		nullSymlinked := false
 +		if base == 0 {
-+			nullSymlinked := false
 +			_, err := os.Stat("/dev/null")
 +			if err != nil { // file missing
 +				_, err := os.Stat("/idev/null")
