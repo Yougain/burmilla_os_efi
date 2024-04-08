@@ -304,7 +304,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-04-08 23:24:34.530672000 +0900
++++ os.new/pkg/log/log.go	2024-04-09 06:47:29.635163400 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -496,7 +496,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,6 +236,183 @@
+@@ -120,6 +236,186 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -621,7 +621,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +					}
 +					if errb == nil {
 +						td := strings.TrimSpace(string(out))
-+						Infof("output of 'date %%z': %s", td)
++						Debugf("output of 'date %%z': %s", td)
 +						a, _ := strconv.Atoi(td[1:3])
 +						b, _ := strconv.Atoi(td[3:])
 +						base = a * 60 * 60 + b * 60
@@ -630,7 +630,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +						}
 +					}else{
 +						if(nullSymlinked){
-+							Infof("exec 'date', failed: %v", errb)
++							Debugf("exec 'date', failed: %v", errb)
 +						}
 +					}
 +				}
@@ -643,18 +643,21 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +				byteData, err := io.ReadAll(file)
 +				if err == nil {
 +					cmdline := string(byteData)
-+					Infof("/proc/cmdline = $s", cmdline)
++					Debugf("/proc/cmdline = $s", cmdline)
 +					ti := strings.Index(cmdline, " TZS=")
++					Debugf("ti = %d", ti)
 +					if ti != -1 {
 +						tw := strings.Index(cmdline[ti + 4:], " ")
++						Debugf("tw = %dm, cmdline[ti + 4:ti + 4 + tw] = %s", tw, cmdline[ti + 4:ti + 4 + tw])
 +						if tw != -1 {
 +							base, _ = strconv.Atoi(cmdline[ti + 4:ti + 4 + tw])
++							Debugf("base = %i", base)
 +						}
 +					}else{
-+						Infof("cannot find 'TZS=' in /proc/cmdline")
++						Debugf("cannot find 'TZS=' in /proc/cmdline")
 +					}
 +				}else{
-+					Infof("cannot open /proc/cmdline")
++					Debugf("cannot open /proc/cmdline")
 +				}
 +				file.Close()
 +			}
@@ -665,8 +668,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +			}
 +			loc := time.FixedZone(tz, base)
 +			time.Local = loc
-+			Infof("set time zone")
-+			Infof("time difference: %d seconds", base)
++			Debugf("set time zone")
++			Debugf("time difference: %d seconds", base)
 +		}
 +		if nullSymlinked {
 +			os.Remove("/dev/null")
@@ -680,7 +683,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  // InitLogger sets up Logging to log to /dev/kmsg and to Syslog
  func InitLogger() {
  	if logTheseApps() {
-@@ -131,6 +424,8 @@
+@@ -131,6 +427,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -689,7 +692,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +458,7 @@
+@@ -163,6 +461,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -697,7 +700,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -249,8 +545,10 @@
+@@ -249,8 +548,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
