@@ -304,7 +304,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-04-08 21:15:24.350672000 +0900
++++ os.new/pkg/log/log.go	2024-04-08 21:31:48.020672000 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -496,7 +496,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,6 +236,161 @@
+@@ -120,6 +236,163 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -583,8 +583,10 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +			file, err := os.Open(timeDiffFN2)
 +			if err == nil { // file exists
 +				byteData, err := io.ReadAll(file)
++				if err == nil {
++					base, _ = strconv.Atoi(string(byteData))
++				}
 +				file.Close()
-+				base, err = strconv.Atoi(string(byteData))
 +			}
 +		}
 +		nullSymlinked := false
@@ -658,7 +660,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  // InitLogger sets up Logging to log to /dev/kmsg and to Syslog
  func InitLogger() {
  	if logTheseApps() {
-@@ -131,6 +402,8 @@
+@@ -131,6 +404,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -667,7 +669,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +436,7 @@
+@@ -163,6 +438,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -675,7 +677,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -249,8 +523,10 @@
+@@ -249,8 +525,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
