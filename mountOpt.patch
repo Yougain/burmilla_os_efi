@@ -304,7 +304,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-04-09 06:52:06.955163400 +0900
++++ os.new/pkg/log/log.go	2024-04-09 07:11:13.985163400 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -637,7 +637,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +			}
 +		}
 +		if base == 0 {
-+			Info("Trying read /proc/cmdline")
++			Debug("Trying read /proc/cmdline")
 +			file, err := os.Open("/proc/cmdline")
 +			if err == nil { // file exists
 +				byteData, err := io.ReadAll(file)
@@ -647,10 +647,10 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +					ti := strings.Index(cmdline, " TZS=")
 +					Debugf("ti = %d", ti)
 +					if ti != -1 {
-+						tw := strings.Index(cmdline[ti + 4:], " ")
-+						Debugf("tw = %d, cmdline[ti + 4:ti + 4 + tw] = %s", tw, cmdline[ti + 4:ti + 4 + tw])
++						tw := strings.Index(cmdline[ti + 5:], " ")
++						Debugf("tw = %d, cmdline[ti + 5:ti + 5 + tw] = %s", tw, cmdline[ti + 5:ti + 5 + tw])
 +						if tw != -1 {
-+							base, _ = strconv.Atoi(cmdline[ti + 4:ti + 4 + tw])
++							base, _ = strconv.Atoi(cmdline[ti + 5:ti + 5 + tw])
 +							Debugf("base = %i", base)
 +						}
 +					}else{
