@@ -304,7 +304,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-04-08 14:37:19.590672000 +0900
++++ os.new/pkg/log/log.go	2024-04-08 21:15:24.350672000 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -320,7 +320,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	"path/filepath"
  	"strings"
  
-@@ -14,10 +19,27 @@
+@@ -14,10 +19,29 @@
  	lsyslog "github.com/sirupsen/logrus/hooks/syslog"
  )
  
@@ -331,6 +331,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +	oemVarDir = "/usr/share/ros/oem/var/lib/rancher"
 +	oemVarDirInitrd = oemVarDir + "/initrd"
 +	timeDiffFN = oemVarDirInitrd + "/time_diff_seconds"
++	initrdInfoDir = "/opt/rancher/initrd"
++	timeDiffFN2 = initrdInfoDir + "/time_diff_seconds"
 +	tzFN = oemVarDirInitrd + "/TZ"
 +)
 +
@@ -348,7 +350,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  
  type Fields logrus.Fields
  type Level logrus.Level
-@@ -63,53 +85,145 @@
+@@ -63,53 +87,145 @@
  	return Level(logrus.GetLevel())
  }
  
@@ -494,7 +496,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,6 +234,142 @@
+@@ -120,6 +236,161 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -551,19 +553,39 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +func initFormat() {
 +	if !initFormatExecuted {
 +		initFormatExecuted = true
++	  formatter := logFormat{}
++	  formatter.TimestampFormat = DefaultTimeFormat
++	  logrus.SetFormatter(&formatter)
 +		tzs := os.Getenv("TZS")
 +		if tzs != "" {
 +			base, err := strconv.Atoi(tzs)
 +			if base != 0 {
-+				loc := time.FixedZone(tz, base)
++				loc := time.FixedZone("LOCAL", base)
 +				time.Local = loc
++				if isInitrd() {
++					os.Mkdir(initrdInfoDir, 0755)
++					file, err := os.Create(timeDiffFN2)
++					if err == nil {
++						file.WriteString(fmt.Sprintf("%d", base))
++						file.Close()
++						file, err = os.Create(tzFN)
++						if err == nil {
++							file.WriteString(tz)
++							file.Close()
++						}
++					}
++				}
 +			}
 +			if err != nil {
 +				Errorf("envromental variable, 'TZS=%s', namely, time difference by seconds, is not a numeric.", tzs)
 +			}
-+		}
-+		if isInitrd() {
-+			Infof("logger started in initrd.")
++		} else {
++			file, err := os.Open(timeDiffFN2)
++			if err == nil { // file exists
++				byteData, err := io.ReadAll(file)
++				file.Close()
++				base, err = strconv.Atoi(string(byteData))
++			}
 +		}
 +		nullSymlinked := false
 +		if base == 0 {
@@ -627,24 +649,43 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		if nullSymlinked {
 +				os.Remove("/dev/null")
 +		}
-+		
-+	  formatter := logFormat{}
-+	  formatter.TimestampFormat = DefaultTimeFormat
-+	  logrus.SetFormatter(&formatter)
++		if isInitrd() {
++			Infof("logger started in initrd.")
++		}
 +	}
 +}
 +
  // InitLogger sets up Logging to log to /dev/kmsg and to Syslog
  func InitLogger() {
  	if logTheseApps() {
-@@ -131,6 +381,7 @@
+@@ -131,6 +402,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
-+    logrus.SetReportCaller(true)
++    	logrus.SetReportCaller(true)
++    	initFormat()
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
+@@ -163,6 +436,7 @@
+ 		if err != nil {
+ 			logrus.Error(err)
+ 		}
++    	initFormat()
+ 		logrus.Debugf("START: %v in %s", os.Args, pwd)
+ 	}
+ }
+@@ -249,8 +523,10 @@
+ 
+ 	if debugThisLogger {
+ 		if deferedHook {
++			initFormat()
+ 			logrus.Debugf("------------info Starting defered User Hook (%s)", os.Args[0])
+ 		} else {
++			initFormat()
+ 			logrus.Debugf("------------info Starting User Hook (%s)", os.Args[0])
+ 		}
+ 	}
 diff -Naur '--exclude=.git' os.prev/pkg/sysinit/sysinit.go os.new/pkg/sysinit/sysinit.go
 --- os.prev/pkg/sysinit/sysinit.go	2024-03-14 20:29:45.967485300 +0900
 +++ os.new/pkg/sysinit/sysinit.go	2024-03-16 14:35:37.859185600 +0900
