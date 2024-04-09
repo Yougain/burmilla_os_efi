@@ -1,6 +1,33 @@
+diff -Naur '--exclude=.git' os.prev/cmd/control/autologin.go os.new/cmd/control/autologin.go
+--- os.prev/cmd/control/autologin.go	2024-03-14 20:29:45.937485300 +0900
++++ os.new/cmd/control/autologin.go	2024-04-09 15:39:26.395163400 +0900
+@@ -75,9 +75,9 @@
+ 	os.Setenv("TERM", "linux")
+ 
+ 	// Causes all sorts of issues
+-	//return syscall.Exec(loginBinPath, args, os.Environ())
++	//return syscall.Exec(loginBinPath, args, config.Environ())
+ 	cmd = exec.Command(loginBinPath, args...)
+-	cmd.Env = os.Environ()
++	cmd.Env = config.Environ()
+ 
+ 	cmd.Stderr = os.Stderr
+ 	cmd.Stdout = os.Stdout
+diff -Naur '--exclude=.git' os.prev/cmd/control/config.go os.new/cmd/control/config.go
+--- os.prev/cmd/control/config.go	2024-03-14 20:29:45.937485300 +0900
++++ os.new/cmd/control/config.go	2024-04-09 15:44:48.875163400 +0900
+@@ -143,7 +143,7 @@
+ 		log.Fatal("Could not read from stdin")
+ 	}
+ 	tpl := template.Must(template.New("osconfig").Parse(string(bytes)))
+-	return tpl.Execute(out, env2map(os.Environ()))
++	return tpl.Execute(out, env2map(config.Environ()))
+ }
+ 
+ func env2map(env []string) map[string]string {
 diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/control/console_init.go
 --- os.prev/cmd/control/console_init.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/console_init.go	2024-03-29 20:52:55.375128900 +0900
++++ os.new/cmd/control/console_init.go	2024-04-09 15:42:59.085163400 +0900
 @@ -259,6 +259,20 @@
  	if err := cmd.Run(); err != nil {
  		log.Error(err)
@@ -22,6 +49,51 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/contr
  
  	cloudinitexecute.ApplyConsole(cfg)
  
+@@ -293,7 +307,7 @@
+ 		return err
+ 	}
+ 
+-	return syscall.Exec(respawnBinPath, []string{"respawn", "-f", "/etc/respawn.conf"}, os.Environ())
++	return syscall.Exec(respawnBinPath, []string{"respawn", "-f", "/etc/respawn.conf"}, config.Environ())
+ }
+ 
+ func generateRespawnConf(cmdline, user string, sshd, recovery bool) string {
+diff -Naur '--exclude=.git' os.prev/cmd/control/docker_init.go os.new/cmd/control/docker_init.go
+--- os.prev/cmd/control/docker_init.go	2024-03-14 20:29:45.937485300 +0900
++++ os.new/cmd/control/docker_init.go	2024-04-09 15:40:36.075163400 +0900
+@@ -112,5 +112,5 @@
+ 		log.Error(err)
+ 	}
+ 
+-	return syscall.Exec("/bin/bash", args, os.Environ())
++	return syscall.Exec("/bin/bash", args, config.Environ())
+ }
+diff -Naur '--exclude=.git' os.prev/cmd/control/entrypoint.go os.new/cmd/control/entrypoint.go
+--- os.prev/cmd/control/entrypoint.go	2024-03-14 20:29:45.937485300 +0900
++++ os.new/cmd/control/entrypoint.go	2024-04-09 15:13:02.225163400 +0900
+@@ -55,8 +55,8 @@
+ 	if err != nil {
+ 		return err
+ 	}
+-
+-	return syscall.Exec(binary, os.Args[2:], os.Environ())
++	
++	return syscall.Exec(binary, os.Args[2:], config.Environ())
+ }
+ 
+ func writeFiles(cfg *config.CloudConfig) error {
+diff -Naur '--exclude=.git' os.prev/cmd/control/env.go os.new/cmd/control/env.go
+--- os.prev/cmd/control/env.go	2024-03-14 20:29:45.937485300 +0900
++++ os.new/cmd/control/env.go	2024-04-09 15:39:53.825163400 +0900
+@@ -19,7 +19,7 @@
+ 	if len(args) == 0 {
+ 		return nil
+ 	}
+-	osEnv := os.Environ()
++	osEnv := config.Environ()
+ 
+ 	envMap := make(map[string]string, len(cfg.Rancher.Environment)+len(osEnv))
+ 	for k, v := range cfg.Rancher.Environment {
 diff -Naur '--exclude=.git' os.prev/cmd/control/install.go os.new/cmd/control/install.go
 --- os.prev/cmd/control/install.go	2024-03-14 20:29:45.937485300 +0900
 +++ os.new/cmd/control/install.go	2024-03-30 15:25:00.122754500 +0900
@@ -70,6 +142,36 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/install.go os.new/cmd/control/in
  				image,
  				//				"install",
  				"-t", installType,
+diff -Naur '--exclude=.git' os.prev/cmd/control/recovery_init.go os.new/cmd/control/recovery_init.go
+--- os.prev/cmd/control/recovery_init.go	2024-03-14 20:29:45.937485300 +0900
++++ os.new/cmd/control/recovery_init.go	2024-04-09 15:37:53.735163400 +0900
+@@ -6,6 +6,7 @@
+ 	"syscall"
+ 
+ 	"github.com/burmilla/os/pkg/log"
++	"github.com/burmilla/os/config"
+ 
+ 	"github.com/codegangsta/cli"
+ )
+@@ -20,5 +21,5 @@
+ 		return err
+ 	}
+ 
+-	return syscall.Exec(respawnBinPath, []string{"respawn", "-f", "/etc/respawn.conf"}, os.Environ())
++	return syscall.Exec(respawnBinPath, []string{"respawn", "-f", "/etc/respawn.conf"}, config.Environ())
+ }
+diff -Naur '--exclude=.git' os.prev/cmd/control/user_docker.go os.new/cmd/control/user_docker.go
+--- os.prev/cmd/control/user_docker.go	2024-03-14 20:29:45.937485300 +0900
++++ os.new/cmd/control/user_docker.go	2024-04-09 15:41:20.425163400 +0900
+@@ -193,7 +193,7 @@
+ 	cmd = append(cmd, args...)
+ 	log.Infof("Running %v", cmd)
+ 
+-	return syscall.Exec("/usr/bin/system-docker-runc", cmd, os.Environ())
++	return syscall.Exec("/usr/bin/system-docker-runc", cmd, config.Environ())
+ }
+ 
+ func waitForPid(service string, project *project.Project) (int, error) {
 diff -Naur '--exclude=.git' os.prev/cmd/init/init.go os.new/cmd/init/init.go
 --- os.prev/cmd/init/init.go	2024-03-14 20:29:45.937485300 +0900
 +++ os.new/cmd/init/init.go	2024-03-16 14:35:37.859185600 +0900
@@ -97,6 +199,76 @@ diff -Naur '--exclude=.git' os.prev/cmd/init/init.go os.new/cmd/init/init.go
  	}
  }
  
+diff -Naur '--exclude=.git' os.prev/config/config.go os.new/config/config.go
+--- os.prev/config/config.go	2024-03-14 20:29:45.957485300 +0900
++++ os.new/config/config.go	2024-04-09 15:35:49.045163400 +0900
+@@ -9,6 +9,8 @@
+ 	yaml "github.com/cloudfoundry-incubator/candiedyaml"
+ )
+ 
++var nenv []string
++
+ const Banner = `
+     ____                       _ _ _        ____   _____
+    |  _ \\                     (_) | |      / __ \\ / ____|
+@@ -94,3 +96,37 @@
+ 	elem := strings.Split(string(b), " ")
+ 	return elem[2]
+ }
++
++func Environ() []string {
++	tz := ""
++	if os.Getenv("TZ") == "" {
++		Debug("Trying read /proc/cmdline")
++		file, err := os.Open("/proc/cmdline")
++		if err == nil { // file exists
++			byteData, err := io.ReadAll(file)
++			if err == nil {
++				cmdline := string(byteData)
++				Debugf("/proc/cmdline = $s", cmdline)
++				ti := strings.Index(cmdline, " TZ=")
++				if ti != -1 {
++					tw := strings.Index(cmdline[ti + 4:], " ")
++					if tw != -1 {
++						tz = cmdline[ti + 4:ti + 4 + tw])
++						Debugf("TZ = %s", tz)
++					}
++				}else{
++					Debugf("cannot find 'TZ=' in /proc/cmdline")
++				}
++			}else{
++				Debugf("cannot read /proc/cmdline")
++			}
++			file.Close()
++		}else{
++			Debugf("cannot open /proc/cmdline")
++		}
++		nenv = append(os.Environ(), "TZ=" + tz)
++	}else{
++		nenv = os.Environ()
++	}
++	return nenv
++}
+diff -Naur '--exclude=.git' os.prev/config/docker_config.go os.new/config/docker_config.go
+--- os.prev/config/docker_config.go	2024-03-14 20:29:45.957485300 +0900
++++ os.new/config/docker_config.go	2024-04-09 15:36:48.785163400 +0900
+@@ -5,6 +5,7 @@
+ 	"os"
+ 
+ 	"github.com/fatih/structs"
++	"github.com/burmilla/os/config"
+ )
+ 
+ func (d *DockerConfig) FullArgs() []string {
+@@ -24,7 +25,7 @@
+ }
+ 
+ func (d *DockerConfig) AppendEnv() []string {
+-	return append(os.Environ(), d.Environment...)
++	return append(config.Environ(), d.Environment...)
+ }
+ 
+ func generateEngineOptsSlice(opts EngineOpts) []string {
 diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
 --- os.prev/config/types.go	2024-03-14 20:29:45.957485300 +0900
 +++ os.new/config/types.go	2024-03-16 14:35:37.859185600 +0900
@@ -124,6 +296,18 @@ diff -Naur '--exclude=.git' os.prev/install_burmillaos_on_btrfs os.new/install_b
 +++ os.new/install_burmillaos_on_btrfs	2024-03-27 10:21:39.560310700 +0900
 @@ -0,0 +1 @@
 +
+diff -Naur '--exclude=.git' os.prev/pkg/dfs/scratch.go os.new/pkg/dfs/scratch.go
+--- os.prev/pkg/dfs/scratch.go	2024-03-14 20:29:45.967485300 +0900
++++ os.new/pkg/dfs/scratch.go	2024-04-09 15:43:44.185163400 +0900
+@@ -178,7 +178,7 @@
+ 	}
+ 	log.Debugf("Launching Docker %s %s %v", docker, cmd, args)
+ 
+-	env := os.Environ()
++	env := config.Environ()
+ 	if len(config.Environment) != 0 {
+ 		env = append(env, config.Environment...)
+ 	}
 diff -Naur '--exclude=.git' os.prev/pkg/init/configfiles/configfiles.go os.new/pkg/init/configfiles/configfiles.go
 --- os.prev/pkg/init/configfiles/configfiles.go	2024-03-14 20:29:45.967485300 +0900
 +++ os.new/pkg/init/configfiles/configfiles.go	2024-03-16 14:35:37.859185600 +0900
@@ -304,7 +488,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-04-09 07:11:13.985163400 +0900
++++ os.new/pkg/log/log.go	2024-04-09 15:29:38.895163400 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -496,7 +680,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,6 +236,187 @@
+@@ -120,6 +236,190 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -556,124 +740,127 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		formatter := logFormat{}
 +		formatter.TimestampFormat = DefaultTimeFormat
 +		logrus.SetFormatter(&formatter)
-+		tzs := os.Getenv("TZS")
-+		if tzs != "" {
-+			base, err := strconv.Atoi(tzs)
-+			if base != 0 {
-+				loc := time.FixedZone("LOCAL", base)
-+				time.Local = loc
-+				if isInitrd() {
-+					os.Mkdir(initrdInfoDir, 0755)
-+					file, err := os.Create(timeDiffFN2)
-+					if err == nil {
-+						file.WriteString(fmt.Sprintf("%d", base))
-+						file.Close()
++		Debugf("Current time location: %s", time.Location.String())
++		if time.Location.String() == "" {
++			tzs := os.Getenv("TZS")
++			if tzs != "" {
++				base, err := strconv.Atoi(tzs)
++				if base != 0 {
++					loc := time.FixedZone("LOCAL", base)
++					time.Local = loc
++					if isInitrd() {
++						os.Mkdir(initrdInfoDir, 0755)
++						file, err := os.Create(timeDiffFN2)
++						if err == nil {
++							file.WriteString(fmt.Sprintf("%d", base))
++							file.Close()
++						}
 +					}
 +				}
-+			}
-+			if err != nil {
-+				Errorf("envromental variable, 'TZS=%s', namely, time difference by seconds, is not a numeric.", tzs)
-+			}
-+		} else {
-+			file, err := os.Open(timeDiffFN2)
-+			if err == nil { // file exists
-+				byteData, err := io.ReadAll(file)
-+				if err == nil {
-+					base, _ = strconv.Atoi(string(byteData))
-+				}
-+				file.Close()
-+			}
-+		}
-+		nullSymlinked := false
-+		if base == 0 {
-+			_, err := os.Stat("/dev/null")
-+			if err != nil { // file missing
-+				_, err := os.Stat("/idev/null")
-+				if err == nil {
-+					os.Symlink("/idev/null", "/dev/null")
-+					nullSymlinked = true // initrd started
++				if err != nil {
++					Errorf("envromental variable, 'TZS=%s', namely, time difference by seconds, is not a numeric.", tzs)
 +				}
 +			} else {
-+				file, err := os.Open(timeDiffFN)
++				file, err := os.Open(timeDiffFN2)
 +				if err == nil { // file exists
 +					byteData, err := io.ReadAll(file)
-+					file.Close()
-+					base, err = strconv.Atoi(string(byteData))
 +					if err == nil {
-+						file, err := os.Open(tzFN)
-+						if err == nil { // file exists
-+							byteData, err = io.ReadAll(file)
-+							file.Close()
-+							tz = strings.TrimSpace(string(byteData))
++						base, _ = strconv.Atoi(string(byteData))
++					}
++					file.Close()
++				}
++			}
++			nullSymlinked := false
++			if base == 0 {
++				_, err := os.Stat("/dev/null")
++				if err != nil { // file missing
++					_, err := os.Stat("/idev/null")
++					if err == nil {
++						os.Symlink("/idev/null", "/dev/null")
++						nullSymlinked = true // initrd started
++					}
++				} else {
++					file, err := os.Open(timeDiffFN)
++					if err == nil { // file exists
++						byteData, err := io.ReadAll(file)
++						file.Close()
++						base, err = strconv.Atoi(string(byteData))
++						if err == nil {
++							file, err := os.Open(tzFN)
++							if err == nil { // file exists
++								byteData, err = io.ReadAll(file)
++								file.Close()
++								tz = strings.TrimSpace(string(byteData))
++							}
 +						}
 +					}
 +				}
-+			}
-+			if err != nil || base == 0 {
-+				tz = os.Getenv("TZ")
-+				if tz != "" {
-+					out, errb := exec.Command("date", "+%z").Output()
-+					if errb != nil {
-+						out, errb = exec.Command("/usr/bin/date", "+%z").Output()
++				if err != nil || base == 0 {
++					tz = os.Getenv("TZ")
++					if tz != "" {
++						out, errb := exec.Command("date", "+%z").Output()
 +						if errb != nil {
-+							out, errb = exec.Command("/bin/date", "+%z").Output()
++							out, errb = exec.Command("/usr/bin/date", "+%z").Output()
++							if errb != nil {
++								out, errb = exec.Command("/bin/date", "+%z").Output()
++							}
 +						}
-+					}
-+					if errb == nil {
-+						td := strings.TrimSpace(string(out))
-+						Debugf("output of 'date %%z': %s", td)
-+						a, _ := strconv.Atoi(td[1:3])
-+						b, _ := strconv.Atoi(td[3:])
-+						base = a * 60 * 60 + b * 60
-+						if td[0:1] == "-" {
-+							base = -base
-+						}
-+					}else{
-+						if(nullSymlinked){
-+							Debugf("exec 'date', failed: %v", errb)
++						if errb == nil {
++							td := strings.TrimSpace(string(out))
++							Debugf("output of 'date %%z': %s", td)
++							a, _ := strconv.Atoi(td[1:3])
++							b, _ := strconv.Atoi(td[3:])
++							base = a * 60 * 60 + b * 60
++							if td[0:1] == "-" {
++								base = -base
++							}
++						}else{
++							if(nullSymlinked){
++								Debugf("exec 'date', failed: %v", errb)
++							}
 +						}
 +					}
 +				}
 +			}
-+		}
-+		if base == 0 {
-+			Debug("Trying read /proc/cmdline")
-+			file, err := os.Open("/proc/cmdline")
-+			if err == nil { // file exists
-+				byteData, err := io.ReadAll(file)
-+				if err == nil {
-+					cmdline := string(byteData)
-+					Debugf("/proc/cmdline = $s", cmdline)
-+					ti := strings.Index(cmdline, " TZS=")
-+					Debugf("ti = %d", ti)
-+					if ti != -1 {
-+						tw := strings.Index(cmdline[ti + 5:], " ")
-+						Debugf("tw = %d, cmdline[ti + 5:ti + 5 + tw] = %s", tw, cmdline[ti + 5:ti + 5 + tw])
-+						if tw != -1 {
-+							base, _ = strconv.Atoi(cmdline[ti + 5:ti + 5 + tw])
-+							Debugf("base = %i", base)
++			if base == 0 {
++				Debug("Trying read /proc/cmdline")
++				file, err := os.Open("/proc/cmdline")
++				if err == nil { // file exists
++					byteData, err := io.ReadAll(file)
++					if err == nil {
++						cmdline := string(byteData)
++						Debugf("/proc/cmdline = $s", cmdline)
++						ti := strings.Index(cmdline, " TZS=")
++						if ti != -1 {
++							tw := strings.Index(cmdline[ti + 5:], " ")
++							if tw != -1 {
++								base, _ = strconv.Atoi(cmdline[ti + 5:ti + 5 + tw])
++								Debugf("base = %i", base)
++							}
++						}else{
++							Debugf("cannot find 'TZS=' in /proc/cmdline")
 +						}
 +					}else{
-+						Debugf("cannot find 'TZS=' in /proc/cmdline")
++						Debugf("cannot read /proc/cmdline")
 +					}
++					file.Close()
 +				}else{
 +					Debugf("cannot open /proc/cmdline")
 +				}
-+				file.Close()
 +			}
-+		}
-+		Debugf("before set: base = %i", base)
-+		if base != 0 {
-+			if tz == "" {
-+				tz = "LOCAL"
++			Debugf("before set: base = %i", base)
++			if base != 0 {
++				if tz == "" {
++					tz = "LOCAL"
++				}
++				loc := time.FixedZone(tz, base)
++				time.Local = loc
++				Debugf("set time zone")
++				Debugf("time difference: %d seconds", base)
 +			}
-+			loc := time.FixedZone(tz, base)
-+			time.Local = loc
-+			Debugf("set time zone")
-+			Debugf("time difference: %d seconds", base)
-+		}
-+		if nullSymlinked {
-+			os.Remove("/dev/null")
++			if nullSymlinked {
++				os.Remove("/dev/null")
++			}
 +		}
 +		if isInitrd() {
 +			Infof("logger started in initrd.")
@@ -684,7 +871,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  // InitLogger sets up Logging to log to /dev/kmsg and to Syslog
  func InitLogger() {
  	if logTheseApps() {
-@@ -131,6 +428,8 @@
+@@ -131,6 +431,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -693,7 +880,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +462,7 @@
+@@ -163,6 +465,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -701,7 +888,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -249,8 +549,10 @@
+@@ -249,8 +552,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
