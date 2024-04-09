@@ -480,7 +480,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-04-09 15:29:38.895163400 +0900
++++ os.new/pkg/log/log.go	2024-04-09 15:54:43.295163400 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -672,7 +672,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,6 +236,190 @@
+@@ -120,6 +236,191 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -732,8 +732,9 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		formatter := logFormat{}
 +		formatter.TimestampFormat = DefaultTimeFormat
 +		logrus.SetFormatter(&formatter)
-+		Debugf("Current time location: %s", time.Location.String())
-+		if time.Location.String() == "" {
++		tl := time.Location
++		Debugf("Current time location: %s", tl.String())
++		if tl.String() == "" {
 +			tzs := os.Getenv("TZS")
 +			if tzs != "" {
 +				base, err := strconv.Atoi(tzs)
@@ -863,7 +864,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  // InitLogger sets up Logging to log to /dev/kmsg and to Syslog
  func InitLogger() {
  	if logTheseApps() {
-@@ -131,6 +431,8 @@
+@@ -131,6 +432,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -872,7 +873,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +465,7 @@
+@@ -163,6 +466,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -880,7 +881,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -249,8 +552,10 @@
+@@ -249,8 +553,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
