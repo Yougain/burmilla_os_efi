@@ -261,24 +261,21 @@ diff -Naur '--exclude=.git' os.prev/config/config.go os.new/config/config.go
 +}
 diff -Naur '--exclude=.git' os.prev/config/docker_config.go os.new/config/docker_config.go
 --- os.prev/config/docker_config.go	2024-03-14 20:29:45.957485300 +0900
-+++ os.new/config/docker_config.go	2024-04-09 16:22:07.725163400 +0900
-@@ -2,9 +2,9 @@
++++ os.new/config/docker_config.go	2024-04-09 16:25:05.105163400 +0900
+@@ -2,7 +2,6 @@
  
  import (
  	"fmt"
 -	"os"
  
  	"github.com/fatih/structs"
-+	"github.com/burmilla/os/config"
  )
- 
- func (d *DockerConfig) FullArgs() []string {
-@@ -24,7 +24,7 @@
+@@ -24,7 +23,7 @@
  }
  
  func (d *DockerConfig) AppendEnv() []string {
 -	return append(os.Environ(), d.Environment...)
-+	return append(config.Environ(), d.Environment...)
++	return append(Environ(), d.Environment...)
  }
  
  func generateEngineOptsSlice(opts EngineOpts) []string {
