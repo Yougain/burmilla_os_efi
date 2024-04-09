@@ -201,8 +201,18 @@ diff -Naur '--exclude=.git' os.prev/cmd/init/init.go os.new/cmd/init/init.go
  
 diff -Naur '--exclude=.git' os.prev/config/config.go os.new/config/config.go
 --- os.prev/config/config.go	2024-03-14 20:29:45.957485300 +0900
-+++ os.new/config/config.go	2024-04-09 15:58:43.645163400 +0900
-@@ -9,6 +9,8 @@
++++ os.new/config/config.go	2024-04-09 16:18:30.175163400 +0900
+@@ -2,13 +2,18 @@
+ 
+ import (
+ 	"io/ioutil"
++	"io"
++	"os"
+ 	"strings"
+ 
++	"github.com/burmilla/os/pkg/log"
+ 	"github.com/burmilla/os/config/cmdline"
+ 	"github.com/burmilla/os/pkg/util"
  	yaml "github.com/cloudfoundry-incubator/candiedyaml"
  )
  
@@ -211,7 +221,7 @@ diff -Naur '--exclude=.git' os.prev/config/config.go os.new/config/config.go
  const Banner = `
      ____                       _ _ _        ____   _____
     |  _ \\                     (_) | |      / __ \\ / ____|
-@@ -94,3 +96,37 @@
+@@ -94,3 +99,37 @@
  	elem := strings.Split(string(b), " ")
  	return elem[2]
  }
