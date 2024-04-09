@@ -251,16 +251,8 @@ diff -Naur '--exclude=.git' os.prev/config/config.go os.new/config/config.go
 +}
 diff -Naur '--exclude=.git' os.prev/config/docker_config.go os.new/config/docker_config.go
 --- os.prev/config/docker_config.go	2024-03-14 20:29:45.957485300 +0900
-+++ os.new/config/docker_config.go	2024-04-09 15:36:48.785163400 +0900
-@@ -5,6 +5,7 @@
- 	"os"
- 
- 	"github.com/fatih/structs"
-+	"github.com/burmilla/os/config"
- )
- 
- func (d *DockerConfig) FullArgs() []string {
-@@ -24,7 +25,7 @@
++++ os.new/config/docker_config.go	2024-04-09 15:51:49.205163400 +0900
+@@ -24,7 +24,7 @@
  }
  
  func (d *DockerConfig) AppendEnv() []string {
