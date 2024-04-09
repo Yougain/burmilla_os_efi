@@ -3,7 +3,7 @@
 
 function create_initrd_mod(){
 	apt-get -y update
-	apt-get -y install cpio btrfs-progs strace nginx git
+	apt-get -y install cpio btrfs-progs strace nginx git binutils
 
 	local tmpd=`pwd`
 	local PATH="$tmpd:$PATH"
@@ -410,6 +410,7 @@ $libs"
 		tail
 		dmesg
 		nginx
+		strings
 	END
 	mkdir -p ./idev # for logger
 	mknod ./idev/null c 1 3

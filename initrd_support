@@ -29,9 +29,62 @@ before_sysinit(){
 	killall udevd
 	info killall udevd: result = $?
 	info udev stopped
+	info /opt is on $(stat -f -c '%T' /opt)
 	if [ "$(stat -f -c '%T' /opt)" = "ramfs" ];then
 		mkdir -p /opt/initrd
 		mount --bind / /opt/initrd
+	fi
+	info / is on $(stat -f -c '%T' /)
+	if [ "$(stat -f -c '%T' /)" = "ramfs" ];then
+		local found
+		for f in `find /usr/share/zoneinfo`; do
+			for t in `strings $f`; do
+				if [ "$t" = "$TZ" ] ; then
+					found=$f
+					info $TZ found in $f
+					break
+				fi
+			done
+			if [ -n "$found" ];then
+				cp -f $found /etc/timezone
+				info cp $found /etc/timezone
+				break
+			fi
+		done
+		mkdir -p /var/lib/rancher/conf/cloud-config.d
+		cat - > /var/lib/rancher/conf/cloud-config.d/user_config.yml <<END
+rancher:
+  environment:
+    TZ: $TZ
+  services:
+    console:
+      environment:
+        TZ: $TZ
+    syslog:
+      environment:
+        TZ: $TZ
+    udev:
+      environment:
+        TZ: $TZ
+    system-cron:
+      environment:
+        TZ: $TZ
+    acpid:
+      environment:
+        TZ: $TZ
+    ntp:
+      environment:
+        TZ: $TZ
+    docker:
+      environment:
+        TZ: $TZ
+  system_docker:
+    environment:
+      TZ: $TZ
+  docker:
+    environment:
+      TZ: $TZ
+END
 	fi
 }
 

@@ -1248,6 +1248,8 @@ ssh_sudo <<'FINAL'
 			hostname: $HNAME_FULL
 			date: $DATE
 			rancher:
+			  environment:
+			    TZ: $TZL
 			  network:
 			    dns:
 			      nameservers:
@@ -1265,6 +1267,27 @@ ssh_sudo <<'FINAL'
 			    syslog:
 			      environment:
 			        TZ: $TZL
+			    udev:
+			      environment:
+			        TZ: $TZL
+			    system-cron:
+			      environment:
+			        TZ: $TZL
+			    acpid:
+			      environment:
+			        TZ: $TZL
+			    ntp:
+			      environment:
+			        TZ: $TZL
+			    docker:
+			      environment:
+			        TZ: $TZL
+			  system_docker:
+			    environment:
+			      TZ: $TZ
+			  docker:
+			    environment:
+			      TZ: $TZ
 			runcmd:
 			- do_mount 5 -o subvol=/ /state_top_lvl
 			- do_mount 7 -o subvol=/ /oem_top_lvl

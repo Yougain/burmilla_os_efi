@@ -25,6 +25,18 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/config.go os.new/cmd/control/con
  }
  
  func env2map(env []string) map[string]string {
+diff -Naur '--exclude=.git' os.prev/cmd/control/console.go os.new/cmd/control/console.go
+--- os.prev/cmd/control/console.go	2024-03-14 20:29:45.937485300 +0900
++++ os.new/cmd/control/console.go	2024-04-09 21:45:29.665163400 +0900
+@@ -85,7 +85,7 @@
+ 	}
+ 
+ 	service, err := compose.CreateService(nil, "switch-console", &composeConfig.ServiceConfigV1{
+-		LogDriver:  "json-file",
++		LogDriver:  "local",
+ 		Privileged: true,
+ 		Net:        "host",
+ 		Pid:        "host",
 diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/control/console_init.go
 --- os.prev/cmd/control/console_init.go	2024-03-14 20:29:45.937485300 +0900
 +++ os.new/cmd/control/console_init.go	2024-04-09 15:42:59.085163400 +0900
@@ -150,6 +162,18 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/install.go os.new/cmd/control/in
  				image,
  				//				"install",
  				"-t", installType,
+diff -Naur '--exclude=.git' os.prev/cmd/control/os.go os.new/cmd/control/os.go
+--- os.prev/cmd/control/os.go	2024-03-14 20:29:45.937485300 +0900
++++ os.new/cmd/control/os.go	2024-04-09 21:44:37.485163400 +0900
+@@ -273,7 +273,7 @@
+ 	}
+ 
+ 	container, err := compose.CreateService(nil, "os-upgrade", &composeConfig.ServiceConfigV1{
+-		LogDriver:  "json-file",
++		LogDriver:  "local",
+ 		Privileged: true,
+ 		Net:        "host",
+ 		Pid:        "host",
 diff -Naur '--exclude=.git' os.prev/cmd/control/recovery_init.go os.new/cmd/control/recovery_init.go
 --- os.prev/cmd/control/recovery_init.go	2024-03-14 20:29:45.937485300 +0900
 +++ os.new/cmd/control/recovery_init.go	2024-04-09 16:43:50.245163400 +0900
@@ -360,6 +384,137 @@ diff -Naur '--exclude=.git' os.prev/install_burmillaos_on_btrfs os.new/install_b
 +++ os.new/install_burmillaos_on_btrfs	2024-03-27 10:21:39.560310700 +0900
 @@ -0,0 +1 @@
 +
+diff -Naur '--exclude=.git' os.prev/os-config.tpl.yml os.new/os-config.tpl.yml
+--- os.prev/os-config.tpl.yml	2024-03-14 20:29:45.967485300 +0900
++++ os.new/os-config.tpl.yml	2024-04-09 21:51:28.365163400 +0900
+@@ -36,7 +36,7 @@
+       labels:
+         io.rancher.os.detach: "false"
+         io.rancher.os.scope: system
+-      log_driver: json-file
++      log_driver: local
+       net: none
+       privileged: true
+       volumes:
+@@ -48,6 +48,7 @@
+       - /usr/share/ros:/usr/share/ros:ro
+       - /var/lib/rancher:/var/lib/rancher:ro
+       - /var/log:/var/log
++      - /etc/timezone:/etc/timezone
+   cloud_init_services:
+     cloud-init:
+       image: {{.OS_REPO}}/os-base:{{.VERSION}}{{.SUFFIX}}
+@@ -55,7 +56,7 @@
+       labels:
+         io.rancher.os.detach: "false"
+         io.rancher.os.scope: system
+-      log_driver: json-file
++      log_driver: local
+       net: host
+       uts: host
+       pid: host
+@@ -73,6 +74,7 @@
+       - /var/lib/rancher:/var/lib/rancher
+       - /var/lib/rancher/conf:/var/lib/rancher/conf
+       - /var/log:/var/log
++      - /etc/timezone:/etc/timezone
+   bootstrap_docker:
+     bridge: none
+     storage_driver: overlay2
+@@ -116,7 +118,7 @@
+       labels:
+         io.rancher.os.createonly: "true"
+         io.rancher.os.scope: system
+-      log_driver: json-file
++      log_driver: local
+       net: none
+       privileged: true
+       read_only: true
+@@ -130,7 +132,7 @@
+       labels:
+         io.rancher.os.createonly: "true"
+         io.rancher.os.scope: system
+-      log_driver: json-file
++      log_driver: local
+       net: none
+       privileged: true
+       read_only: true
+@@ -152,13 +154,14 @@
+       - /var/lib/waagent:/var/lib/waagent
+       - /var/log:/var/log
+       - /var/run:/var/run
++      - /etc/timezone:/etc/timezone
+     container-data-volumes:
+       image: {{.OS_REPO}}/os-base:{{.VERSION}}{{.SUFFIX}}
+       command: echo
+       labels:
+         io.rancher.os.createonly: "true"
+         io.rancher.os.scope: system
+-      log_driver: json-file
++      log_driver: local
+       net: none
+       privileged: true
+       read_only: true
+@@ -171,7 +174,7 @@
+       labels:
+         io.rancher.os.createonly: "true"
+         io.rancher.os.scope: system
+-      log_driver: json-file
++      log_driver: local
+       net: none
+       privileged: true
+       read_only: true
+@@ -185,7 +188,7 @@
+       labels:
+         io.rancher.os.createonly: "true"
+         io.rancher.os.scope: system
+-      log_driver: json-file
++      log_driver: local
+       net: none
+       privileged: true
+       read_only: true
+@@ -199,7 +202,7 @@
+         io.rancher.os.createonly: "true"
+         io.rancher.os.scope: system
+         io.docker.compose.rebuild: always
+-      log_driver: json-file
++      log_driver: local
+       net: none
+       privileged: true
+       read_only: true
+@@ -321,7 +324,7 @@
+       command: rsyslogd -n
+       labels:
+         io.rancher.os.scope: system
+-      log_driver: json-file
++      log_driver: local
+       net: host
+       uts: host
+       privileged: true
+@@ -343,6 +346,7 @@
+       restart: always
+       volumes:
+       - /var/run/system-docker.sock:/var/run/docker.sock
++      - /etc/timezone:/etc/timezone
+       environment:
+         DOCKER_API_VERSION: "1.22"
+     udev-cold:
+@@ -405,6 +409,7 @@
+     group: root
+     host: ["unix:///var/run/system-docker.sock"]
+     pid_file: /var/run/system-docker.pid
++    log_driver: local
+     exec_root: /var/run/system-docker
+     config_file: /etc/docker/system-docker.json
+     userland_proxy: false
+@@ -423,6 +428,7 @@
+     {{end -}}
+     group: docker
+     host: ["unix:///var/run/docker.sock"]
++    log_driver: local
+     log_opts:
+       max-size: 25m
+       max-file: 2
 diff -Naur '--exclude=.git' os.prev/pkg/dfs/scratch.go os.new/pkg/dfs/scratch.go
 --- os.prev/pkg/dfs/scratch.go	2024-03-14 20:29:45.967485300 +0900
 +++ os.new/pkg/dfs/scratch.go	2024-04-09 16:41:58.565163400 +0900
@@ -545,6 +700,26 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
 +
  	return cfg, nil
  }
+diff -Naur '--exclude=.git' os.prev/pkg/init/recovery/recovery.go os.new/pkg/init/recovery/recovery.go
+--- os.prev/pkg/init/recovery/recovery.go	2024-03-14 20:29:45.967485300 +0900
++++ os.new/pkg/init/recovery/recovery.go	2024-04-09 21:47:07.475163400 +0900
+@@ -24,7 +24,7 @@
+ 			config.DetachLabel: "false",
+ 			config.ScopeLabel:  "system",
+ 		},
+-		LogDriver:  "json-file",
++		LogDriver:  "local",
+ 		Net:        "host",
+ 		Uts:        "host",
+ 		Pid:        "host",
+@@ -42,6 +42,7 @@
+ 			"/var/lib/rancher:/var/lib/rancher",
+ 			"/var/lib/rancher/conf:/var/lib/rancher/conf",
+ 			"/var/run:/var/run",
++			"/etc/timezone:/etc/timezone",
+ 		},
+ 	}
+ )
 diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg/init/switchroot/switchroot.go
 --- os.prev/pkg/init/switchroot/switchroot.go	2024-03-14 20:29:45.967485300 +0900
 +++ os.new/pkg/init/switchroot/switchroot.go	2024-03-16 14:35:37.859185600 +0900
