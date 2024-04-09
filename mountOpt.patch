@@ -261,21 +261,25 @@ diff -Naur '--exclude=.git' os.prev/config/config.go os.new/config/config.go
 +}
 diff -Naur '--exclude=.git' os.prev/config/docker_config.go os.new/config/docker_config.go
 --- os.prev/config/docker_config.go	2024-03-14 20:29:45.957485300 +0900
-+++ os.new/config/docker_config.go	2024-04-09 16:27:47.695163400 +0900
-@@ -2,7 +2,6 @@
++++ os.new/config/docker_config.go	2024-04-09 16:30:01.785163400 +0900
+@@ -2,9 +2,11 @@
  
  import (
  	"fmt"
--	"os"
++	"io"
+ 	"os"
  
  	"github.com/fatih/structs"
++	"github.com/burmilla/pkg/log"
  )
-@@ -23,8 +22,43 @@
+ 
+ func (d *DockerConfig) FullArgs() []string {
+@@ -23,8 +25,43 @@
  	return args
  }
  
 +
-+func Environ() []string {
++func environ() []string {
 +	tz := ""
 +	if os.Getenv("TZ") == "" {
 +		log.Debug("Trying read /proc/cmdline")
@@ -311,7 +315,7 @@ diff -Naur '--exclude=.git' os.prev/config/docker_config.go os.new/config/docker
 +
  func (d *DockerConfig) AppendEnv() []string {
 -	return append(os.Environ(), d.Environment...)
-+	return append(Environ(), d.Environment...)
++	return append(environ(), d.Environment...)
  }
  
  func generateEngineOptsSlice(opts EngineOpts) []string {
