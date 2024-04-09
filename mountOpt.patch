@@ -349,7 +349,7 @@ diff -Naur '--exclude=.git' os.prev/install_burmillaos_on_btrfs os.new/install_b
 +
 diff -Naur '--exclude=.git' os.prev/pkg/dfs/scratch.go os.new/pkg/dfs/scratch.go
 --- os.prev/pkg/dfs/scratch.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/dfs/scratch.go	2024-04-09 16:35:33.965163400 +0900
++++ os.new/pkg/dfs/scratch.go	2024-04-09 16:41:58.565163400 +0900
 @@ -11,6 +11,7 @@
  	"strings"
  	"syscall"
@@ -358,15 +358,42 @@ diff -Naur '--exclude=.git' os.prev/pkg/dfs/scratch.go os.new/pkg/dfs/scratch.go
  	"github.com/burmilla/os/config/cmdline"
  	"github.com/burmilla/os/pkg/init/one"
  	"github.com/burmilla/os/pkg/log"
-@@ -178,7 +179,7 @@
+@@ -172,20 +173,20 @@
+ 	return nil
+ }
+ 
+-func execDocker(config *Config, docker, cmd string, args []string) (*exec.Cmd, error) {
++func execDocker(config_ *Config, docker, cmd string, args []string) (*exec.Cmd, error) {
+ 	if len(args) > 0 && args[0] == "docker" {
+ 		args = args[1:]
  	}
  	log.Debugf("Launching Docker %s %s %v", docker, cmd, args)
  
 -	env := os.Environ()
+-	if len(config.Environment) != 0 {
+-		env = append(env, config.Environment...)
 +	env := config.Environ()
- 	if len(config.Environment) != 0 {
- 		env = append(env, config.Environment...)
++	if len(config_.Environment) != 0 {
++		env = append(env, config_.Environment...)
  	}
+ 
+-	if config.Fork {
++	if config_.Fork {
+ 		cmd := exec.Command(docker, args...)
+-		if !config.NoLog {
++		if !config_.NoLog {
+ 			cmd.Stdout = os.Stdout
+ 			cmd.Stderr = os.Stderr
+ 		}
+@@ -194,7 +195,7 @@
+ 		if err != nil {
+ 			return cmd, err
+ 		}
+-		if config.PidOne {
++		if config_.PidOne {
+ 			one.PidOne()
+ 		}
+ 		return cmd, err
 diff -Naur '--exclude=.git' os.prev/pkg/init/configfiles/configfiles.go os.new/pkg/init/configfiles/configfiles.go
 --- os.prev/pkg/init/configfiles/configfiles.go	2024-03-14 20:29:45.967485300 +0900
 +++ os.new/pkg/init/configfiles/configfiles.go	2024-03-16 14:35:37.859185600 +0900
