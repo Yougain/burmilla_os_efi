@@ -587,7 +587,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-04-09 17:10:33.735163400 +0900
++++ os.new/pkg/log/log.go	2024-04-09 17:11:01.465163400 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -935,7 +935,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +							tw := strings.Index(cmdline[ti + 5:], " ")
 +							if tw != -1 {
 +								base, _ = strconv.Atoi(cmdline[ti + 5:ti + 5 + tw])
-+								Debugf("base = %i", base)
++								Debugf("base = %d", base)
 +							}
 +						}else{
 +							Debugf("cannot find 'TZS=' in /proc/cmdline")
