@@ -201,7 +201,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/init/init.go os.new/cmd/init/init.go
  
 diff -Naur '--exclude=.git' os.prev/config/config.go os.new/config/config.go
 --- os.prev/config/config.go	2024-03-14 20:29:45.957485300 +0900
-+++ os.new/config/config.go	2024-04-09 16:18:30.175163400 +0900
++++ os.new/config/config.go	2024-04-09 16:20:59.255163400 +0900
 @@ -2,13 +2,18 @@
  
  import (
@@ -229,29 +229,29 @@ diff -Naur '--exclude=.git' os.prev/config/config.go os.new/config/config.go
 +func Environ() []string {
 +	tz := ""
 +	if os.Getenv("TZ") == "" {
-+		Debug("Trying read /proc/cmdline")
++		log.Debug("Trying read /proc/cmdline")
 +		file, err := os.Open("/proc/cmdline")
 +		if err == nil { // file exists
 +			byteData, err := io.ReadAll(file)
 +			if err == nil {
 +				cmdline := string(byteData)
-+				Debugf("/proc/cmdline = $s", cmdline)
++				log.Debugf("/proc/cmdline = $s", cmdline)
 +				ti := strings.Index(cmdline, " TZ=")
 +				if ti != -1 {
 +					tw := strings.Index(cmdline[ti + 4:], " ")
 +					if tw != -1 {
 +						tz = cmdline[ti + 4:ti + 4 + tw]
-+						Debugf("TZ = %s", tz)
++						log.Debugf("TZ = %s", tz)
 +					}
 +				}else{
-+					Debugf("cannot find 'TZ=' in /proc/cmdline")
++					log.Debugf("cannot find 'TZ=' in /proc/cmdline")
 +				}
 +			}else{
-+				Debugf("cannot read /proc/cmdline")
++				log.Debugf("cannot read /proc/cmdline")
 +			}
 +			file.Close()
 +		}else{
-+			Debugf("cannot open /proc/cmdline")
++			log.Debugf("cannot open /proc/cmdline")
 +		}
 +		nenv = append(os.Environ(), "TZ=" + tz)
 +	}else{
@@ -261,7 +261,18 @@ diff -Naur '--exclude=.git' os.prev/config/config.go os.new/config/config.go
 +}
 diff -Naur '--exclude=.git' os.prev/config/docker_config.go os.new/config/docker_config.go
 --- os.prev/config/docker_config.go	2024-03-14 20:29:45.957485300 +0900
-+++ os.new/config/docker_config.go	2024-04-09 15:51:49.205163400 +0900
++++ os.new/config/docker_config.go	2024-04-09 16:22:07.725163400 +0900
+@@ -2,9 +2,9 @@
+ 
+ import (
+ 	"fmt"
+-	"os"
+ 
+ 	"github.com/fatih/structs"
++	"github.com/burmilla/os/config"
+ )
+ 
+ func (d *DockerConfig) FullArgs() []string {
 @@ -24,7 +24,7 @@
  }
  
