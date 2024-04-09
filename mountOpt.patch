@@ -1,6 +1,6 @@
 diff -Naur '--exclude=.git' os.prev/cmd/control/autologin.go os.new/cmd/control/autologin.go
 --- os.prev/cmd/control/autologin.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/autologin.go	2024-04-09 15:39:26.395163400 +0900
++++ os.new/cmd/control/autologin.go	2024-04-09 22:36:14.545163400 +0900
 @@ -75,9 +75,9 @@
  	os.Setenv("TERM", "linux")
  
@@ -15,7 +15,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/autologin.go os.new/cmd/control/
  	cmd.Stdout = os.Stdout
 diff -Naur '--exclude=.git' os.prev/cmd/control/config.go os.new/cmd/control/config.go
 --- os.prev/cmd/control/config.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/config.go	2024-04-09 15:44:48.875163400 +0900
++++ os.new/cmd/control/config.go	2024-04-09 22:36:14.545163400 +0900
 @@ -143,7 +143,7 @@
  		log.Fatal("Could not read from stdin")
  	}
@@ -25,21 +25,9 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/config.go os.new/cmd/control/con
  }
  
  func env2map(env []string) map[string]string {
-diff -Naur '--exclude=.git' os.prev/cmd/control/console.go os.new/cmd/control/console.go
---- os.prev/cmd/control/console.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/console.go	2024-04-09 21:45:29.665163400 +0900
-@@ -85,7 +85,7 @@
- 	}
- 
- 	service, err := compose.CreateService(nil, "switch-console", &composeConfig.ServiceConfigV1{
--		LogDriver:  "json-file",
-+		LogDriver:  "local",
- 		Privileged: true,
- 		Net:        "host",
- 		Pid:        "host",
 diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/control/console_init.go
 --- os.prev/cmd/control/console_init.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/console_init.go	2024-04-09 15:42:59.085163400 +0900
++++ os.new/cmd/control/console_init.go	2024-04-09 22:36:14.545163400 +0900
 @@ -259,6 +259,20 @@
  	if err := cmd.Run(); err != nil {
  		log.Error(err)
@@ -72,7 +60,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/contr
  func generateRespawnConf(cmdline, user string, sshd, recovery bool) string {
 diff -Naur '--exclude=.git' os.prev/cmd/control/docker_init.go os.new/cmd/control/docker_init.go
 --- os.prev/cmd/control/docker_init.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/docker_init.go	2024-04-09 15:40:36.075163400 +0900
++++ os.new/cmd/control/docker_init.go	2024-04-09 22:36:14.545163400 +0900
 @@ -112,5 +112,5 @@
  		log.Error(err)
  	}
@@ -82,7 +70,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/docker_init.go os.new/cmd/contro
  }
 diff -Naur '--exclude=.git' os.prev/cmd/control/entrypoint.go os.new/cmd/control/entrypoint.go
 --- os.prev/cmd/control/entrypoint.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/entrypoint.go	2024-04-09 15:13:02.225163400 +0900
++++ os.new/cmd/control/entrypoint.go	2024-04-09 22:36:14.545163400 +0900
 @@ -55,8 +55,8 @@
  	if err != nil {
  		return err
@@ -96,7 +84,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/entrypoint.go os.new/cmd/control
  func writeFiles(cfg *config.CloudConfig) error {
 diff -Naur '--exclude=.git' os.prev/cmd/control/env.go os.new/cmd/control/env.go
 --- os.prev/cmd/control/env.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/env.go	2024-04-09 16:43:34.155163400 +0900
++++ os.new/cmd/control/env.go	2024-04-09 22:36:14.545163400 +0900
 @@ -2,7 +2,6 @@
  
  import (
@@ -116,7 +104,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/env.go os.new/cmd/control/env.go
  	for k, v := range cfg.Rancher.Environment {
 diff -Naur '--exclude=.git' os.prev/cmd/control/install.go os.new/cmd/control/install.go
 --- os.prev/cmd/control/install.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/install.go	2024-03-30 15:25:00.122754500 +0900
++++ os.new/cmd/control/install.go	2024-04-09 22:36:14.545163400 +0900
 @@ -201,6 +201,11 @@
  func runInstall(image, installType, cloudConfig, device, partition, statedir, kappend string, force, kexec, isoinstallerloaded, debug bool, savedImages []string) error {
  	fmt.Printf("Installing from %s\n", image)
@@ -162,21 +150,9 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/install.go os.new/cmd/control/in
  				image,
  				//				"install",
  				"-t", installType,
-diff -Naur '--exclude=.git' os.prev/cmd/control/os.go os.new/cmd/control/os.go
---- os.prev/cmd/control/os.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/os.go	2024-04-09 21:44:37.485163400 +0900
-@@ -273,7 +273,7 @@
- 	}
- 
- 	container, err := compose.CreateService(nil, "os-upgrade", &composeConfig.ServiceConfigV1{
--		LogDriver:  "json-file",
-+		LogDriver:  "local",
- 		Privileged: true,
- 		Net:        "host",
- 		Pid:        "host",
 diff -Naur '--exclude=.git' os.prev/cmd/control/recovery_init.go os.new/cmd/control/recovery_init.go
 --- os.prev/cmd/control/recovery_init.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/recovery_init.go	2024-04-09 16:43:50.245163400 +0900
++++ os.new/cmd/control/recovery_init.go	2024-04-09 22:36:14.545163400 +0900
 @@ -1,11 +1,11 @@
  package control
  
@@ -199,7 +175,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/recovery_init.go os.new/cmd/cont
  }
 diff -Naur '--exclude=.git' os.prev/cmd/control/user_docker.go os.new/cmd/control/user_docker.go
 --- os.prev/cmd/control/user_docker.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/user_docker.go	2024-04-09 15:41:20.425163400 +0900
++++ os.new/cmd/control/user_docker.go	2024-04-09 22:36:14.545163400 +0900
 @@ -193,7 +193,7 @@
  	cmd = append(cmd, args...)
  	log.Infof("Running %v", cmd)
@@ -211,7 +187,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/user_docker.go os.new/cmd/contro
  func waitForPid(service string, project *project.Project) (int, error) {
 diff -Naur '--exclude=.git' os.prev/cmd/init/init.go os.new/cmd/init/init.go
 --- os.prev/cmd/init/init.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/init/init.go	2024-03-16 14:35:37.859185600 +0900
++++ os.new/cmd/init/init.go	2024-04-09 22:36:14.545163400 +0900
 @@ -5,7 +5,7 @@
  
  import (
@@ -238,7 +214,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/init/init.go os.new/cmd/init/init.go
  
 diff -Naur '--exclude=.git' os.prev/config/config.go os.new/config/config.go
 --- os.prev/config/config.go	2024-03-14 20:29:45.957485300 +0900
-+++ os.new/config/config.go	2024-04-09 16:20:59.255163400 +0900
++++ os.new/config/config.go	2024-04-09 22:36:14.555163400 +0900
 @@ -2,13 +2,18 @@
  
  import (
@@ -298,7 +274,7 @@ diff -Naur '--exclude=.git' os.prev/config/config.go os.new/config/config.go
 +}
 diff -Naur '--exclude=.git' os.prev/config/docker_config.go os.new/config/docker_config.go
 --- os.prev/config/docker_config.go	2024-03-14 20:29:45.957485300 +0900
-+++ os.new/config/docker_config.go	2024-04-09 16:32:59.525163400 +0900
++++ os.new/config/docker_config.go	2024-04-09 22:36:14.555163400 +0900
 @@ -2,9 +2,12 @@
  
  import (
@@ -359,7 +335,7 @@ diff -Naur '--exclude=.git' os.prev/config/docker_config.go os.new/config/docker
  func generateEngineOptsSlice(opts EngineOpts) []string {
 diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
 --- os.prev/config/types.go	2024-03-14 20:29:45.957485300 +0900
-+++ os.new/config/types.go	2024-03-16 14:35:37.859185600 +0900
++++ os.new/config/types.go	2024-04-09 22:36:14.555163400 +0900
 @@ -210,6 +210,7 @@
  type StateConfig struct {
  	Directory  string   `yaml:"directory,omitempty"`
@@ -381,143 +357,12 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
  
 diff -Naur '--exclude=.git' os.prev/install_burmillaos_on_btrfs os.new/install_burmillaos_on_btrfs
 --- os.prev/install_burmillaos_on_btrfs	1970-01-01 09:00:00.000000000 +0900
-+++ os.new/install_burmillaos_on_btrfs	2024-03-27 10:21:39.560310700 +0900
++++ os.new/install_burmillaos_on_btrfs	2024-04-09 22:36:14.555163400 +0900
 @@ -0,0 +1 @@
 +
-diff -Naur '--exclude=.git' os.prev/os-config.tpl.yml os.new/os-config.tpl.yml
---- os.prev/os-config.tpl.yml	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/os-config.tpl.yml	2024-04-09 21:51:28.365163400 +0900
-@@ -36,7 +36,7 @@
-       labels:
-         io.rancher.os.detach: "false"
-         io.rancher.os.scope: system
--      log_driver: json-file
-+      log_driver: local
-       net: none
-       privileged: true
-       volumes:
-@@ -48,6 +48,7 @@
-       - /usr/share/ros:/usr/share/ros:ro
-       - /var/lib/rancher:/var/lib/rancher:ro
-       - /var/log:/var/log
-+      - /etc/timezone:/etc/timezone
-   cloud_init_services:
-     cloud-init:
-       image: {{.OS_REPO}}/os-base:{{.VERSION}}{{.SUFFIX}}
-@@ -55,7 +56,7 @@
-       labels:
-         io.rancher.os.detach: "false"
-         io.rancher.os.scope: system
--      log_driver: json-file
-+      log_driver: local
-       net: host
-       uts: host
-       pid: host
-@@ -73,6 +74,7 @@
-       - /var/lib/rancher:/var/lib/rancher
-       - /var/lib/rancher/conf:/var/lib/rancher/conf
-       - /var/log:/var/log
-+      - /etc/timezone:/etc/timezone
-   bootstrap_docker:
-     bridge: none
-     storage_driver: overlay2
-@@ -116,7 +118,7 @@
-       labels:
-         io.rancher.os.createonly: "true"
-         io.rancher.os.scope: system
--      log_driver: json-file
-+      log_driver: local
-       net: none
-       privileged: true
-       read_only: true
-@@ -130,7 +132,7 @@
-       labels:
-         io.rancher.os.createonly: "true"
-         io.rancher.os.scope: system
--      log_driver: json-file
-+      log_driver: local
-       net: none
-       privileged: true
-       read_only: true
-@@ -152,13 +154,14 @@
-       - /var/lib/waagent:/var/lib/waagent
-       - /var/log:/var/log
-       - /var/run:/var/run
-+      - /etc/timezone:/etc/timezone
-     container-data-volumes:
-       image: {{.OS_REPO}}/os-base:{{.VERSION}}{{.SUFFIX}}
-       command: echo
-       labels:
-         io.rancher.os.createonly: "true"
-         io.rancher.os.scope: system
--      log_driver: json-file
-+      log_driver: local
-       net: none
-       privileged: true
-       read_only: true
-@@ -171,7 +174,7 @@
-       labels:
-         io.rancher.os.createonly: "true"
-         io.rancher.os.scope: system
--      log_driver: json-file
-+      log_driver: local
-       net: none
-       privileged: true
-       read_only: true
-@@ -185,7 +188,7 @@
-       labels:
-         io.rancher.os.createonly: "true"
-         io.rancher.os.scope: system
--      log_driver: json-file
-+      log_driver: local
-       net: none
-       privileged: true
-       read_only: true
-@@ -199,7 +202,7 @@
-         io.rancher.os.createonly: "true"
-         io.rancher.os.scope: system
-         io.docker.compose.rebuild: always
--      log_driver: json-file
-+      log_driver: local
-       net: none
-       privileged: true
-       read_only: true
-@@ -321,7 +324,7 @@
-       command: rsyslogd -n
-       labels:
-         io.rancher.os.scope: system
--      log_driver: json-file
-+      log_driver: local
-       net: host
-       uts: host
-       privileged: true
-@@ -343,6 +346,7 @@
-       restart: always
-       volumes:
-       - /var/run/system-docker.sock:/var/run/docker.sock
-+      - /etc/timezone:/etc/timezone
-       environment:
-         DOCKER_API_VERSION: "1.22"
-     udev-cold:
-@@ -405,6 +409,7 @@
-     group: root
-     host: ["unix:///var/run/system-docker.sock"]
-     pid_file: /var/run/system-docker.pid
-+    log_driver: local
-     exec_root: /var/run/system-docker
-     config_file: /etc/docker/system-docker.json
-     userland_proxy: false
-@@ -423,6 +428,7 @@
-     {{end -}}
-     group: docker
-     host: ["unix:///var/run/docker.sock"]
-+    log_driver: local
-     log_opts:
-       max-size: 25m
-       max-file: 2
 diff -Naur '--exclude=.git' os.prev/pkg/dfs/scratch.go os.new/pkg/dfs/scratch.go
 --- os.prev/pkg/dfs/scratch.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/dfs/scratch.go	2024-04-09 16:41:58.565163400 +0900
++++ os.new/pkg/dfs/scratch.go	2024-04-09 22:36:14.555163400 +0900
 @@ -11,6 +11,7 @@
  	"strings"
  	"syscall"
@@ -564,7 +409,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/dfs/scratch.go os.new/pkg/dfs/scratch.go
  		return cmd, err
 diff -Naur '--exclude=.git' os.prev/pkg/init/configfiles/configfiles.go os.new/pkg/init/configfiles/configfiles.go
 --- os.prev/pkg/init/configfiles/configfiles.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/configfiles/configfiles.go	2024-03-16 14:35:37.859185600 +0900
++++ os.new/pkg/init/configfiles/configfiles.go	2024-04-09 22:36:14.555163400 +0900
 @@ -55,6 +55,7 @@
  			ConfigFiles[name] = content
  		}
@@ -575,7 +420,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/configfiles/configfiles.go os.new/p
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2024-03-16 14:35:37.859185600 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2024-04-09 22:36:14.555163400 +0900
 @@ -4,6 +4,8 @@
  	"fmt"
  	"strings"
@@ -677,7 +522,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  func tryMountState(cfg *config.CloudConfig) error {
 diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/prepare/prepare.go
 --- os.prev/pkg/init/prepare/prepare.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/prepare/prepare.go	2024-03-16 14:35:37.859185600 +0900
++++ os.new/pkg/init/prepare/prepare.go	2024-04-09 22:36:14.555163400 +0900
 @@ -3,6 +3,7 @@
  import (
  	"os"
@@ -700,29 +545,9 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
 +
  	return cfg, nil
  }
-diff -Naur '--exclude=.git' os.prev/pkg/init/recovery/recovery.go os.new/pkg/init/recovery/recovery.go
---- os.prev/pkg/init/recovery/recovery.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/recovery/recovery.go	2024-04-09 21:47:07.475163400 +0900
-@@ -24,7 +24,7 @@
- 			config.DetachLabel: "false",
- 			config.ScopeLabel:  "system",
- 		},
--		LogDriver:  "json-file",
-+		LogDriver:  "local",
- 		Net:        "host",
- 		Uts:        "host",
- 		Pid:        "host",
-@@ -42,6 +42,7 @@
- 			"/var/lib/rancher:/var/lib/rancher",
- 			"/var/lib/rancher/conf:/var/lib/rancher/conf",
- 			"/var/run:/var/run",
-+			"/etc/timezone:/etc/timezone",
- 		},
- 	}
- )
 diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg/init/switchroot/switchroot.go
 --- os.prev/pkg/init/switchroot/switchroot.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/switchroot/switchroot.go	2024-03-16 14:35:37.859185600 +0900
++++ os.new/pkg/init/switchroot/switchroot.go	2024-04-09 22:36:14.555163400 +0900
 @@ -4,6 +4,7 @@
  	"fmt"
  	"io/ioutil"
@@ -762,7 +587,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-04-09 17:11:01.465163400 +0900
++++ os.new/pkg/log/log.go	2024-04-09 22:36:14.555163400 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -1176,7 +1001,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/sysinit/sysinit.go os.new/pkg/sysinit/sysinit.go
 --- os.prev/pkg/sysinit/sysinit.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/sysinit/sysinit.go	2024-03-16 14:35:37.859185600 +0900
++++ os.new/pkg/sysinit/sysinit.go	2024-04-09 22:36:14.555163400 +0900
 @@ -93,6 +93,14 @@
  }
  
@@ -1194,7 +1019,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/sysinit/sysinit.go os.new/pkg/sysinit/sy
  	if err := control.PreloadImages(docker.NewSystemClient, systemImagesPreloadDirectory); err != nil {
 diff -Naur '--exclude=.git' os.prev/scripts/package-installer os.new/scripts/package-installer
 --- os.prev/scripts/package-installer	2024-03-14 20:29:45.977485300 +0900
-+++ os.new/scripts/package-installer	2024-03-18 12:42:02.710631200 +0900
++++ os.new/scripts/package-installer	2024-04-09 22:36:14.555163400 +0900
 @@ -38,13 +38,14 @@
  
  # installer base image - can be included in iso
@@ -1213,7 +1038,7 @@ diff -Naur '--exclude=.git' os.prev/scripts/package-installer os.new/scripts/pac
  cp ${ARTIFACTS}/${INITRD} ./scripts/installer/build/boot
 diff -Naur '--exclude=.git' os.prev/scripts/package-iso os.new/scripts/package-iso
 --- os.prev/scripts/package-iso	2024-03-14 20:29:45.977485300 +0900
-+++ os.new/scripts/package-iso	2024-03-18 12:19:45.690631200 +0900
++++ os.new/scripts/package-iso	2024-04-09 22:36:14.555163400 +0900
 @@ -29,9 +29,9 @@
  cp /usr/lib/syslinux/modules/bios/ldlinux.c32  ${CD}/boot/isolinux/
  cp /usr/lib/syslinux/modules/bios/*.c32        ${CD}/boot/isolinux/
@@ -1228,7 +1053,7 @@ diff -Naur '--exclude=.git' os.prev/scripts/package-iso os.new/scripts/package-i
      -l -J -R -V "${DISTRIB_ID}" \
 diff -Naur '--exclude=.git' os.prev/scripts/version os.new/scripts/version
 --- os.prev/scripts/version	2024-03-14 20:29:45.977485300 +0900
-+++ os.new/scripts/version	2024-03-16 14:50:20.829185600 +0900
++++ os.new/scripts/version	2024-04-09 22:36:14.555163400 +0900
 @@ -1,18 +1,27 @@
  #!/bin/bash
  
