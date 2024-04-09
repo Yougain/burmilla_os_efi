@@ -76,12 +76,6 @@ rancher:
     docker:
       environment:
         TZ: $TZ
-  system_docker:
-    environment:
-      TZ: $TZ
-  docker:
-    environment:
-      TZ: $TZ
 END
 	fi
 }
