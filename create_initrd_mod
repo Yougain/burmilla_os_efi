@@ -411,6 +411,7 @@ $libs"
 		dmesg
 		nginx
 		strings
+		cp
 	END
 	mkdir -p ./idev # for logger
 	mknod ./idev/null c 1 3

@@ -54,8 +54,6 @@ before_sysinit(){
 		mkdir -p /var/lib/rancher/conf/cloud-config.d
 		cat - > /var/lib/rancher/conf/cloud-config.d/user_config.yml <<END
 rancher:
-  environment:
-    TZ: $TZ
   services:
     console:
       environment:
