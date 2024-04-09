@@ -587,7 +587,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-04-09 17:03:58.705163400 +0900
++++ os.new/pkg/log/log.go	2024-04-09 17:10:33.735163400 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -948,7 +948,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +					Debugf("cannot open /proc/cmdline")
 +				}
 +			}
-+			Debugf("before set: base = %i", base)
++			Debugf("before set: base = %d", base)
 +			if base != 0 {
 +				if tz == "" {
 +					tz = "LOCAL"
