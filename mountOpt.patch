@@ -349,8 +349,16 @@ diff -Naur '--exclude=.git' os.prev/install_burmillaos_on_btrfs os.new/install_b
 +
 diff -Naur '--exclude=.git' os.prev/pkg/dfs/scratch.go os.new/pkg/dfs/scratch.go
 --- os.prev/pkg/dfs/scratch.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/dfs/scratch.go	2024-04-09 15:43:44.185163400 +0900
-@@ -178,7 +178,7 @@
++++ os.new/pkg/dfs/scratch.go	2024-04-09 16:35:33.965163400 +0900
+@@ -11,6 +11,7 @@
+ 	"strings"
+ 	"syscall"
+ 
++	"github.com/burmilla/os/config"
+ 	"github.com/burmilla/os/config/cmdline"
+ 	"github.com/burmilla/os/pkg/init/one"
+ 	"github.com/burmilla/os/pkg/log"
+@@ -178,7 +179,7 @@
  	}
  	log.Debugf("Launching Docker %s %s %v", docker, cmd, args)
  
