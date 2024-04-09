@@ -201,7 +201,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/init/init.go os.new/cmd/init/init.go
  
 diff -Naur '--exclude=.git' os.prev/config/config.go os.new/config/config.go
 --- os.prev/config/config.go	2024-03-14 20:29:45.957485300 +0900
-+++ os.new/config/config.go	2024-04-09 15:35:49.045163400 +0900
++++ os.new/config/config.go	2024-04-09 15:58:43.645163400 +0900
 @@ -9,6 +9,8 @@
  	yaml "github.com/cloudfoundry-incubator/candiedyaml"
  )
@@ -230,7 +230,7 @@ diff -Naur '--exclude=.git' os.prev/config/config.go os.new/config/config.go
 +				if ti != -1 {
 +					tw := strings.Index(cmdline[ti + 4:], " ")
 +					if tw != -1 {
-+						tz = cmdline[ti + 4:ti + 4 + tw])
++						tz = cmdline[ti + 4:ti + 4 + tw]
 +						Debugf("TZ = %s", tz)
 +					}
 +				}else{
