@@ -428,6 +428,7 @@ if [ -n "$OVERWRITE_USB" ];then
 				fi
 			fi
 			if [ -n "$FORCE" ]; then
+				info dd if=$P_ISO of=$1 bs=10M status=progress
 				sudo dd if=$P_ISO of=$1 bs=10M status=progress
 			fi
 		}
