@@ -261,20 +261,21 @@ diff -Naur '--exclude=.git' os.prev/config/config.go os.new/config/config.go
 +}
 diff -Naur '--exclude=.git' os.prev/config/docker_config.go os.new/config/docker_config.go
 --- os.prev/config/docker_config.go	2024-03-14 20:29:45.957485300 +0900
-+++ os.new/config/docker_config.go	2024-04-09 16:31:49.875163400 +0900
-@@ -2,9 +2,11 @@
++++ os.new/config/docker_config.go	2024-04-09 16:32:59.525163400 +0900
+@@ -2,9 +2,12 @@
  
  import (
  	"fmt"
 +	"io"
  	"os"
++	"strings"
  
  	"github.com/fatih/structs"
 +	"github.com/burmilla/os/pkg/log"
  )
  
  func (d *DockerConfig) FullArgs() []string {
-@@ -23,8 +25,43 @@
+@@ -23,8 +26,43 @@
  	return args
  }
  
