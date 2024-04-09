@@ -84,8 +84,16 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/entrypoint.go os.new/cmd/control
  func writeFiles(cfg *config.CloudConfig) error {
 diff -Naur '--exclude=.git' os.prev/cmd/control/env.go os.new/cmd/control/env.go
 --- os.prev/cmd/control/env.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/env.go	2024-04-09 15:39:53.825163400 +0900
-@@ -19,7 +19,7 @@
++++ os.new/cmd/control/env.go	2024-04-09 16:43:34.155163400 +0900
+@@ -2,7 +2,6 @@
+ 
+ import (
+ 	"log"
+-	"os"
+ 	"os/exec"
+ 	"syscall"
+ 
+@@ -19,7 +18,7 @@
  	if len(args) == 0 {
  		return nil
  	}
@@ -144,8 +152,13 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/install.go os.new/cmd/control/in
  				"-t", installType,
 diff -Naur '--exclude=.git' os.prev/cmd/control/recovery_init.go os.new/cmd/control/recovery_init.go
 --- os.prev/cmd/control/recovery_init.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/recovery_init.go	2024-04-09 15:37:53.735163400 +0900
-@@ -6,6 +6,7 @@
++++ os.new/cmd/control/recovery_init.go	2024-04-09 16:43:50.245163400 +0900
+@@ -1,11 +1,11 @@
+ package control
+ 
+ import (
+-	"os"
+ 	"os/exec"
  	"syscall"
  
  	"github.com/burmilla/os/pkg/log"
@@ -153,7 +166,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/recovery_init.go os.new/cmd/cont
  
  	"github.com/codegangsta/cli"
  )
-@@ -20,5 +21,5 @@
+@@ -20,5 +20,5 @@
  		return err
  	}
  
