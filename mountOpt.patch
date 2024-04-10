@@ -444,7 +444,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/configfiles/configfiles.go os.new/p
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2024-04-09 22:36:14.555163400 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2024-04-10 13:21:52.460000000 +0900
 @@ -4,6 +4,8 @@
  	"fmt"
  	"strings"
@@ -477,7 +477,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  		log.Debugf("Not mounting BOOT: %v", err)
  	} else {
  		log.Infof("Mounted BOOT: %s", cfg.Rancher.State.BootDev)
-@@ -54,32 +57,50 @@
+@@ -54,32 +57,51 @@
  	return cfg, nil
  }
  
@@ -503,6 +503,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +	if _, err := os.Stat("/usr/bin/do_mount"); err == nil {
 +		cmd := exec.Command("/usr/bin/do_mount", "--verbose", "-o", option, dname, target)
 +		out, errb := cmd.Output()
++		log.Print(string(out))
 +		if errb != nil {
 +			log.Infof("exec /usr/bin/do_mount, failed.")
 +			log.Infof("Mouting %s failed", display)
@@ -514,7 +515,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +		return nil
 +
 +	} else {
-+		
++		log.Warn("'do_mount' is not found.")
 +		dev := util.ResolveDevice(dname)
 +		if dev == "" {
 +			return fmt.Errorf("Could not resolve device %q", dev)
