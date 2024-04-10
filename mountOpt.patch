@@ -360,6 +360,17 @@ diff -Naur '--exclude=.git' os.prev/install_burmillaos_on_btrfs os.new/install_b
 +++ os.new/install_burmillaos_on_btrfs	2024-04-09 22:36:14.555163400 +0900
 @@ -0,0 +1 @@
 +
+diff -Naur '--exclude=.git' os.prev/os-config.tpl.yml os.new/os-config.tpl.yml
+--- os.prev/os-config.tpl.yml	2024-03-14 20:29:45.967485300 +0900
++++ os.new/os-config.tpl.yml	2024-04-10 09:17:37.300000000 +0900
+@@ -423,6 +423,7 @@
+     {{end -}}
+     group: docker
+     host: ["unix:///var/run/docker.sock"]
++    log_driver: syslog
+     log_opts:
+       max-size: 25m
+       max-file: 2
 diff -Naur '--exclude=.git' os.prev/pkg/dfs/scratch.go os.new/pkg/dfs/scratch.go
 --- os.prev/pkg/dfs/scratch.go	2024-03-14 20:29:45.967485300 +0900
 +++ os.new/pkg/dfs/scratch.go	2024-04-09 22:36:14.555163400 +0900

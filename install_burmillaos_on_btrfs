@@ -1280,6 +1280,9 @@ ssh_sudo <<'FINAL'
 			    docker:
 			      environment:
 			        TZ: $TZL
+			    network:
+			      environment:
+			        TZ: $TZL
 			runcmd:
 			- do_mount 5 -o subvol=/ /state_top_lvl
 			- do_mount 7 -o subvol=/ /oem_top_lvl

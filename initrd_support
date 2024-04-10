@@ -76,6 +76,9 @@ rancher:
     docker:
       environment:
         TZ: $TZ
+    network:
+      environment:
+        TZ: $TZ
 END
 	fi
 }
