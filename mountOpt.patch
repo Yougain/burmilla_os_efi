@@ -373,7 +373,7 @@ diff -Naur '--exclude=.git' os.prev/install_burmillaos_on_btrfs os.new/install_b
 +
 diff -Naur '--exclude=.git' os.prev/os-config.tpl.yml os.new/os-config.tpl.yml
 --- os.prev/os-config.tpl.yml	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/os-config.tpl.yml	2024-04-10 09:42:53.130000000 +0900
++++ os.new/os-config.tpl.yml	2024-04-10 10:06:45.420000000 +0900
 @@ -423,8 +423,6 @@
      {{end -}}
      group: docker
@@ -381,7 +381,7 @@ diff -Naur '--exclude=.git' os.prev/os-config.tpl.yml os.new/os-config.tpl.yml
 -    log_opts:
 -      max-size: 25m
 -      max-file: 2
-+    log_driver: local
++    log_driver: syslog
      tls_args: [--tlsverify, --tlscacert=/etc/docker/tls/ca.pem, --tlscert=/etc/docker/tls/server-cert.pem, --tlskey=/etc/docker/tls/server-key.pem,
        '-H=0.0.0.0:2376']
 diff -Naur '--exclude=.git' os.prev/pkg/dfs/scratch.go os.new/pkg/dfs/scratch.go
