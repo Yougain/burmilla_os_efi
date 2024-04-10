@@ -373,26 +373,46 @@ diff -Naur '--exclude=.git' os.prev/install_burmillaos_on_btrfs os.new/install_b
 +
 diff -Naur '--exclude=.git' os.prev/main.go os.new/main.go
 --- os.prev/main.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/main.go	2024-04-10 15:15:22.530000000 +0900
-@@ -3,6 +3,8 @@
++++ os.new/main.go	2024-04-10 15:24:05.540000000 +0900
+@@ -3,6 +3,10 @@
  import (
  	"fmt"
  	"os"
 +    "strconv"
 +    "time"
++    "io"
++	"strings"
  
  	"github.com/burmilla/os/cmd/cloudinitexecute"
  	"github.com/burmilla/os/cmd/cloudinitsave"
-@@ -39,6 +41,14 @@
+@@ -39,6 +43,32 @@
  }
  
  func main() {
 +	tzs := os.Getenv("TZS")
++	base := 0
 +	if tzs != "" {
-+		base, _ := strconv.Atoi(tzs)
-+		if base != 0 {
-+			time.FixedZone("LOCAL", base)
++		base, _ = strconv.Atoi(tzs)
++	}
++	if base == 0 {
++		file, err := os.Open("/proc/cmdline")
++		if err == nil { // file exists
++			byteData, err := io.ReadAll(file)
++			if err == nil {
++				cmdline := string(byteData)
++				ti := strings.Index(cmdline, " TZS=")
++				if ti != -1 {
++					tw := strings.Index(cmdline[ti + 5:], " ")
++					if tw != -1 {
++						base, _ = strconv.Atoi(cmdline[ti + 5:ti + 5 + tw])
++					}
++				}
++			}
++			file.Close()
 +		}
++	}
++	if base != 0 {
++		time.FixedZone("LOCAL", base)
 +	}
 +
  	if 0 == 1 {
