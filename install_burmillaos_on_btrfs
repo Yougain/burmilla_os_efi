@@ -1257,7 +1257,25 @@ ssh_sudo <<'FINAL'
 		die cannot mount
 	fi
 	mkdir -p /installing/oem_part/var/lib/rancher/conf/cloud-config.d
+
 	if [ -z "$USER_CONFIG" -o ! -e "$UF" ]; then
+		found_=
+		for d_ in `find /installing/state -name zoneinfo`; do
+			for f_ in `find $d_`; do
+				for t_ in `strings $f_`; do
+					if [ "$t_" = "$TZL" ] ; then
+						found_=$f_
+						break
+					fi
+				done
+				if [ -n "$found_" ];then
+					break
+				fi
+			done
+		done
+		unset d_
+		unset f_
+		unset t_
 		DATE=`TZ=$TZL date`
 		write_env_file $UF << '	FEND'
 			hostname: $HNAME_FULL
@@ -1274,6 +1292,17 @@ ssh_sudo <<'FINAL'
 			        address: $IP/$NETMASK
 			        gateway: $GATEWAY
 			  services:
+			    system-volumes:
+			      volumes:
+			      - /etc/localtime:${found_#/installing/state}
+			      - /var/log:/usr/share/ros/oem/var/log
+			      - /var/lib/rancher/conf:/usr/share/ros/oem/var/lib/rancher/conf
+			      - /etc/ssh:/usr/share/ros/oem/etc/ssh
+			    user-volumes:
+			      volumes:
+			      - /root:/usr/share/ros/oem/root
+			      - /home:/usr/share/ros/oem/home
+				  - /opt:/usr/share/ros/oem/opt
 			    console:
 			      environment:
 			        TZ: $TZL
@@ -1313,6 +1342,7 @@ ssh_sudo <<'FINAL'
 			ssh_authorized_keys:
 			- $KEY
 		FEND
+		unset found_
 	else
 		yq e -i ".hostname|=\"$HNAME_FULL\"" $UF
 		yq e -i ".rancher.network.dns.nameservers|=$DNS_SETTINGS_YQ" $UF
@@ -1419,7 +1449,7 @@ ssh_sudo <<'FINAL'
 	ln -sf /usr/share/ros/oem/etc/ssh $ssh_dir
 
 	#local time
-	etc_localtime=`find /installing/state -name "localtime"| awk '{print $1}'`
+	#etc_localtime=`find /installing/state -name "localtime"| awk '{print $1}'`
 
 	apt-get -qq update
 	apt-get -qq -y install binutils
@@ -1427,28 +1457,6 @@ ssh_sudo <<'FINAL'
 	echo PORT=$PORT
 	echo TZ=$TZ
 	echo TZL=$TZL
-	found=
-	for d in `find /installing/state -name zoneinfo`; do
-		for f in `find $d`; do
-			for t in `strings $f`; do
-				if [ "$t" = "$TZL" ] ; then
-					found=$f
-					break
-				fi
-			done
-			if [ -n "$found" ];then
-				fn=${found##*/}
-				prv=${found%/*}
-				dstd=${prv#*/diff}
-				mkdir -p /installing/oem_part/$dstd
-				cp -a $found /installing/oem_part/$dstd
-				mv $etc_localtime $etc_localtime.org
-				ln -sf /usr/share/ros/oem/etc/localtime $etc_localtime
-				ln -sf ..$dstd/$fn /installing/oem_part/etc/localtime
-				break
-			fi
-		done
-	done
 
 
 	# create startup script
