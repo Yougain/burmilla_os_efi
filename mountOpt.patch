@@ -612,7 +612,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-04-09 22:36:14.555163400 +0900
++++ os.new/pkg/log/log.go	2024-04-10 14:55:30.330000000 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -804,7 +804,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,6 +236,191 @@
+@@ -120,8 +236,194 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -995,8 +995,11 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +
  // InitLogger sets up Logging to log to /dev/kmsg and to Syslog
  func InitLogger() {
++	initFormat()
  	if logTheseApps() {
-@@ -131,6 +432,8 @@
+ 		innerInit(false)
+ 		FsReady()
+@@ -131,6 +433,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1005,7 +1008,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +466,7 @@
+@@ -163,6 +467,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1013,7 +1016,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -249,8 +553,10 @@
+@@ -249,8 +554,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
