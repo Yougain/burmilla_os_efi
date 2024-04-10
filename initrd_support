@@ -57,6 +57,8 @@ before_sysinit(){
 rancher:
   services:
     console:
+      volumes:
+      - /etc/localtime:/opt/initrd/etc/localtime
       environment:
         TZ: $TZ
     syslog:
