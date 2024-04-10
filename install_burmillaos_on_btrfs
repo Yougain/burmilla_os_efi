@@ -1163,6 +1163,21 @@ deb TARGET_DEV="'"$TARGET_DEV"'"
 		apt-get -y update
 		apt-get -y upgrade
 		apt-get install btrfs-progs
+		local found_
+		for f_ in `find /usr/share/zoneinfo`; do
+			for t_ in `strings $f_`; do
+				if [ "$t_" = "$TZL" ] ; then
+					found_=$f_
+					info $TZL found in $f_
+					break
+				fi
+			done
+			if [ -n "$found_" ];then
+				cp -f $found_ /etc/localtime
+				info cp $found_ /etc/localtime
+				break
+			fi
+		done
 		green Switch to boot by installer
 		reboot
 	END
