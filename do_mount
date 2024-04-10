@@ -62,7 +62,7 @@ function do_mount(){
 	if opt --fake -f; then
 		opts[-f]=1
 	fi
-	if opt --vervose -v; then
+	if opt --verbose -v; then
 		opts[-v]=1
 		verbose=1
 	fi

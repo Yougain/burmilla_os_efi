@@ -1564,7 +1564,7 @@ ssh_sudo <<'FINAL'
 	mkdir -p /installing/efipart
 	/usr/bin/do_mount 2  /installing/efipart
 	INITRD=$INITRD_FILE-mod
-	store_env -s /installing/efipart/INITRD
+	store_env -s /installing/efipart/INITRD-$VERSION
 	rm -f /installing/efipart/TOPIC
 	umount /installing/efipart
 	umount /installing/oem_part
