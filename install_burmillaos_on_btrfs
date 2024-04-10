@@ -1214,7 +1214,7 @@ ssh_sudo <<'FINAL'
 
 	do_mount 5 /installing/state
 
- 	#create_initrd_mod $INITRD
+ 	create_initrd_mod $INITRD
 
 	if ! do_mount 4 /installing/boot_dev; then
 		die cannot mount
