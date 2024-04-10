@@ -1403,8 +1403,8 @@ ssh_sudo <<'FINAL'
 	echo ln -sf /usr/share/ros/oem/etc/ssh $ssh_dir
 	ln -sf /usr/share/ros/oem/etc/ssh $ssh_dir
 
-	#time zone
-	etc_timezone=`find /installing/state -name "timezone"| awk '{print $1}'`
+	#local time
+	etc_localtime=`find /installing/state -name "localtime"| awk '{print $1}'`
 
 	apt-get -qq update
 	apt-get -qq -y install binutils
@@ -1427,9 +1427,9 @@ ssh_sudo <<'FINAL'
 				dstd=${prv#*/diff}
 				mkdir -p /installing/oem_part/$dstd
 				cp -a $found /installing/oem_part/$dstd
-				mv $etc_timezone $etc_timezone.org
-				ln -sf /usr/share/ros/oem/etc/timezone $etc_timezone
-				ln -sf ..$dstd/$fn /installing/oem_part/etc/timezone
+				mv $etc_localtime $etc_localtime.org
+				ln -sf /usr/share/ros/oem/etc/localtime $etc_localtime
+				ln -sf ..$dstd/$fn /installing/oem_part/etc/localtime
 				break
 			fi
 		done

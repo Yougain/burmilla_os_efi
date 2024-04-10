@@ -46,8 +46,8 @@ before_sysinit(){
 				fi
 			done
 			if [ -n "$found" ];then
-				cp -f $found /etc/timezone
-				info cp $found /etc/timezone
+				cp -f $found /etc/localtime
+				info cp $found /etc/localtime
 				break
 			fi
 		done
@@ -80,6 +80,8 @@ rancher:
     network:
       environment:
         TZ: $TZ
+runcmd:
+- cp /opt/initrd/etc/localtime /etc
 END
 		fi
 	fi
