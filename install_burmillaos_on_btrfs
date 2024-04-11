@@ -1133,11 +1133,11 @@ deb TARGET_DEV_S="'"$TARGET_DEV_S"'"
 deb TARGET_DEV="'"$TARGET_DEV"'"
 
 #if [ "$TARGET_DEV" = "$TARGET_DEV_S" ]; then
-	cyan_n Waiting initialization.
-	while [ -z "`ssh_do ps ax | grep 'containerd --config /var/run/docker/containerd/containerd.toml'`" ]; do
-		sleep 1
-		cyan_n .
-	done
+	#cyan_n Waiting initialization.
+	#while [ -z "`ssh_do ps ax | grep 'containerd --config /var/run/docker/containerd/containerd.toml'`" ]; do
+	#	sleep 1
+	#	cyan_n .
+	#done
 	ssh_sudo <<'	END'
 		dbv ${!SCRIPT_FILES[@]}
 		if [ -n "$INSTALL_VIM" ];then
@@ -1394,8 +1394,8 @@ ssh_sudo <<'FINAL'
 	mkdir -p /installing/oem_part/var/lib/rancher
 	[ ! -e /installing/oem_part/var/lib/rancher/conf ] && cp -af /installing/state/var/lib/rancher/conf /installing/oem_part/var/lib/rancher
 
-	rm -rf /installing/state/{root,opt,home,var/log}/*
-	rm -rf var/lib/rancher/conf
+	rm -rf /installing/state/{root,opt,home,var/log}
+	rm -rf /installing/state/var/lib/rancher/conf
 
 	#chmod 550 /installing/oem_part/root
 	mkdir -p /installing/oem_part/root/.ssh
@@ -1452,16 +1452,18 @@ ssh_sudo <<'FINAL'
 		# 
 		source bashlib_y
 		chain_bak -10 /var/log/boot/init.log /var/log/boot/init.log.0
-		if [ ! -L /etc/ssh ];then
-			info symlink /usr/share/ros/oem/etc/ssh /etc/ssh
+		if [ -L /etc/ssh -o ! -d /etc/ssh ];then
+			info mount --bind /usr/share/ros/oem/etc/ssh /etc/ssh
 			rm -rf /etc/ssh
-			ln -sf /usr/share/ros/oem/etc/ssh /etc/ssh
+			mkdir /etc/ssh
+			mount --bind /usr/share/ros/oem/etc/ssh /etc/ssh
 			kill -HUP $(ps ax |grep 'sshd -D' | grep -v grep | awk '{ print $1 }')
 		fi
-		if [ ! -L /root ];then
-			info symlink /usr/share/ros/oem/root /root
+		if [ -L /root -o ! -d /root ];then
+			info mount --bind /usr/share/ros/oem/root /root
 			rm -rf /root
-			ln -sf /usr/share/ros/oem/root /root
+			mkdir /root
+			mount --bind /usr/share/ros/oem/root /root
 		fi
 		if [  ! -e /bin/env ];then
 			ln -s /usr/bin/env /bin/env
