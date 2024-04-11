@@ -217,7 +217,8 @@ if [ ! -e "$BURMILLA_ISO" ];then
 fi
 #WG --ca-certificate=$UB_CERT $UB_RELEASE_URL/$UDIR"ubuntu-$LATEST_UV-live-server-amd64.iso" -O $UBUNTU_ISO
 if [ ! -e "$UBUNTU_ISO" -o ! -s "$UBUNTU_ISO"  ];then
-	WG --no-check-certificate $UB_RELEASE_URL/$UDIR"ubuntu-$LATEST_UV-live-server-amd64.iso" -O $UBUNTU_ISO
+	sudo rm -f "$UBUNTU_ISO"
+	WG --no-check-certificate $UB_RELEASE_URL/$UDIR"ubuntu-$LATEST_UV$beta-live-server-amd64.iso" -O $UBUNTU_ISO
 fi
 
 
