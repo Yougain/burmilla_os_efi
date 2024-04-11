@@ -46,6 +46,7 @@ before_sysinit(){
 				fi
 			done
 			if [ -n "$found" ];then
+				mv -f /etc/localtime /etc/localtime.org
 				cp -f $found /etc/localtime
 				info cp $found /etc/localtime
 				break

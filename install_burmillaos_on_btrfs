@@ -1162,7 +1162,7 @@ deb TARGET_DEV="'"$TARGET_DEV"'"
 		rm /var/lib/rancher/conf/cloud-config.d/user_config.yml
 		apt-get -y update
 		apt-get -y upgrade
-		apt-get install btrfs-progs
+		apt-get -y install btrfs-progs binutils
 		local found_
 		for f_ in `find /usr/share/zoneinfo`; do
 			for t_ in `strings $f_`; do
@@ -1173,8 +1173,8 @@ deb TARGET_DEV="'"$TARGET_DEV"'"
 				fi
 			done
 			if [ -n "$found_" ];then
-				cp -f $found_ /etc/localtime
-				info cp $found_ /etc/localtime
+				mv -f /etc/localtime /etc/localtime.org
+				ln -sf $found_ /etc/localtime
 				break
 			fi
 		done
@@ -1227,6 +1227,17 @@ ssh_sudo <<'FINAL'
 	do_install partNum2Dev
 	do_install parse_func
 
+	apt-get -y update
+	apt-get -y install btrfs-progs binutils
+	
+	if [ -x /usr/bin/btrfs -o -x /bin/btrfs ];then
+		:
+	else
+		ls -la /bin/btrfs
+		ls -la /usr/bin/btrfs
+		die "btrfs not found"
+	fi
+	
 	do_mount 5 /installing/state
 
  	create_initrd_mod $INITRD
@@ -1257,25 +1268,7 @@ ssh_sudo <<'FINAL'
 		die cannot mount
 	fi
 	mkdir -p /installing/oem_part/var/lib/rancher/conf/cloud-config.d
-
 	if [ -z "$USER_CONFIG" -o ! -e "$UF" ]; then
-		found_=
-		for d_ in `find /installing/state -name zoneinfo`; do
-			for f_ in `find $d_`; do
-				for t_ in `strings $f_`; do
-					if [ "$t_" = "$TZL" ] ; then
-						found_=$f_
-						break
-					fi
-				done
-				if [ -n "$found_" ];then
-					break
-				fi
-			done
-		done
-		unset d_
-		unset f_
-		unset t_
 		DATE=`TZ=$TZL date`
 		write_env_file $UF << '	FEND'
 			hostname: $HNAME_FULL
@@ -1292,17 +1285,6 @@ ssh_sudo <<'FINAL'
 			        address: $IP/$NETMASK
 			        gateway: $GATEWAY
 			  services:
-			    system-volumes:
-			      volumes:
-			      - /etc/localtime:${found_#/installing/state}
-			      - /var/log:/usr/share/ros/oem/var/log
-			      - /var/lib/rancher/conf:/usr/share/ros/oem/var/lib/rancher/conf
-			      - /etc/ssh:/usr/share/ros/oem/etc/ssh
-			    user-volumes:
-			      volumes:
-			      - /root:/usr/share/ros/oem/root
-			      - /home:/usr/share/ros/oem/home
-				  - /opt:/usr/share/ros/oem/opt
 			    console:
 			      environment:
 			        TZ: $TZL
@@ -1348,8 +1330,10 @@ ssh_sudo <<'FINAL'
 		yq e -i ".rancher.network.dns.nameservers|=$DNS_SETTINGS_YQ" $UF
 		yq e -i ".rancher.network.interfaces.$NET_DEV.address|=\"$IP/$NETMASK\"" $UF
 		yq e -i ".rancher.network.interfaces.$NET_DEV.gateway|=\"$GATEWAY\"" $UF
-		yq e -i ".rancher.services.console.environment.TZ|=\"$TZL\"" $UF
-		yq e -i ".rancher.services.syslog.environment.TZ|=\"$TZL\"" $UF
+		for i__ in console syslog udev system-cron acpid ntp docker network; do
+			yq e -i ".rancher.services.$i__.environment.TZ|=\"$TZL\"" $UF
+		done
+		unset __i
 		yq e -i ".date|=\"`date`\"" $UF
 		c=""
 		i=0
@@ -1410,10 +1394,11 @@ ssh_sudo <<'FINAL'
 	mkdir -p /installing/oem_part/var/lib/rancher
 	[ ! -e /installing/oem_part/var/lib/rancher/conf ] && cp -af /installing/state/var/lib/rancher/conf /installing/oem_part/var/lib/rancher
 
-	rm -rf /installing/state/{root,opt,home,var/log,var/lib/rancher/conf}
+	rm -rf /installing/state/{root,opt,home,var/log}/*
+	rm -rf var/lib/rancher/conf
 
+	#chmod 550 /installing/oem_part/root
 	mkdir -p /installing/oem_part/root/.ssh
-	chmod 550 /installing/oem_part/root
 	chmod 700 /installing/oem_part/root/.ssh
 	
 	ln -s /usr/share/ros/oem/root /installing/state/root
