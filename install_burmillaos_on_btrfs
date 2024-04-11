@@ -1452,19 +1452,15 @@ ssh_sudo <<'FINAL'
 		# 
 		source bashlib_y
 		chain_bak -10 /var/log/boot/init.log /var/log/boot/init.log.0
-		if [ -L /etc/ssh -o ! -d /etc/ssh ];then
-			info mount --bind /usr/share/ros/oem/etc/ssh /etc/ssh
-			rm -rf /etc/ssh
-			mkdir /etc/ssh
-			mount --bind /usr/share/ros/oem/etc/ssh /etc/ssh
-			kill -HUP $(ps ax |grep 'sshd -D' | grep -v grep | awk '{ print $1 }')
-		fi
-		if [ -L /root -o ! -d /root ];then
-			info mount --bind /usr/share/ros/oem/root /root
-			rm -rf /root
-			mkdir /root
-			mount --bind /usr/share/ros/oem/root /root
-		fi
+		info mount --bind /usr/share/ros/oem/etc/ssh /etc/ssh
+		rm -rf /etc/ssh
+		mkdir /etc/ssh
+		mount --bind /usr/share/ros/oem/etc/ssh /etc/ssh
+		kill -HUP $(ps ax |grep 'sshd -D' | grep -v grep | awk '{ print $1 }')
+		info mount --bind /usr/share/ros/oem/root /root
+		rm -rf /root
+		mkdir /root
+		mount --bind /usr/share/ros/oem/root /root
 		if [  ! -e /bin/env ];then
 			ln -s /usr/bin/env /bin/env
 		fi
