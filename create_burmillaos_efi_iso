@@ -192,9 +192,9 @@ info BurmillaOS Version: $BURMILLAOS_VER
 BURMILLA_ISO="$ISO_DIR"/burmillaos-$BURMILLAOS_VER.iso
 
 #LATEST_U=`WG --ca-certificate=$UB_CERT -O - $UB_RELEASE_URL/ 2>/dev/null|awk '/Ubuntu [0-9]+(\.[0-9]+)+ LTS/{print $0}'|head -1|awk '{match($0, /Ubuntu [0-9]+(\.[0-9]+)+ LTS \([^)]+\)/); print substr($0, RSTART, RLENGTH)}'`
-LATEST_U=`WG --no-check-certificate -O - $UB_RELEASE_URL/ 2>/dev/null|awk '/Ubuntu [0-9]+(\.[0-9]+)+ LTS/{print $0}'|head -1|awk '{match($0, /Ubuntu [0-9]+(\.[0-9]+)+ LTS \([^)]+\)( Beta&|&)/); print substr($0, RSTART, RLENGTH - 2)}'`
+LATEST_U=`WG --no-check-certificate -O - $UB_RELEASE_URL/ 2>/dev/null|awk '/Ubuntu [0-9]+(\.[0-9]+)+ LTS/{print $0}'|head -1|awk '{match($0, /Ubuntu [0-9]+(\.[0-9]+)+ LTS \([^)]+\)( Beta&|&)/); print substr($0, RSTART, RLENGTH - 1)}'`
 LATEST_UV=`echo $LATEST_U | awk '{print $2}'`
-if [ "${LATEST_U##*)}" = "Beta" ];then
+if [ "${LATEST_U##*)}" = " Beta" ];then
 	beta="-beta"
 fi
 LATEST_UV=`echo $LATEST_U | awk '{print $2}'`
@@ -216,7 +216,7 @@ if [ ! -e "$BURMILLA_ISO" ];then
 #	fi
 fi
 #WG --ca-certificate=$UB_CERT $UB_RELEASE_URL/$UDIR"ubuntu-$LATEST_UV-live-server-amd64.iso" -O $UBUNTU_ISO
-if [ ! -e "$UBUNTU_ISO" ];then
+if [ ! -e "$UBUNTU_ISO" -o ! -s "$UBUNTU_ISO"  ];then
 	WG --no-check-certificate $UB_RELEASE_URL/$UDIR"ubuntu-$LATEST_UV-live-server-amd64.iso" -O $UBUNTU_ISO
 fi
 
