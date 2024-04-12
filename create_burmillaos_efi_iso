@@ -191,31 +191,23 @@ BURMILLAOS_VER=${BURMILLAOS_VER%$'\n'*}
 info BurmillaOS Version: $BURMILLAOS_VER
 BURMILLA_ISO="$ISO_DIR"/burmillaos-$BURMILLAOS_VER.iso
 
-#LATEST_U=`WG --ca-certificate=$UB_CERT -O - $UB_RELEASE_URL/ 2>/dev/null|awk '/Ubuntu [0-9]+(\.[0-9]+)+ LTS/{print $0}'|head -1|awk '{match($0, /Ubuntu [0-9]+(\.[0-9]+)+ LTS \([^)]+\)/); print substr($0, RSTART, RLENGTH)}'`
-LATEST_U=`WG --no-check-certificate -O - $UB_RELEASE_URL/ 2>/dev/null|awk '/Ubuntu [0-9]+(\.[0-9]+)+ LTS/{print $0}'|head -1|awk '{match($0, /Ubuntu [0-9]+(\.[0-9]+)+ LTS \([^)]+\)( Beta&|&)/); print substr($0, RSTART, RLENGTH - 1)}'`
-LATEST_UV=`echo $LATEST_U | awk '{print $2}'`
-if [ "${LATEST_U##*)}" = " Beta" ];then
-	beta="-beta"
-fi
-LATEST_UV=`echo $LATEST_U | awk '{print $2}'`
-#UDIR=`WG --ca-certificate=$UB_CERT -O - $UB_RELEASE_URL/ 2>/dev/null|grep "$LATEST_U"|grep href| head -1|awk '{match($0,/href="[^"]+"/);print substr($0,RSTART+6,RLENGTH-7)}'`
-UDIR=`WG --no-check-certificate -O - $UB_RELEASE_URL/ 2>/dev/null|grep "$LATEST_U"|grep href| head -1|awk '{match($0,/href="[^"]+"/);print substr($0,RSTART+6,RLENGTH-7)}'`
+#LATEST_U=`WG --no-check-certificate -O - $UB_RELEASE_URL/ 2>/dev/null|awk '/Ubuntu [0-9]+(\.[0-9]+)+ LTS/{print $0}'|head -1|awk '{match($0, /Ubuntu [0-9]+(\.[0-9]+)+ LTS \([^)]+\)( Beta&|&)/); print substr($0, RSTART, RLENGTH - 1)}'`
+#LATEST_UV=`echo $LATEST_U | awk '{print $2}'`
+#if [ "${LATEST_U##*)}" = " Beta" ];then
+#	beta="-beta"
+#fi
+#LATEST_UV=`echo $LATEST_U | awk '{print $2}'`
+#UDIR=`WG --no-check-certificate -O - $UB_RELEASE_URL/ 2>/dev/null|grep "$LATEST_U"|grep href| head -1|awk '{match($0,/href="[^"]+"/);print substr($0,RSTART+6,RLENGTH-7)}'`
+
+LATEST_UV=22.04.3
+UDIR=jammy/
+
 UBUNTU_ISO="$ISO_DIR"/ubuntu-$LATEST_UV$beta-live-server-amd64.iso
 info Ubuntu Version: $LATEST_UV
 
 if [ ! -e "$BURMILLA_ISO" ];then
-#	for i in $F_VERSION;do
-#		if [ "$i" = "${BURMILLAOS_VER%-btrfs*}" ];then
-#			info download $i
-#			WG $BM_RELEASE_URL/download/$BURMILLAOS_VER/burmillaos-$i.iso -O $BURMILLA_ISO
-#			break
-#		fi
-#	done
-#	if [ ! -e "$BURMILLA_ISO" ];then
-		die cannot find burmillaos-$BURMILLAOS_VER.iso
-#	fi
+	die cannot find burmillaos-$BURMILLAOS_VER.iso
 fi
-#WG --ca-certificate=$UB_CERT $UB_RELEASE_URL/$UDIR"ubuntu-$LATEST_UV-live-server-amd64.iso" -O $UBUNTU_ISO
 if [ ! -e "$UBUNTU_ISO" -o ! -s "$UBUNTU_ISO"  ];then
 	sudo rm -f "$UBUNTU_ISO"
 	WG --no-check-certificate $UB_RELEASE_URL/$UDIR"ubuntu-$LATEST_UV$beta-live-server-amd64.iso" -O $UBUNTU_ISO
