@@ -455,7 +455,11 @@ do_recursive_files(){
 
 _do_recursive_files_dir(){
 	local did=`_d_id "$2"`
-	if [ -n "${dstack[$did]}" -o -z "$did" ];then
+	dbv $did
+	if [ -z "$did" ];then # missing source
+		return
+	fi
+	if [ "${dstack[$did]}" ];then # cyclic reference
 		return
 	fi
 	"$1" "$2" "$3" # check only dir, but not check files in dir
@@ -464,15 +468,17 @@ _do_recursive_files_dir(){
 	local d
 	local IFS=
 	for f in "$2"/*; do
-		if [ -d "$f" ];then
-			dirs+=("$f")
-		else
-			"$1" "$f" "${3%/*}/${f##*/}"
+		if [ -e "$f" ];then
+			if [ -d "$f" ];then
+				dirs+=("$f")
+			else
+				"$1" "$f" "$3/${f##*/}"
+			fi
 		fi
 	done
 	dstack[$did]=1
 	for d in "${dirs[@]}"; do
-		_do_recursive_files_dir "$d" "${3%/*}/${d##*/}"
+		_do_recursive_files_dir "$1" "$d" "$3/${d##*/}"
 	done
 	dstack[$did]=
 }

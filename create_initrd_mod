@@ -410,6 +410,7 @@ $libs"
 	cp_bin . $for_state <<"	END"
 		bash
 		busybox
+		diff
 		id
 		mknod
 		rmdir
@@ -440,6 +441,7 @@ $libs"
 		strings
 		cp
 		yq
+		mv
 	END
 	mkdir -p ./idev # for logger
 	mknod ./idev/null c 1 3
@@ -479,7 +481,6 @@ $libs"
 					after_save_cmd_line                \
 					args						\
 					parse_func				\
-					vercmp					\
 					before_sysinit; do
 				dbv $f $d
 				do_install $f $d

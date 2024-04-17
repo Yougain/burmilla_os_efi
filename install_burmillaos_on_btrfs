@@ -1089,7 +1089,7 @@ ssh_sudo <<'FINAL'
 	umount /installing/efipart
 	mkdir -p /installing/oempart
 	mount $TARGET_DEV7 /installing/oempart
-	rm -rf /installing/oempart/var/log/burmilla_installation.10
+	#rm -rf /installing/oempart/var/log/burmilla_installation
 	chain_bak -10 /installing/oempart/var/log/burmilla_installation
 	mkdir -p /installing/oempart/var/log/burmilla_installation/1
 	cp -a /var/log/* /installing/oempart/var/log/burmilla_installation/1
@@ -1139,69 +1139,60 @@ END
 deb TARGET_DEV_S="'"$TARGET_DEV_S"'"
 deb TARGET_DEV="'"$TARGET_DEV"'"
 
-#if [ "$TARGET_DEV" = "$TARGET_DEV_S" ]; then
-	#cyan_n Waiting initialization.
-	#while [ -z "`ssh_do ps ax | grep 'containerd --config /var/run/docker/containerd/containerd.toml'`" ]; do
-	#	sleep 1
-	#	cyan_n .
-	#done
-	ssh_sudo <<'	END'
-		dbv ${!SCRIPT_FILES[@]}
-		if [ -n "$INSTALL_VIM" ];then
-			install_vim
-		fi
-		mkdir -p /efipart
-		do_install args
-		do_install do_mount
-		do_install blkid2
-		do_install chain_bak
-		do_install do_install
-		do_install partNum2Dev
-		do_install parse_func
-		dbv ${!SCRIPT_FILES[@]}
-		do_mount 2 /efipart
-		dbv mounted 2 /efipart
-		store_env /efipart/TOPIC ""
-		dbv TOPIC written
-		umount /efipart
-		dbv unmounted /efipart
-		rmdir /efipart
-		rm /var/lib/rancher/conf/cloud-config.d/user_config.yml
-		apt-get -y update
-		apt-get -y upgrade
-		apt-get -y install btrfs-progs binutils
-		local found_
-		for f_ in `find /usr/share/zoneinfo`; do
-			for t_ in `strings $f_`; do
-				if [ "$t_" = "$TZL" ] ; then
-					found_=$f_
-					info $TZL found in $f_
-					break
-				fi
-			done
-			if [ -n "$found_" ];then
-				mv -f /etc/localtime /etc/localtime.org
-				ln -sf $found_ /etc/localtime
+ssh_sudo <<'END'
+	dbv ${!SCRIPT_FILES[@]}
+	if [ -n "$INSTALL_VIM" ];then
+		install_vim
+	fi
+	mkdir -p /efipart
+	do_install args
+	do_install do_mount
+	do_install blkid2
+	do_install chain_bak
+	do_install do_install
+	do_install partNum2Dev
+	do_install parse_func
+	dbv ${!SCRIPT_FILES[@]}
+	do_mount 2 /efipart
+	dbv mounted 2 /efipart
+	store_env /efipart/TOPIC ""
+	dbv TOPIC written
+	umount /efipart
+	dbv unmounted /efipart
+	rmdir /efipart
+	rm /var/lib/rancher/conf/cloud-config.d/user_config.yml
+	apt-get -y update
+	apt-get -y upgrade
+	apt-get -y install btrfs-progs binutils
+	local found_
+	for f_ in `find /usr/share/zoneinfo`; do
+		for t_ in `strings $f_`; do
+			if [ "$t_" = "$TZL" ] ; then
+				found_=$f_
+				info $TZL found in $f_
 				break
 			fi
 		done
-		do_mount 7 /oempart
-		mkdir -p /oempart/var/log/burmilla_installation/2
-		cp -ar /var/log/* /oempart/var/log/burmilla_installation/2
-		green Switch to boot by installer
-		reboot
-	END
-	if [ $? != 0 ];then
-		die "Opertion terminated due to unknown bug."
-	fi
+		if [ -n "$found_" ];then
+			mv -f /etc/localtime /etc/localtime.org
+			ln -sf $found_ /etc/localtime
+			break
+		fi
+	done
+	do_mount 7 /oempart
+	mkdir -p /oempart/var/log/burmilla_installation/2
+	cp -ar /var/log/* /oempart/var/log/burmilla_installation/2
+	green Switch to boot by installer
+	reboot
+END
+if [ $? != 0 ];then
+	die "Opertion terminated due to unknown bug."
+fi
 
 ssh_param $INST_IP $PORT -x -q -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher
 
 
-	wait_sshd_start
-#else
-#	die target disk not found
-#fi
+wait_sshd_start
 
 
 # installation 3rd phase : boot by installer
@@ -1226,6 +1217,7 @@ fi
 #fi
 
 UF=/installing/oem_part/var/lib/rancher/conf/cloud-config.d/user_config.yml
+UF0=$UF.0
 ssh_sudo <<'FINAL'
 	#!/bin/bash
 
@@ -1286,7 +1278,7 @@ ssh_sudo <<'FINAL'
 # ls -la
 
 END
-		chmod +x installing/oem_part/var/lib/rancher/conf/cloud-config.d/user_config.runcmd.local
+		chmod +x /installing/oem_part/var/lib/rancher/conf/cloud-config.d/user_config.runcmd.local
 	fi
 	if [ -z "$USER_CONFIG" -o ! -e "$UF" ]; then
 		DATE=`TZ=$TZL date`
@@ -1346,6 +1338,7 @@ END
 		FEND
 		unset found_
 	else
+		cp -f $UF $UF0
 		yq e -i ".hostname|=\"$HNAME_FULL\"" $UF0
 		yq e -i ".rancher.network.dns.nameservers|=$DNS_SETTINGS_YQ" $UF0
 		yq e -i ".rancher.network.interfaces.$NET_DEV.address|=\"$IP/$NETMASK\"" $UF0
@@ -1557,7 +1550,7 @@ END
 			fi
 		fi
 		if [ -n "$noKernelParam" ];then
-			chain_bak $kpF
+			chain_bak -10 $kpF
 			echo -n "$USER_SETTINGS_FOR_GRUB_SOURCE" > $kpF
 			chmod +x $kpF
 		fi
@@ -1645,7 +1638,7 @@ END
 	mkdir -p /installing/oem_part/opt/rancher/conf/grub
 	if [ "$USER_SETTINGS_FOR_GRUB_SOURCE" != "`cat /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS 2> /dev/null`" ]; then
 		if [ -e /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS ];then
-			chain_bak /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS
+			chain_bak -10 /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS
 		fi
 		echo -n "$USER_SETTINGS_FOR_GRUB_SOURCE" > /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS
 		chmod +x /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS
