@@ -1087,6 +1087,13 @@ ssh_sudo <<'FINAL'
 	umount /installing/state_top
 	umount /installing/installer
 	umount /installing/efipart
+	mkdir -p /installing/oempart
+	mount $TARGET_DEV7 /installing/oempart
+	rm -rf /installing/oempart/var/log/burmilla_installation.10
+	chain_bak -10 /installing/oempart/var/log/burmilla_installation
+	mkdir -p /installing/oempart/var/log/burmilla_installation/1
+	cp -a /var/log/* /installing/oempart/var/log/burmilla_installation/1
+	umount /installing/oempart
 	sleep 5
 	echo -e $green"rebooting by target disk ....$normal"
 	reboot
@@ -1178,6 +1185,9 @@ deb TARGET_DEV="'"$TARGET_DEV"'"
 				break
 			fi
 		done
+		do_mount 7 /oempart
+		mkdir -p /oempart/var/log/burmilla_installation/2
+		cp -ar /var/log/* /oempart/var/log/burmilla_installation/2
 		green Switch to boot by installer
 		reboot
 	END
@@ -1268,11 +1278,20 @@ ssh_sudo <<'FINAL'
 		die cannot mount
 	fi
 	mkdir -p /installing/oem_part/var/lib/rancher/conf/cloud-config.d
+	if [ ! -e /installing/oem_part/var/lib/rancher/conf/cloud-config.d/user_config.runcmd.local ];then
+		cat - > /installing/oem_part/var/lib/rancher/conf/cloud-config.d/user_config.runcmd.local <<END
+#!/bin/bash
+# executed from .runcmd in user_config.yml
+
+# ls -la
+
+END
+		chmod +x installing/oem_part/var/lib/rancher/conf/cloud-config.d/user_config.runcmd.local
+	fi
 	if [ -z "$USER_CONFIG" -o ! -e "$UF" ]; then
 		DATE=`TZ=$TZL date`
 		write_env_file $UF << '	FEND'
 			hostname: $HNAME_FULL
-			date: $DATE
 			rancher:
 			  network:
 			    dns:
@@ -1320,29 +1339,29 @@ ssh_sudo <<'FINAL'
 			- btrfs quota enable /state_top_lvl/state_root
 			- btrfs quota enable /oem_top_lvl
 			- btrfs quota enable /oem_top_lvl/oem_root
+			- /var/lib/rancher/conf/cloud-config.d/user_config.runcmd.local
 			#cloud-config
 			ssh_authorized_keys:
 			- $KEY
 		FEND
 		unset found_
 	else
-		yq e -i ".hostname|=\"$HNAME_FULL\"" $UF
-		yq e -i ".rancher.network.dns.nameservers|=$DNS_SETTINGS_YQ" $UF
-		yq e -i ".rancher.network.interfaces.$NET_DEV.address|=\"$IP/$NETMASK\"" $UF
-		yq e -i ".rancher.network.interfaces.$NET_DEV.gateway|=\"$GATEWAY\"" $UF
+		yq e -i ".hostname|=\"$HNAME_FULL\"" $UF0
+		yq e -i ".rancher.network.dns.nameservers|=$DNS_SETTINGS_YQ" $UF0
+		yq e -i ".rancher.network.interfaces.$NET_DEV.address|=\"$IP/$NETMASK\"" $UF0
+		yq e -i ".rancher.network.interfaces.$NET_DEV.gateway|=\"$GATEWAY\"" $UF0
 		for i__ in console syslog udev system-cron acpid ntp docker network; do
-			yq e -i ".rancher.services.$i__.environment.TZ|=\"$TZL\"" $UF
+			yq e -i ".rancher.services.$i__.environment.TZ|=\"$TZL\"" $UF0
 		done
 		unset __i
-		yq e -i ".date|=\"`date`\"" $UF
 		c=""
 		i=0
 		pre="sudo sed -i 's/#Port 22/Port "
 		post="/' /etc/ssh/sshd_config"
 		while [ 1 ]; do
-			case "`yq e '.write_files.['$i'].path' $UF`" in
+			case "`yq e '.write_files.['$i'].path' $UF0`" in
 				"/opt/rancher/bin/start.sh" )
-					yq e '.write_files.['$i'].content' $UF > ./tmp_file
+					yq e '.write_files.['$i'].content' $UF0 > ./tmp_file
 					while IFS= read line; do
 						if [ "${line:0:${#pre}}" ==  "$pre" ]; then
 							if [ "${line:$((${#line} - ${#post})):${#post}}" == "$post" ]; then
@@ -1351,7 +1370,7 @@ ssh_sudo <<'FINAL'
 						fi
 						echo "$line"
 					done < ./tmp_file > ./tmp_file2
-					yq e -i '.write_files.['$i'].content|="'"`cat ./tmp_file2`"'"' $UF
+					yq e -i '.write_files.['$i'].content|="'"`cat ./tmp_file2`"'"' $UF0
 					break
 					;;
 				"null" )
@@ -1365,14 +1384,14 @@ ssh_sudo <<'FINAL'
 		done
 		i=0
 		while [ 1 ]; do
-			k="`yq e '.ssh_authorized_keys.['$i']' $UF`"
+			k="`yq e '.ssh_authorized_keys.['$i']' $UF0`"
 			case "$k" in
 				"$KEY" )
 					break
 					;;
 				"null" )
 					echo null
-					yq e -i '.ssh_authorized_keys.['$i']|="'"$KEY"'"' $UF
+					yq e -i '.ssh_authorized_keys.['$i']|="'"$KEY"'"' $UF0
 					break
 					;;
 			esac
@@ -1381,6 +1400,9 @@ ssh_sudo <<'FINAL'
 				break
 			fi
 		done
+		if [ "`cat $UF0`" != "`cat $UF`" ];then
+			chain_bak -10 $UF0 $UF
+		fi
 	fi
 
 	mkdir -p /installing/state/oem_top_lvl
@@ -1388,14 +1410,21 @@ ssh_sudo <<'FINAL'
 
 	[ ! -e /installing/oem_part/home ] && cp -af /installing/state/home /installing/oem_part
 	[ ! -e /installing/oem_part/root ] && cp -af /installing/state/root /installing/oem_part
-	[ ! -e /installing/oem_part/opt ] && cp -af /installing/state/opt /installing/oem_part
-	mkdir -p /installing/oem_part/var
-	[ ! -e /installing/oem_part/var/log ] && cp -af /installing/state/var/log /installing/oem_part/var
-	mkdir -p /installing/oem_part/var/lib/rancher
-	[ ! -e /installing/oem_part/var/lib/rancher/conf ] && cp -af /installing/state/var/lib/rancher/conf /installing/oem_part/var/lib/rancher
-
-	rm -rf /installing/state/{root,opt,home,var/log}
-	rm -rf /installing/state/var/lib/rancher/conf
+	#[ ! -e /installing/oem_part/opt ] && cp -af /installing/state/opt /installing/oem_part
+	cp_bak --compare /installing/state/opt /installing/oem_part
+	#mkdir -p /installing/oem_part/var/log/burmilla_installation/3
+	#[ ! -e /installing/oem_part/var/log ] && cp -af /installing/state/var/log /installing/oem_part/var
+	cp_bak --compare /installing/state/var/log/* /installing/oem_part/var/log/burmilla_installation/3
+	#mkdir -p /installing/oem_part/var/lib/rancher
+	#[ ! -e /installing/oem_part/var/lib/rancher/conf ] && cp -af /installing/state/var/lib/rancher/conf /installing/oem_part/var/lib/rancher
+	cp_bak --compare /installing/state/var/lib/rancher/conf /installing/oem_part/var/lib/rancher
+	#mkdir -p /installing/oem_part/usr/share
+	#[ ! -e /installing/oem_part/usr/share/ros ] && cp -af /installing/state/var/lib/rancher/conf /installing/oem_part/var/lib/rancher
+	cp_bak --compare /installing/state/usr/share/ros /installing/oem_part/usr/share
+	
+	rm_all /installing/state/{root,opt,home,var/log}
+	rm_all /installing/state/var/lib/rancher/conf
+	rm_all /installing/state/usr/share/ros
 
 	#chmod 550 /installing/oem_part/root
 	mkdir -p /installing/oem_part/root/.ssh
@@ -1406,6 +1435,7 @@ ssh_sudo <<'FINAL'
 	ln -s /usr/share/ros/oem/opt /installing/state/opt
 	ln -s /usr/share/ros/oem/var/log /installing/state/var/log
 	ln -s /usr/share/ros/oem/var/lib/rancher/conf /installing/state/var/lib/rancher/conf
+	#ln -s /usr/share/ros/oem/usr/share/ros /installing/state/usr/share/ros
 
 	# ssh config directory
 	mkdir -p /installing/oem_part/etc/ssh
@@ -1446,11 +1476,12 @@ ssh_sudo <<'FINAL'
 
 	# create startup script
 	mkdir -p /installing/oem_part/opt/rancher/bin
-	write_script 0755 /installing/oem_part/opt/rancher/bin/start.sh <<'START_UP'
+	write_script 0755 /installing/oem_part/opt/rancher/bin/start.sh.0 <<'START_UP'
 		#!/bin/bash
 		# Do not edit this file
-		# 
+		# Please use ./startup.d/foo.sh
 		source bashlib_y
+		
 		chain_bak -10 /var/log/boot/init.log /var/log/boot/init.log.0
 		info mount --bind /usr/share/ros/oem/etc/ssh /etc/ssh
 		rm -rf /etc/ssh
@@ -1543,6 +1574,56 @@ ssh_sudo <<'FINAL'
 		echo "LAST_BOOTED_VER=$LAST_BOOTED_VER"  > /mnt_efi_test/LAST_BOOTED_VER
 		umount /mnt_efi_test
 		rmdir /mnt_efi_test
+		
+		USER_DOCKER_IMAGE="`system-docker ps | grep os-docker | awk '{print $2}'`"
+		if [ -z "$USER_DOCKER_IMAGE" ];then
+			warn "cannot find running docker, $USER_DOCKER_IMAGE"
+		else
+			NEW_USER_DOCKER_VERSION="`cat /usr/share/ros/user_docker_version_override`"
+			if [[ $NEW_USER_DOCKER_VERSION =~ ^(LATEST|Latest|latest)$ ]];then
+				apt-get install -y jq
+				READ="`docker run --rm goodwithtech/dockertags -limit 1 -format json burmilla/os-docker`"
+                first=
+                IFS=
+				NEW_USER_DOCKER_VERSION=$(echo -E $READ | while read ln; do
+					if [ "$ln" = "[" ];then
+						first=1
+					fi
+					if [ -n "$first" ];then
+						echo "$ln"
+					fi
+				done | jq -r ".[0].tags[0]")
+				if [ -z "$NEW_USER_DOCKER_VERSION" ];then
+					warn "cannot get latest tag for burmilla/os-docker"
+					warn "using default $USER_DOCKER_IMAGE"
+				fi
+			fi
+			if [ -n "$NEW_USER_DOCKER_VERSION" -a "$NEW_USER_DOCKER_VERSION" != "${USER_DOCKER_IMAGE##*:}" ];then
+				if [ ! -e /usr/share/ros/os-docker-$NEW_USER_DOCKER_VERSION.tar.gz ];then
+					if docker pull "$NEW_USER_DOCKER_VERSION"; then
+						docker save "$NEW_USER_DOCKER_VERSION" | gzip > /usr/share/ros/os-docker-$NEW_USER_DOCKER_VERSION.tar.gz
+					fi
+				fi
+				if [ ! -e /usr/share/ros/os-docker-$NEW_USER_DOCKER_VERSION.tar.gz ];then
+					warn "cannot pull burmilla/os-docker:$NEW_USER_DOCKER_VERSION"
+					warn "using default $USER_DOCKER_IMAGE"
+				else
+					cp /usr/share/ros/os-config.yml /usr/share/ros/os-config.yml.0
+					yq e -i ".rancher.defaults.docker.engine|=\"docker-$NEW_USER_DOCKER_VERSION\"" /usr/share/ros/os-config.yml.0
+					yq e -i ".rancher.services.docker.image|=\"burmilla/os-docker:$NEW_USER_DOCKER_VERSION\"" /usr/share/ros/os-config.yml.0
+					yq e -i ".rancher.docker.engine|=\"docker-$NEW_USER_DOCKER_VERSION\"" /usr/share/ros/os-config.yml.0
+					if [ "`cat /usr/share/ros/os-config.yml`" != "`/usr/share/ros/os-config.yml.0`" ];then
+						chain_bak -10 /usr/share/ros/os-config.yml.0 /usr/share/ros/os-config.yml
+					else
+						rm /usr/share/ros/os-config.yml.0
+					fi
+					info "override docker version to $NEW_USER_DOCKER_VERSION"
+					info "rebooting ..."
+					reboot
+					exit
+				fi
+			fi
+		fi
 		mkdir -p $(__FILE_DIR__)/startup.d
 		ls $(__FILE_DIR__)/startup.d/*.sh 2>/dev/null|sort|while read sh;do
 			if [ -n "$sh" ];then
@@ -1550,6 +1631,9 @@ ssh_sudo <<'FINAL'
 			fi
 		done
 	START_UP
+	if [ "`cat /installing/oem_part/opt/rancher/bin/start.sh.0`" != "`cat /installing/oem_part/opt/rancher/bin/start.sh`" ];then
+		chain_bak -10 /installing/oem_part/opt/rancher/bin/start.sh.0 /installing/oem_part/opt/rancher/bin/start.sh
+	fi
 	deb wc start.sh=`wc /installing/oem_part/opt/rancher/bin/start.sh`
 	deb wc start.sh\(awk 1\)=`wc /installing/oem_part/opt/rancher/bin/start.sh|awk '{print $1}'`
 	if [ "`wc /installing/oem_part/opt/rancher/bin/start.sh|awk '{print $1}'`" = 1 ];then

@@ -404,8 +404,9 @@ dbv(){
 				deb $position $cyan$@
 			fi
 		else
+			local IFS=" "
 			local frame=(`caller 0`)
-			local f="`readlink -f "${frame[2]}"`"
+			local f="`readlink -f ${frame[2]}`"
 			local lno="${frame[0]}"
 			local ln
 			local sid
@@ -810,6 +811,7 @@ require(){
 						ret=$?
 					else
 						source "$to_load"
+						ret=$?
 					fi
 					dbv $to_load $ret
 				else

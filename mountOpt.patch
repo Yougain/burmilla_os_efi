@@ -187,7 +187,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/user_docker.go os.new/cmd/contro
  func waitForPid(service string, project *project.Project) (int, error) {
 diff -Naur '--exclude=.git' os.prev/cmd/init/init.go os.new/cmd/init/init.go
 --- os.prev/cmd/init/init.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/init/init.go	2024-04-10 09:44:00.010000000 +0900
++++ os.new/cmd/init/init.go	2024-04-16 12:01:54.334800900 +0900
 @@ -5,7 +5,8 @@
  
  import (
@@ -213,6 +213,15 @@ diff -Naur '--exclude=.git' os.prev/cmd/init/init.go os.new/cmd/init/init.go
  	}
  }
  
+@@ -55,7 +64,7 @@
+ 		{Name: "cloud-init", Func: cloudinit.CloudInit},
+ 		{Name: "read cfg and log files", Func: configfiles.ReadConfigFiles},
+ 		{Name: "switchroot", Func: switchroot.SwitchRoot},
+-		{Name: "mount OEM2", Func: fsmount.MountOem},
++		{Name: "mount OEM2", Func: fsmount.MountOem2},
+ 		{Name: "mount BOOT", Func: fsmount.MountBoot},
+ 		{Name: "write cfg and log files", Func: configfiles.WriteConfigFiles},
+ 		{Name: "b2d Env", Func: b2d.Env},
 @@ -79,7 +88,9 @@
  	log.Info("Launching System Docker")
  	_, err = dfs.LaunchDocker(launchConfig, config.SystemDockerBin, args...)
@@ -478,7 +487,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/configfiles/configfiles.go os.new/p
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2024-04-10 13:21:52.460000000 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2024-04-16 12:35:00.724800900 +0900
 @@ -4,6 +4,8 @@
  	"fmt"
  	"strings"
@@ -488,7 +497,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  
  	"github.com/burmilla/os/config"
  	"github.com/burmilla/os/config/cmdline"
-@@ -18,11 +20,12 @@
+@@ -18,15 +20,32 @@
  )
  
  var (
@@ -502,7 +511,27 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  		log.Debugf("Not mounting OEM: %v", err)
  	} else {
  		log.Infof("Mounted OEM: %s", cfg.Rancher.State.OemDev)
-@@ -45,7 +48,7 @@
+ 	}
++	return cfg, nil
++}
++
++func MountOem2(cfg *config.CloudConfig) (*config.CloudConfig, error) {
++	if err := mountConfigured("oem", cfg.Rancher.State.OemDev, cfg.Rancher.State.OemFsType, config.OemDir + "/../../ros_oem", cfg.Rancher.State.OemMountOpt); err != nil {
++		log.Debugf("Not mounting OEM: %v", err)
++	} else {
++		log.Infof("Mounted OEM: %s to %s", cfg.Rancher.State.OemDev, config.OemDir + "/../../ros_oem")
++		_, err := os.Stat(config.OemDir + "/../../ros_oem" + config.OemDir)
++		if err != nil {
++			util.Mount(config.OemDir + "/../../ros_oem" + config.OemDir + "/..", config.OemDir + "/..", "bind")
++			util.Mount(config.OemDir + "/../../ros_oem" + config.OemDir, config.OemDir, "bind")
++		} else {
++			util.Mount(config.OemDir + "/../../ros_oem", config.OemDir, "bind")
++		}
++	}
+ 
+ 	return cfg, nil
+ }
+@@ -45,7 +64,7 @@
  		}
  	}
  
@@ -511,16 +540,16 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  		log.Debugf("Not mounting BOOT: %v", err)
  	} else {
  		log.Infof("Mounted BOOT: %s", cfg.Rancher.State.BootDev)
-@@ -54,32 +57,51 @@
+@@ -54,32 +73,51 @@
  	return cfg, nil
  }
  
 -func mountConfigured(display, dev, fsType, target string) error {
 -	var err error
 +func mountConfigured(display, dname, fsType, target, option string) error {
++
  
 -	if dev == "" {
-+
 +	if dname == "" {
  		return nil
  	}
@@ -533,7 +562,9 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 -		fsType, err = util.GetFsType(dev)
 -	}
 +	log.Infof("Mounting %s device %s to %s (option = '%s')", display, dname, target, option)
-+
+ 
+-	if err != nil {
+-		return err
 +	if _, err := os.Stat("/usr/bin/do_mount"); err == nil {
 +		cmd := exec.Command("/usr/bin/do_mount", "--verbose", "-o", option, dname, target)
 +		out, errb := cmd.Output()
@@ -557,9 +588,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +		if fsType == "auto" {
 +			fsType, err = util.GetFsType(dev)
 +		}
- 
--	if err != nil {
--		return err
++
 +		if err != nil {
 +			return err
 +		}

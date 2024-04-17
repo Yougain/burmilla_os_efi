@@ -88,6 +88,13 @@ runcmd:
 END
 		fi
 	fi
+	USER_DOCKER_IMAGE=`yq ".rancher.services.docker.image" /usr/share/ros/os-config.yml`
+	USER_DOCKER_VERSION=${USER_DOCKER_IMAGE#*:}
+	USER_DOCKER_IMAGE_TO_LOAD=/usr/share/ros/os-docker-$USER_DOCKER_VERSION.tar.gz
+	if [ ! -e "$USER_DOCKER_IMAGE_TO_LOAD" ];then
+		err "cannot find $USER_DOCKER_IMAGE_TO_LOAD"
+	fi
+	system-docker load -i $USER_DOCKER_IMAGE_TO_LOAD
 }
 
 

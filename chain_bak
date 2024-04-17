@@ -248,13 +248,13 @@ chain_bak(){
 		local num="$1"
 		local f0="$(_chain_bak_set_file $num)"
 		local f1="$(_chain_bak_set_file $((num + 1)))"
-		dbv rm $f0 $f1
+		dbv rm -rf $f0 $f1
 		if [ -e "$f1" ];then
 			if ! _chain_rm $((num + 1)); then
 				return 1
 			fi
 		fi
-		if ! rm -f $verbose "$f0"; then
+		if ! rm -rf $verbose "$f0"; then
 			return 1
 		fi
 		dbv erased "$f0"
@@ -423,4 +423,157 @@ chain_bak(){
 }
 
 
+_d_id(){
+	echo `stat -c "%d-%i" -L "$1"`
+}
+
+do_recursive_files(){
+	declare -A dstack
+	local dst="$3"
+	local src="$2"
+	local src_dn="${src##*/}"
+	if [ -d "$dst" ];then
+		while [ -z "$src_dn" -a "${src: -1:1}" = "/" ];do
+			src="${src%?}"
+			src_dn="${src##*/}"
+		done
+		if [ -n "$src" ]; then
+			if [ "$src" != "/" -a "$src_dn" != "." -a "$src_dn" != ".." ];then
+				dst="$dst/$src_dn"
+			fi
+		else
+			$src="/"
+		fi
+	fi
+	if [ -d "$src" ];then
+		_do_recursive_files_dir "$1" "$src" "$dst"
+	else
+		"$1" "$2" "$dst"
+	fi
+}
+
+
+_do_recursive_files_dir(){
+	local did=`_d_id "$2"`
+	if [ -n "${dstack[$did]}" -o -z "$did" ];then
+		return
+	fi
+	"$1" "$2" "$3" # check only dir, but not check files in dir
+	local f
+	local dirs
+	local d
+	local IFS=
+	for f in "$2"/*; do
+		if [ -d "$f" ];then
+			dirs+=("$f")
+		else
+			"$1" "$f" "${3%/*}/${f##*/}"
+		fi
+	done
+	dstack[$did]=1
+	for d in "${dirs[@]}"; do
+		_do_recursive_files_dir "$d" "${3%/*}/${d##*/}"
+	done
+	dstack[$did]=
+}
+
+
+_same_content_(){
+	if [ -f "$1" -a -f "$2" ];then
+		if [ -n "$compare" ];then
+			diff "$1" "$2" > /dev/null
+			return $?
+		else
+			return 1
+		fi
+	fi
+	local sts=$(stat -c "%F:%T:%t" "$1")
+	local std=$(stat -c "%F:%T:%t" "$2")
+	if [ "$sts" != "$std" ];then
+		return 1
+	else
+		return 0
+	fi
+}
+
+
+_cp_bak(){
+	if [ -d "$1" ];then
+		if [ -d "$2" ];then
+			return
+		fi
+		if [ -e "$2" -o -L "$2" ];then # file exists or symlink but destination is missing
+			chain_bak ${opts[@]} "$2"
+		fi
+		mkdir "$2"
+		local src="`readlink -f "$1"`"
+		local ug=$(stat -c '%U:%G' "$src")
+		local ac=$(stat -c '%a' "$src")
+		chown $ug "$2"
+		chmod $ac "$2"
+		touch -r "$src" "$2"
+	else
+		dbv $@
+		if [ -e "$2" ]; then
+			if _same_content_ "$1" "$2";then
+				return
+			else
+				chain_bak ${opts[@]} "$2"
+			fi
+		elif [ -L "$2" ]; then # symlink but destination is missing
+			chain_bak ${opts[@]} "$2"
+		fi
+		if [ -e "$1" ]; then
+			dbv $1 "`readlink -f "$1"`"
+			if ! cp -av "`readlink -f "$1"`" "$2"; then
+				:
+			fi
+			dbv
+		elif [ -L "$1" ]; then
+			dbv
+			if ! cp -av "$1" "$2"; then
+				:
+			fi
+			dbv
+		else
+			warn "'$1' is missing"
+		fi
+	fi
+}
+
+
+cp_bak(){
+	local opts
+	local ag
+	local ags
+	local compare
+	local srcs=("${@:1:$(($#-1))}")
+	local dst=${!#}
+	local i=0
+	for ag in "$@"; do
+		if [ "${ag:0:1}" = "-" ];then
+			if [ "$ag" == "--compare" ];then
+				compare=1
+			else
+				opts+=("$ag")
+			fi
+		else
+			ags+=("$ag")
+		fi
+	done
+	if [ ${#ags[@]} -lt 2 ];then
+		die "missing SOURCE and/or DESTINATION argument(s)"
+	fi
+	dst=${ags[-1]}
+	srcs=("${ags[@]:0:${#ags[@]}-1}")
+	if [ -d "$dst" ];then
+		for src in "${srcs[@]}"; do
+			do_recursive_files _cp_bak $src $dst
+		done
+	elif [ ${#ags[@]} -gt 2 ];then
+		die "last argument is not a directory"
+	else
+		do_recursive_files _cp_bak $src $dst
+	fi
+}
 

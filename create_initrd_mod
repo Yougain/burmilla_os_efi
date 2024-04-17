@@ -4,6 +4,17 @@
 function create_initrd_mod(){
 	apt-get -y update
 	apt-get -y install cpio btrfs-progs strace nginx git binutils
+	if [ ! -x /usr/bin/yq ]; then
+		if [ -n "`uname -a|grep armv7`" ]; then
+			sudo wget "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_arm" -q -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
+		fi
+		if [ -n "`uname -a|grep aarc64`" ]; then
+			sudo wget "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_arm64" -q -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
+		fi
+		if [ -n "`uname -a|grep x86_64`" ]; then
+			sudo wget "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64" -q -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
+		fi
+	fi
 
 	local tmpd=`pwd`
 	local PATH="$tmpd:$PATH"
@@ -18,10 +29,15 @@ function create_initrd_mod(){
 	require do_install
 	require chain_bak
 	require do_mount
+	require vercmp
 
 	if [ ! -x /usr/bin/system-docker ];then
 		die "/usr/bin/system-docker not found"
 	fi
+	if [ ! -x /usr/bin/docker ];then
+		die "/usr/bin/docker not found"
+	fi
+
 	if [ "`id -u`" != 0 ];then
 		die "not super user"
 	fi
@@ -106,6 +122,17 @@ function create_initrd_mod(){
 		ls -la ./usr/bin/ros*
 	else
 		zcat $EXTD/boot_dev/$INITRD_FILE | cpio -idm
+	fi
+
+	DOCKER_IMAGE=`yq ".rancher.services.docker.image" usr/share/ros/os-config.yml`
+	if [ -z "$DOCKER_IMAGE" ];then
+		die cannot find .rancher.services.docker.image in usr/share/ros/os-config.yml
+	fi
+	if ! docker pull $DOCKER_IMAGE; then
+		die cannot pull $DOCKER_IMAGE
+	fi
+	if ! docker save $DOCKER_IMAGE | gzip > usr/share/ros/os-docker-${DOCKER_IMAGE#*:}.tar.gz; then
+		die cannot extract usr/share/ros/os-docker-${DOCKER_IMAGE#*:}.tar.gz
 	fi
 
 	local d
@@ -412,6 +439,7 @@ $libs"
 		nginx
 		strings
 		cp
+		yq
 	END
 	mkdir -p ./idev # for logger
 	mknod ./idev/null c 1 3
@@ -451,6 +479,7 @@ $libs"
 					after_save_cmd_line                \
 					args						\
 					parse_func				\
+					vercmp					\
 					before_sysinit; do
 				dbv $f $d
 				do_install $f $d
