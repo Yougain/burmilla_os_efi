@@ -487,7 +487,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/configfiles/configfiles.go os.new/p
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2024-04-16 12:35:00.724800900 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2024-04-17 14:10:37.875706300 +0900
 @@ -4,6 +4,8 @@
  	"fmt"
  	"strings"
@@ -522,10 +522,10 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 +		log.Infof("Mounted OEM: %s to %s", cfg.Rancher.State.OemDev, config.OemDir + "/../../ros_oem")
 +		_, err := os.Stat(config.OemDir + "/../../ros_oem" + config.OemDir)
 +		if err != nil {
-+			util.Mount(config.OemDir + "/../../ros_oem" + config.OemDir + "/..", config.OemDir + "/..", "bind")
-+			util.Mount(config.OemDir + "/../../ros_oem" + config.OemDir, config.OemDir, "bind")
++			util.Mount(config.OemDir + "/../../ros_oem" + config.OemDir + "/..", config.OemDir + "/..", "", "bind")
++			util.Mount(config.OemDir + "/../../ros_oem" + config.OemDir, config.OemDir, "", "bind")
 +		} else {
-+			util.Mount(config.OemDir + "/../../ros_oem", config.OemDir, "bind")
++			util.Mount(config.OemDir + "/../../ros_oem", config.OemDir, "", "bind")
 +		}
 +	}
  
