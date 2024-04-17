@@ -411,6 +411,7 @@ $libs"
 		bash
 		busybox
 		diff
+		df
 		id
 		mknod
 		rmdir

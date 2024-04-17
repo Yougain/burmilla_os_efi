@@ -1012,6 +1012,8 @@ ssh_sudo <<'FINAL'
 	# move all files from $TARGET_DEV4/boot (initial state drive) to $TARGET_DEV2 (boot drive).
 	mount $TARGET_DEV4 /installing/boot_dev
 	cp -a /installing/state_top/state_root/boot/* /installing/boot_dev
+	mkdir -p /installing/state_top/state_root/usr/share
+	cp_bak -10 --compare /opt/initrd/usr/share/ros /installing/state_top/state_root/usr/share
 	# set up grub.cfg on EFI drive
 	VMLINUZ_FILE=`cd /installing/installer/boot;ls -d vmlinuz-*`
 	VMLINUZ_FILE_COUNT=`echo "$VMLINUZ_FILE" | wc | awk '{print $1}'`
@@ -1089,9 +1091,8 @@ ssh_sudo <<'FINAL'
 	umount /installing/efipart
 	mkdir -p /installing/oempart
 	mount $TARGET_DEV7 /installing/oempart
-	#rm -rf /installing/oempart/var/log/burmilla_installation
-	chain_bak -10 /installing/oempart/var/log/burmilla_installation
 	mkdir -p /installing/oempart/var/log/burmilla_installation/1
+	chain_bak -10 /installing/oempart/var/log/burmilla_installation
 	cp -a /var/log/* /installing/oempart/var/log/burmilla_installation/1
 	umount /installing/oempart
 	sleep 5
@@ -1407,6 +1408,7 @@ END
 	cp_bak --compare -10 /installing/state/opt /installing/oem_part
 	#mkdir -p /installing/oem_part/var/log/burmilla_installation/3
 	#[ ! -e /installing/oem_part/var/log ] && cp -af /installing/state/var/log /installing/oem_part/var
+	mkdir -p /installing/oem_part/var/log/burmilla_installation/3
 	cp_bak --compare -10 /installing/state/var/log/* /installing/oem_part/var/log/burmilla_installation/3
 	#mkdir -p /installing/oem_part/var/lib/rancher
 	#[ ! -e /installing/oem_part/var/lib/rancher/conf ] && cp -af /installing/state/var/lib/rancher/conf /installing/oem_part/var/lib/rancher
@@ -1417,7 +1419,7 @@ END
 	
 	rm_all /installing/state/{root,opt,home,var/log}
 	rm_all /installing/state/var/lib/rancher/conf
-	rm_all /installing/state/usr/share/ros
+	#rm_all /installing/state/usr/share/ros
 
 	#chmod 550 /installing/oem_part/root
 	mkdir -p /installing/oem_part/root/.ssh
@@ -1428,7 +1430,11 @@ END
 	ln -s /usr/share/ros/oem/opt /installing/state/opt
 	ln -s /usr/share/ros/oem/var/log /installing/state/var/log
 	ln -s /usr/share/ros/oem/var/lib/rancher/conf /installing/state/var/lib/rancher/conf
-	#ln -s /usr/share/ros/oem/usr/share/ros /installing/state/usr/share/ros
+	for f in /usr/share/ros/oem/usr/share/ros/*; do
+		if [ "$f" != "/usr/share/ros/oem/usr/share/ros/oem" ];then
+			ln -sf "$f" /installing/state/usr/share/ros
+		fi
+	done
 
 	# ssh config directory
 	mkdir -p /installing/oem_part/etc/ssh

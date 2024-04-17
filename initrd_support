@@ -30,7 +30,7 @@ before_sysinit(){
 	info killall udevd: result = $?
 	info udev stopped
 	info /opt is on $(stat -f -c '%T' /opt)
-	if [ "$(stat -f -c '%T' /opt)" = "ramfs" ];then
+	if [ -n "$INITRD_MOUNT" -a "$(stat -f -c '%T' /opt)" = "ramfs" ];then
 		mkdir -p /opt/initrd
 		mount --bind / /opt/initrd
 	fi
@@ -88,12 +88,14 @@ runcmd:
 END
 		fi
 	fi
+	info Using /usr/share/ros/os-config.yml on `which_dev_on /usr/share/ros/os-config.yml`.
 	USER_DOCKER_IMAGE=`yq ".rancher.services.docker.image" /usr/share/ros/os-config.yml`
 	USER_DOCKER_VERSION=${USER_DOCKER_IMAGE#*:}
 	USER_DOCKER_IMAGE_TO_LOAD=/usr/share/ros/os-docker-$USER_DOCKER_VERSION.tar.gz
 	if [ ! -e "$USER_DOCKER_IMAGE_TO_LOAD" ];then
 		err "cannot find $USER_DOCKER_IMAGE_TO_LOAD"
 	fi
+	info Using $USER_DOCKER_IMAGE_TO_LOAD on `which_dev_on $USER_DOCKER_IMAGE_TO_LOAD`.
 	system-docker load -i $USER_DOCKER_IMAGE_TO_LOAD
 }
 

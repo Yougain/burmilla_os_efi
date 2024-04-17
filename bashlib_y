@@ -887,6 +887,11 @@ function ask_yes_no {
 }
 
 
+function which_dev_on {
+	echo $(df "$1" | tail -1 | awk '{print $1}')
+}
+
+
 else
 	if [ -n "$DEBUG" ];then
 		echo "support lib already initialized ..."
