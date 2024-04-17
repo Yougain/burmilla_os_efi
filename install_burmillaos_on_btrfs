@@ -1411,16 +1411,16 @@ END
 	[ ! -e /installing/oem_part/home ] && cp -af /installing/state/home /installing/oem_part
 	[ ! -e /installing/oem_part/root ] && cp -af /installing/state/root /installing/oem_part
 	#[ ! -e /installing/oem_part/opt ] && cp -af /installing/state/opt /installing/oem_part
-	cp_bak --compare /installing/state/opt /installing/oem_part
+	cp_bak --compare -10 /installing/state/opt /installing/oem_part
 	#mkdir -p /installing/oem_part/var/log/burmilla_installation/3
 	#[ ! -e /installing/oem_part/var/log ] && cp -af /installing/state/var/log /installing/oem_part/var
-	cp_bak --compare /installing/state/var/log/* /installing/oem_part/var/log/burmilla_installation/3
+	cp_bak --compare -10 /installing/state/var/log/* /installing/oem_part/var/log/burmilla_installation/3
 	#mkdir -p /installing/oem_part/var/lib/rancher
 	#[ ! -e /installing/oem_part/var/lib/rancher/conf ] && cp -af /installing/state/var/lib/rancher/conf /installing/oem_part/var/lib/rancher
-	cp_bak --compare /installing/state/var/lib/rancher/conf /installing/oem_part/var/lib/rancher
+	cp_bak --compare -10 /installing/state/var/lib/rancher/conf /installing/oem_part/var/lib/rancher
 	#mkdir -p /installing/oem_part/usr/share
 	#[ ! -e /installing/oem_part/usr/share/ros ] && cp -af /installing/state/var/lib/rancher/conf /installing/oem_part/var/lib/rancher
-	cp_bak --compare /installing/state/usr/share/ros /installing/oem_part/usr/share
+	cp_bak --compare -10 /installing/state/usr/share/ros /installing/oem_part/usr/share
 	
 	rm_all /installing/state/{root,opt,home,var/log}
 	rm_all /installing/state/var/lib/rancher/conf
