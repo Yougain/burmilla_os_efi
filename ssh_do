@@ -304,6 +304,8 @@ function ssh_do(){
 	else
 		#info "$SSH_PORT_OPT $SSH_OPTS $SSH_HOST $sudoing $@"
 		"${CMD[@]}" $@
+		SSH_ID=
+		return $res
 	fi
 	SSH_ID=
 }
