@@ -85,6 +85,13 @@ runcmd:
 - cp /opt/initrd/etc/localtime /etc
 END
 		fi
+		if [ -n "$ref_boot_uuid" ];then
+			do_mount 7 /mnt
+			cp /mnt/var/lib/rancher/conf/cloud-config.yml /var/lib/rancher/conf
+			yq e 'del(.runcmd)' /mnt/var/lib/rancher/conf/cloud-config.d/user_config.yml > /var/lib/rancher/conf/cloud-config.d/user_config.yml
+			umount /mnt
+			yq e -i '.runcmd.[0]|="cp /opt/initrd/etc/localtime /etc"' /var/lib/rancher/conf/cloud-config.d/user_config.yml
+		fi
 	elif [ -n "$INITRD_MOUNT" -a "$(stat -f -c '%T' /opt)" = "ramfs" ];then
 		mkdir -p /opt/initrd
 		mount --bind / /opt/initrd

@@ -1012,8 +1012,6 @@ ssh_sudo <<'FINAL'
 	# move all files from $TARGET_DEV4/boot (initial state drive) to $TARGET_DEV2 (boot drive).
 	mount $TARGET_DEV4 /installing/boot_dev
 	cp -a /installing/state_top/state_root/boot/* /installing/boot_dev
-	mkdir -p /installing/state_top/state_root/usr/share
-	cp_bak -10 --compare /opt/initrd/usr/share/ros /installing/state_top/state_root/usr/share
 	# set up grub.cfg on EFI drive
 	VMLINUZ_FILE=`cd /installing/installer/boot;ls -d vmlinuz-*`
 	VMLINUZ_FILE_COUNT=`echo "$VMLINUZ_FILE" | wc | awk '{print $1}'`
@@ -1218,7 +1216,7 @@ fi
 #fi
 
 UF=/installing/oem_part/var/lib/rancher/conf/cloud-config.d/user_config.yml
-UF0=$UF.0
+UFL=/installing/oem_part/var/lib/rancher/conf_lib/cloud-config.d/user_config.yml
 ssh_sudo <<'FINAL'
 	#!/bin/bash
 
@@ -1270,22 +1268,13 @@ ssh_sudo <<'FINAL'
 	if ! do_mount 7 /installing/oem_part; then
 		die cannot mount
 	fi
-	mkdir -p /installing/oem_part/var/lib/rancher/conf/cloud-config.d
-	if [ ! -e /installing/oem_part/var/lib/rancher/conf/cloud-config.d/user_config.runcmd.local ];then
-		cat - > /installing/oem_part/var/lib/rancher/conf/cloud-config.d/user_config.runcmd.local <<END
-#!/bin/bash
-# executed from .runcmd in user_config.yml
-
-# ls -la
-
-END
-		chmod +x /installing/oem_part/var/lib/rancher/conf/cloud-config.d/user_config.runcmd.local
-	fi
 	if [ -z "$USER_CONFIG" -o ! -e "$UF" ]; then
 		DATE=`TZ=$TZL date`
 		write_env_file $UF << '	FEND'
 			hostname: $HNAME_FULL
 			rancher:
+			  ssh:
+			    port: $PORT
 			  network:
 			    dns:
 			      nameservers:
@@ -1332,20 +1321,19 @@ END
 			- btrfs quota enable /state_top_lvl/state_root
 			- btrfs quota enable /oem_top_lvl
 			- btrfs quota enable /oem_top_lvl/oem_root
-			- /var/lib/rancher/conf/cloud-config.d/user_config.runcmd.local
 			#cloud-config
 			ssh_authorized_keys:
 			- $KEY
 		FEND
 		unset found_
 	else
-		cp -f $UF $UF0
-		yq e -i ".hostname|=\"$HNAME_FULL\"" $UF0
-		yq e -i ".rancher.network.dns.nameservers|=$DNS_SETTINGS_YQ" $UF0
-		yq e -i ".rancher.network.interfaces.$NET_DEV.address|=\"$IP/$NETMASK\"" $UF0
-		yq e -i ".rancher.network.interfaces.$NET_DEV.gateway|=\"$GATEWAY\"" $UF0
+		yq e -i ".hostname|=\"$HNAME_FULL\"" $UF
+		yq e -i ".rancher.ssh.port|=\"$PORT\"" $UF
+		yq e -i ".rancher.network.dns.nameservers|=$DNS_SETTINGS_YQ" $UF
+		yq e -i ".rancher.network.interfaces.$NET_DEV.address|=\"$IP/$NETMASK\"" $UF
+		yq e -i ".rancher.network.interfaces.$NET_DEV.gateway|=\"$GATEWAY\"" $UF
 		for i__ in console syslog udev system-cron acpid ntp docker network; do
-			yq e -i ".rancher.services.$i__.environment.TZ|=\"$TZL\"" $UF0
+			yq e -i ".rancher.services.$i__.environment.TZ|=\"$TZL\"" $UF
 		done
 		unset __i
 		c=""
@@ -1353,9 +1341,9 @@ END
 		pre="sudo sed -i 's/#Port 22/Port "
 		post="/' /etc/ssh/sshd_config"
 		while [ 1 ]; do
-			case "`yq e '.write_files.['$i'].path' $UF0`" in
+			case "`yq e '.write_files.['$i'].path' $UF`" in
 				"/opt/rancher/bin/start.sh" )
-					yq e '.write_files.['$i'].content' $UF0 > ./tmp_file
+					yq e '.write_files.['$i'].content' $UF > ./tmp_file
 					while IFS= read line; do
 						if [ "${line:0:${#pre}}" ==  "$pre" ]; then
 							if [ "${line:$((${#line} - ${#post})):${#post}}" == "$post" ]; then
@@ -1364,7 +1352,7 @@ END
 						fi
 						echo "$line"
 					done < ./tmp_file > ./tmp_file2
-					yq e -i '.write_files.['$i'].content|="'"`cat ./tmp_file2`"'"' $UF0
+					yq e -i '.write_files.['$i'].content|="'"`cat ./tmp_file2`"'"' $UF
 					break
 					;;
 				"null" )
@@ -1378,14 +1366,14 @@ END
 		done
 		i=0
 		while [ 1 ]; do
-			k="`yq e '.ssh_authorized_keys.['$i']' $UF0`"
+			k="`yq e '.ssh_authorized_keys.['$i']' $UF`"
 			case "$k" in
 				"$KEY" )
 					break
 					;;
 				"null" )
 					echo null
-					yq e -i '.ssh_authorized_keys.['$i']|="'"$KEY"'"' $UF0
+					yq e -i '.ssh_authorized_keys.['$i']|="'"$KEY"'"' $UF
 					break
 					;;
 			esac
@@ -1394,8 +1382,8 @@ END
 				break
 			fi
 		done
-		if [ "`cat $UF0`" != "`cat $UF`" ];then
-			chain_bak -10 $UF0 $UF
+		if [ "`cat $UFL`" != "`cat $UF`" ];then
+			chain_bak -10 $UF $UFL
 		fi
 	fi
 
@@ -1412,10 +1400,15 @@ END
 	cp_bak --compare -10 /installing/state/var/log/* /installing/oem_part/var/log/burmilla_installation/3
 	#mkdir -p /installing/oem_part/var/lib/rancher
 	#[ ! -e /installing/oem_part/var/lib/rancher/conf ] && cp -af /installing/state/var/lib/rancher/conf /installing/oem_part/var/lib/rancher
-	cp_bak --compare -10 /installing/state/var/lib/rancher/conf /installing/oem_part/var/lib/rancher
+	mkdir -p /installing/oem_part/var/lib/rancher/{conf,conf_lib}
+	cp_bak --compare -10 /installing/oem_part/var/lib/rancher/conf /installing/oem_part/var/lib/rancher/conf_lib
+	cp_bak --compare -10 /installing/state/var/lib/rancher/conf /installing/oem_part/var/lib/rancher/conf_lib
+	rm -rf /installing/oem_part/var/lib/rancher/conf
+	cp -a /installing/state/var/lib/rancher/conf /installing/oem_part/var/lib/rancher
 	#mkdir -p /installing/oem_part/usr/share
 	#[ ! -e /installing/oem_part/usr/share/ros ] && cp -af /installing/state/var/lib/rancher/conf /installing/oem_part/var/lib/rancher
-	cp_bak --compare -10 /installing/state/usr/share/ros /installing/oem_part/usr/share
+	cp_bak -10 --compare /installing/state/usr/share/ros /installing/oem_part/usr/share
+	cp_bak -10 --compare /opt/initrd/usr/share/ros /installing/oem_part/usr/share
 	
 	rm_all /installing/state/{root,opt,home,var/log}
 	rm_all /installing/state/var/lib/rancher/conf
@@ -1430,9 +1423,13 @@ END
 	ln -s /usr/share/ros/oem/opt /installing/state/opt
 	ln -s /usr/share/ros/oem/var/log /installing/state/var/log
 	ln -s /usr/share/ros/oem/var/lib/rancher/conf /installing/state/var/lib/rancher/conf
-	for f in /usr/share/ros/oem/usr/share/ros/*; do
-		if [ "$f" != "/usr/share/ros/oem/usr/share/ros/oem" ];then
-			ln -sf "$f" /installing/state/usr/share/ros
+	for f in /installing/oem_part/usr/share/ros/*; do
+		if [ -e "$f" ];then
+			fn="${f##*/}"
+			if [ "$fn" != "oem" ];then
+				rm -rf /installing/state/usr/share/ros/"$fn"
+				ln -s /usr/share/ros/oem/usr/share/ros/"$fn" /installing/state/usr/share/ros
+			fi
 		fi
 	done
 
@@ -1443,7 +1440,7 @@ END
 	if [ ! -e /installing/oem_part/etc/ssh/sshd_config ];then
 		NEW_SSHD_CONF=1
 	fi
-	cp -an $ssh_dir /installing/oem_part/etc
+	cp -an $ssh_dir /installing/oem_part/etc # not overwrite
 	if [ -n "$NEW_SSHD_CONF" ];then
 		sed -i 's/#Port 22/Port '$PORT'/' /installing/oem_part/etc/ssh/sshd_config
 		sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /installing/oem_part/etc/ssh/sshd_config
