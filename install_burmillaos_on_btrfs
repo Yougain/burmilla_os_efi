@@ -1089,8 +1089,8 @@ ssh_sudo <<'FINAL'
 	umount /installing/efipart
 	mkdir -p /installing/oempart
 	mount $TARGET_DEV7 /installing/oempart
-	mkdir -p /installing/oempart/var/log/burmilla_installation/1
 	chain_bak -10 /installing/oempart/var/log/burmilla_installation
+	mkdir -p /installing/oempart/var/log/burmilla_installation/1
 	cp -a /var/log/* /installing/oempart/var/log/burmilla_installation/1
 	umount /installing/oempart
 	sleep 5
@@ -1128,15 +1128,6 @@ while ! ssh_do echo; do
 done
 
 dbv ${!SCRIPT_FILES[@]}
-
-EFI_UUID_ARG_S=$(ssh_do cat /proc/cmdline| sed -r 's/^.*[[:space:]]efi=UUID=((\\|)['"'"'"]|)([0-9a-fA-F-]+)\1.*$/\3/g')
-TARGET_DEV_S=/dev/$(
-ssh_sudo <<'END'
-	readlink -f /dev/disk/by-uuid/$(cat /proc/cmdline|sed -r 's/^.*[[:space:]]efi=UUID=((\\|)['"'"'"]|)([0-9a-fA-F-]+)\1.*$/\3/g')|sed -r 's/^\/dev\/([a-z]+)[0-9]+$/\1/g'
-END
-)
-deb TARGET_DEV_S="'"$TARGET_DEV_S"'"
-deb TARGET_DEV="'"$TARGET_DEV"'"
 
 ssh_sudo <<'END'
 	dbv ${!SCRIPT_FILES[@]}
@@ -1188,7 +1179,9 @@ if [ $? != 0 ];then
 	die "Opertion terminated due to unknown bug."
 fi
 
-ssh_param $INST_IP $PORT -x -q -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher
+#ssh_param $INST_IP $PORT -x -q -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher
+
+ssh_param $IP 22 -x -q -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher
 
 
 wait_sshd_start
@@ -1215,7 +1208,7 @@ fi
 #	die "Already installed with oem disk."
 #fi
 
-UF=/installing/oem_part/var/lib/rancher/conf/cloud-config.d/user_config.yml
+UF=/installing/state/var/lib/rancher/conf/cloud-config.d/user_config.yml
 UFL=/installing/oem_part/var/lib/rancher/conf_lib/cloud-config.d/user_config.yml
 ssh_sudo <<'FINAL'
 	#!/bin/bash
@@ -1268,8 +1261,14 @@ ssh_sudo <<'FINAL'
 	if ! do_mount 7 /installing/oem_part; then
 		die cannot mount
 	fi
+	if [ -e "$UF" ];then
+		info $UF found
+	fi
+	info USER_CONFIG=$USER_CONFIG
 	if [ -z "$USER_CONFIG" -o ! -e "$UF" ]; then
+		info writing $UF
 		DATE=`TZ=$TZL date`
+		mkdir -p /installing/oem_part/var/lib/rancher/conf/cloud-config.d
 		write_env_file $UF << '	FEND'
 			hostname: $HNAME_FULL
 			rancher:
@@ -1325,6 +1324,7 @@ ssh_sudo <<'FINAL'
 			ssh_authorized_keys:
 			- $KEY
 		FEND
+		cat $UF
 		unset found_
 	else
 		yq e -i ".hostname|=\"$HNAME_FULL\"" $UF
@@ -1392,29 +1392,22 @@ ssh_sudo <<'FINAL'
 
 	[ ! -e /installing/oem_part/home ] && cp -af /installing/state/home /installing/oem_part
 	[ ! -e /installing/oem_part/root ] && cp -af /installing/state/root /installing/oem_part
-	#[ ! -e /installing/oem_part/opt ] && cp -af /installing/state/opt /installing/oem_part
 	cp_bak --compare -10 /installing/state/opt /installing/oem_part
-	#mkdir -p /installing/oem_part/var/log/burmilla_installation/3
-	#[ ! -e /installing/oem_part/var/log ] && cp -af /installing/state/var/log /installing/oem_part/var
 	mkdir -p /installing/oem_part/var/log/burmilla_installation/3
 	cp_bak --compare -10 /installing/state/var/log/* /installing/oem_part/var/log/burmilla_installation/3
-	#mkdir -p /installing/oem_part/var/lib/rancher
-	#[ ! -e /installing/oem_part/var/lib/rancher/conf ] && cp -af /installing/state/var/lib/rancher/conf /installing/oem_part/var/lib/rancher
 	mkdir -p /installing/oem_part/var/lib/rancher/{conf,conf_lib}
-	cp_bak --compare -10 /installing/oem_part/var/lib/rancher/conf /installing/oem_part/var/lib/rancher/conf_lib
-	cp_bak --compare -10 /installing/state/var/lib/rancher/conf /installing/oem_part/var/lib/rancher/conf_lib
+	cp_bak --compare -10 /installing/oem_part/var/lib/rancher/conf/* /installing/oem_part/var/lib/rancher/conf_lib
+	cp_bak --compare -10 /installing/state/var/lib/rancher/conf/* /installing/oem_part/var/lib/rancher/conf_lib
 	rm -rf /installing/oem_part/var/lib/rancher/conf
 	cp -a /installing/state/var/lib/rancher/conf /installing/oem_part/var/lib/rancher
-	#mkdir -p /installing/oem_part/usr/share
-	#[ ! -e /installing/oem_part/usr/share/ros ] && cp -af /installing/state/var/lib/rancher/conf /installing/oem_part/var/lib/rancher
+	mkdir -p /installing/oem_part/usr/share
 	cp_bak -10 --compare /installing/state/usr/share/ros /installing/oem_part/usr/share
 	cp_bak -10 --compare /opt/initrd/usr/share/ros /installing/oem_part/usr/share
 	
 	rm_all /installing/state/{root,opt,home,var/log}
 	rm_all /installing/state/var/lib/rancher/conf
-	#rm_all /installing/state/usr/share/ros
 
-	#chmod 550 /installing/oem_part/root
+	chmod 550 /installing/oem_part/root
 	mkdir -p /installing/oem_part/root/.ssh
 	chmod 700 /installing/oem_part/root/.ssh
 	
