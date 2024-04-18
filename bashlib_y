@@ -295,7 +295,9 @@ done
 
 
 function exit_if_err(){
-	errmsg "$@"
+	if [ -n "$@" ];then
+		errmsg "$@"
+	fi
 	if [ -n "$ERRMSG" ];then
 		exit 1
 	fi
@@ -552,6 +554,11 @@ _rm_all(){
 							break
 						fi
 					done
+				fi
+			fi
+			if [ -z "$doRm" ];then
+				if [ "`stat -f -c '%T' '$d'`" = ramfs ];then
+					doRm=1
 				fi
 			fi
 			if [ -n "$doRm" ];then

@@ -27,8 +27,8 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/config.go os.new/cmd/control/con
  func env2map(env []string) map[string]string {
 diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/control/console_init.go
 --- os.prev/cmd/control/console_init.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/console_init.go	2024-04-09 22:36:14.545163400 +0900
-@@ -259,6 +259,20 @@
++++ os.new/cmd/control/console_init.go	2024-04-19 07:23:41.700482900 +0900
+@@ -259,6 +259,25 @@
  	if err := cmd.Run(); err != nil {
  		log.Error(err)
  	}
@@ -40,7 +40,12 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/contr
 +		return err
 +	}else{
 +		if strings.Index(string(out), "ramfs") != -1 {
-+			cmd = exec.Command("bash", "-c", `echo For installation, please execute \'wget http://$(/sbin/ifconfig | grep -B1 "inet" |awk '{ if ( $1 == "inet" ) { print $2 } else if ( $3 == "mtu" ) { printf "%s:" ,$1 } }' |awk -F: '{ print $1 ": " $3}' | egrep -o ': [0-9a-f:\.]+' | head -1 | egrep -o '[0-9a-fA-F][0-9a-fA-F:\.]+')/install.sh -q -O - \| bash -s SERVER_NAME FIXED_IP\' from your terminal. >> /etc/issue`)
++			cmd = exec.Command("bash", "-c", `echo For installation, please execute:
++	wget http://$(/sbin/ifconfig | grep -B1 "inet" |awk '{ if ( $1 == "inet" ) { print $2 } else if ( $3 == "mtu" ) { printf "%s:" ,$1 } }' |awk -F: '{ print $1 ": " $3}' | egrep -o ': [0-9a-f:\.]+' | head -1 | egrep -o '[0-9a-fA-F][0-9a-fA-F:\.]+')/install.sh -q -O - \| bash -s SERVER_NAME FIXED_IP DEVICE
++		SERVER_NAME : New server name, ex. 'serv1.foo.com'
++		FIXED_IP    : New fixed IPv4 address for the system, ex. '10.1.1.1'
++		DEVICE      : Device file on which the system is installed, ex. '/dev/sdc'
++ from your terminal. >> /etc/issue`)
 +			if err := cmd.Run(); err != nil {
 +				log.Error(err)
 +			}
@@ -49,7 +54,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/contr
  
  	cloudinitexecute.ApplyConsole(cfg)
  
-@@ -293,7 +307,7 @@
+@@ -293,7 +312,7 @@
  		return err
  	}
  
