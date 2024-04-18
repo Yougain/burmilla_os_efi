@@ -30,12 +30,10 @@ before_sysinit(){
 	info killall udevd: result = $?
 	info udev stopped
 	info /opt is on $(stat -f -c '%T' /opt)
-	if [ -n "$INITRD_MOUNT" -a "$(stat -f -c '%T' /opt)" = "ramfs" ];then
-		mkdir -p /opt/initrd
-		mount --bind / /opt/initrd
-	fi
 	info / is on $(stat -f -c '%T' /)
 	if [ "$(stat -f -c '%T' /)" = "ramfs" ];then
+		mkdir -p /opt/initrd
+		mount --bind / /opt/initrd
 		local found
 		for f in `find /usr/share/zoneinfo`; do
 			for t in `strings $f`; do
@@ -87,6 +85,9 @@ runcmd:
 - cp /opt/initrd/etc/localtime /etc
 END
 		fi
+	elif [ -n "$INITRD_MOUNT" -a "$(stat -f -c '%T' /opt)" = "ramfs" ];then
+		mkdir -p /opt/initrd
+		mount --bind / /opt/initrd
 	fi
 	info Using /usr/share/ros/os-config.yml on `which_dev_on /usr/share/ros/os-config.yml`.
 	USER_DOCKER_IMAGE=`yq ".rancher.services.docker.image" /usr/share/ros/os-config.yml`
