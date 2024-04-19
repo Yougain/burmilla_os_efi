@@ -254,7 +254,7 @@ wget -q %IP%/burmilla_os_efi-$v.tar.gz
 rm -rf burmilla_os_efi-$v
 tar zxf burmilla_os_efi-$v.tar.gz
 cd burmilla_os_efi-$v
-echo Stating instllation ...
+echo Starting installation ...
 ./install_burmillaos_on_btrfs %IP% --install-ssh-port %SSH_PORT% "\$@"
 
 END

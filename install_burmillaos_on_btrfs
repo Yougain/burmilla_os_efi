@@ -1181,7 +1181,7 @@ fi
 
 #ssh_param $INST_IP $PORT -x -q -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher
 
-ssh_param $IP 22 -x -q -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher
+ssh_param $IP $PORT -x -q -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher
 
 
 wait_sshd_start

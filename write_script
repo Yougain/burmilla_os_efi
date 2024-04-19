@@ -29,10 +29,10 @@ function store_env(){
 		else
 			eval "local dec_vname=\"\$2\""
 		fi
-		info dec_vname=$dec_vname
+		dbv $dec_vname
 		local dec="`declare -p $dec_vname 2> /dev/null`"
 		if [ "$?" = 0 ];then
-			info dec=$dec
+			dbv $dec
 			echo ${dec#*-* } > $1
 		else
 			die "cannot store variable '$dec_vname'"
@@ -45,7 +45,7 @@ function store_env(){
 		else
 			content="$2"
 		fi
-		content="`echo -E $content |sed 's/\\/\\\\/'|sed -z 's/\n/\\\n/'`"
+		content="`echo -E $content |sed 's/\\\\/\\\\\\\\/'|sed -z 's/\\n/\\\\\\n/'`"
 		content="$vname=$content
 "
 		HEAD="# GRUB Environment Block
