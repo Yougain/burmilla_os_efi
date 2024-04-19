@@ -557,7 +557,7 @@ _rm_all(){
 				fi
 			fi
 			if [ -z "$doRm" ];then
-				if [ "`stat -f -c '%T' '$d'`" = ramfs ];then
+				if [ "`stat -f -c '%T' "$d"`" = ramfs ];then
 					doRm=1
 				fi
 			fi
@@ -895,7 +895,11 @@ function ask_yes_no {
 
 
 function which_dev_on {
-	echo $(df "$1" | tail -1 | awk '{print $1}')
+	local ret=$(df "$1" | tail -1 | awk '{print $1}')
+	if [ "$ret" = "none" ];then
+		ret="$(stat -f -c '%T' "$1")"
+	fi
+	echo $ret
 }
 
 
