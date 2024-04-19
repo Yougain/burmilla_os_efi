@@ -27,8 +27,8 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/config.go os.new/cmd/control/con
  func env2map(env []string) map[string]string {
 diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/control/console_init.go
 --- os.prev/cmd/control/console_init.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/console_init.go	2024-04-19 17:56:20.780482900 +0900
-@@ -255,10 +255,53 @@
++++ os.new/cmd/control/console_init.go	2024-04-19 18:27:57.600482900 +0900
+@@ -255,10 +255,38 @@
  		}
  	}
  
@@ -40,50 +40,35 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/contr
 +	
 +	cmd = exec.Command("stat", "-f", "-c", "%T", "/opt")
 +	out, errb := cmd.Output()
-+	exec.Command("bash", "-c", `echo 0 >> /etc/issue`).Run()
-+	log.Print(string(out))
 +	if errb != nil {
-+		exec.Command("bash", "-c", `echo 1 >> /etc/issue`).Run()
 +		log.Error("exec stat -f -c %T /opt, failed.")
 +	}else{
-+		exec.Command("bash", "-c", `echo 2 >> /etc/issue`).Run()
 +		if strings.Index(string(out), "ramfs") != -1 {
-+			exec.Command("bash", "-c", `echo 3 >> /etc/issue`).Run()
 +			file, err := os.OpenFile("/etc/issue", os.O_APPEND|os.O_WRONLY, 0600)
-+			exec.Command("bash", "-c", `echo 4 >> /etc/issue`).Run()
 +			if err != nil {
-+				exec.Command("bash", "-c", `echo 5 >> /etc/issue`).Run()
 +				log.Error(err)
 +			} else {
-+				exec.Command("bash", "-c", `echo 6 >> /etc/issue`).Run()
 +				defer file.Close()
-+				exec.Command("bash", "-c", `echo $(/sbin/ifconfig | grep -B1 "inet" |awk '{ if ( $1 == "inet" ) { print $2 } else if ( $3 == "mtu" ) { printf "%s:" ,$1 } }' |awk -F: '{ print $1 ": " $3}' | egrep -o ': [0-9a-f:\.]+' | head -1 | egrep -o '[0-9a-fA-F][0-9a-fA-F:\.]+') > /etc/main_ip`).Run()
++				exec.Command("bash", "-c", `echo -n $(/sbin/ifconfig | grep -B1 "inet" |awk '{ if ( $1 == "inet" ) { print $2 } else if ( $3 == "mtu" ) { printf "%s:" ,$1 } }' |awk -F: '{ print $1 ": " $3}' | egrep -o ': [0-9a-f:\.]+' | head -1 | egrep -o '[0-9a-fA-F][0-9a-fA-F:\.]+') > /etc/main_ip`).Run()
 +				content, err := ioutil.ReadFile("/etc/main_ip")
-+				if err != nil {
-+					exec.Command("bash", "-c", `echo 8 >> /etc/issue`).Run()
-+				}else{
++				if err == nil && string(content) != "" {
 +					_, err = file.WriteString(`For installation, please execute:\
-+   wget http:///` + string(content) + `install.sh -q -O - \| bash -s SERVER_NAME FIXED_IP DEVICE\
++   wget http://` + string(content) + `/install.sh -q -O - \| bash -s SERVER_NAME FIXED_IP DEVICE\
 +      SERVER_NAME : New server name, ex. 'serv1.foo.com'\
 +      FIXED_IP    : New fixed IPv4 address for the system, ex. '10.1.1.1'\
 +      DEVICE      : Device file on which the system is installed, ex. '/dev/sdc'\
 +from your terminal.` )
 +				}
-+				log.Info("2222222")
 +				if err != nil {
-+					exec.Command("bash", "-c", `echo 9 >> /etc/issue`).Run()
 +					log.Error(err)
 + 				}
-+				exec.Command("bash", "-c", `echo _10 >> /etc/issue`).Run()
 + 			}
 +		}
 +	}
-+	exec.Command("bash", "-c", `echo _11 >> /etc/issue`).Run()
-+	log.Info("111111111")
  
  	cloudinitexecute.ApplyConsole(cfg)
  
-@@ -293,7 +336,7 @@
+@@ -293,7 +321,7 @@
  		return err
  	}
  
