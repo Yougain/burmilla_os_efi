@@ -102,9 +102,10 @@ END
 	USER_DOCKER_IMAGE_TO_LOAD=/usr/share/ros/os-docker-$USER_DOCKER_VERSION.tar.gz
 	if [ ! -e "$USER_DOCKER_IMAGE_TO_LOAD" ];then
 		err "cannot find $USER_DOCKER_IMAGE_TO_LOAD"
+	else
+		info Using $USER_DOCKER_IMAGE_TO_LOAD on `which_dev_on $USER_DOCKER_IMAGE_TO_LOAD`.
+		system-docker load -i $USER_DOCKER_IMAGE_TO_LOAD
 	fi
-	info Using $USER_DOCKER_IMAGE_TO_LOAD on `which_dev_on $USER_DOCKER_IMAGE_TO_LOAD`.
-	system-docker load -i $USER_DOCKER_IMAGE_TO_LOAD
 }
 
 

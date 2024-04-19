@@ -27,46 +27,64 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/config.go os.new/cmd/control/con
  func env2map(env []string) map[string]string {
 diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/control/console_init.go
 --- os.prev/cmd/control/console_init.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/console_init.go	2024-04-19 08:57:23.480482900 +0900
-@@ -259,6 +259,37 @@
++++ os.new/cmd/control/console_init.go	2024-04-19 15:03:20.700482900 +0900
+@@ -255,10 +255,54 @@
+ 		}
+ 	}
+ 
+-	cmd = exec.Command("bash", "-c", `echo $(/sbin/ifconfig | grep -B1 "inet" |awk '{ if ( $1 == "inet" ) { print $2 } else if ( $3 == "mtu" ) { printf "%s:" ,$1 } }' |awk -F: '{ print $1 ": " $3}') >> /etc/issue`)
++	cmd = exec.Command("bash", "-c", `echo $(/sbin/ifconfig | grep -B1 "inet" |awk '{ if ( $1 == "inet" ) { print $2 } else if ( $3 == "mtu" ) { printf "%s:" ,$1 } }' |awk -F: '{ print $1 ": " $3}')__ >> /etc/issue`)
  	if err := cmd.Run(); err != nil {
  		log.Error(err)
  	}
 +	
 +	cmd = exec.Command("stat", "-f", "-c", "%T", "/opt")
 +	out, errb := cmd.Output()
++	log.Print(string(out))
 +	if errb != nil {
-+		log.Infof("exec stat -f -c %T /opt, failed.")
-+		return err
++		log.Print("1")
++		log.Error("exec stat -f -c %T /opt, failed.")
 +	}else{
++		log.Print("2")
 +		if strings.Index(string(out), "ramfs") != -1 {
++			log.Print("3")
 +			file, err := os.OpenFile("/etc/issue", os.O_APPEND|os.O_WRONLY, 0600)
++			log.Print("4")
 +			if err != nil {
++				log.Print("5")
 +				log.Error(err)
 +			} else {
++				log.Print("6")
 +				defer file.Close()
 +				cmd = exec.Command(`/sbin/ifconfig | grep -B1 "inet" |awk '{ if ( $1 == "inet" ) { print $2 } else if ( $3 == "mtu" ) { printf "%s:" ,$1 } }' |awk -F: '{ print $1 ": " $3}' | egrep -o ': [0-9a-f:\.]+' | head -1 | egrep -o '[0-9a-fA-F][0-9a-fA-F:\.]+'`)
 +				out, errb = cmd.Output()
 +				if errb != nil {
++					log.Print("7")
 +					log.Error(errb)
 +				}else{
++					log.Print("8")
 +					_, err = file.WriteString(`For installation, please execute:\
 +   wget http:///` + string(out) + `install.sh -q -O - \| bash -s SERVER_NAME FIXED_IP DEVICE\
 +      SERVER_NAME : New server name, ex. 'serv1.foo.com'\
 +      FIXED_IP    : New fixed IPv4 address for the system, ex. '10.1.1.1'\
 +      DEVICE      : Device file on which the system is installed, ex. '/dev/sdc'\
 +from your terminal.` )
++					log.Info("2222222")
 +					if err != nil {
++						log.Print("9")
 +						log.Error(err)
 +	 				}
++					log.Print("10")
 +	 			}
 + 			}
 +		}
 +	}
++	log.Print("11")
++	log.Info("111111111")
  
  	cloudinitexecute.ApplyConsole(cfg)
  
-@@ -293,7 +324,7 @@
+@@ -293,7 +337,7 @@
  		return err
  	}
  
