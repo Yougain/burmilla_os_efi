@@ -1089,7 +1089,9 @@ ssh_sudo <<'FINAL'
 	umount /installing/efipart
 	mkdir -p /installing/oempart
 	mount $TARGET_DEV7 /installing/oempart
-	chain_bak -10 /installing/oempart/var/log/burmilla_installation
+	if [ -e /installing/oempart/var/log/burmilla_installation ];then
+		chain_bak -10 /installing/oempart/var/log/burmilla_installation
+	fi
 	mkdir -p /installing/oempart/var/log/burmilla_installation/1
 	cp -a /var/log/* /installing/oempart/var/log/burmilla_installation/1
 	umount /installing/oempart
