@@ -295,7 +295,7 @@ done
 
 
 function exit_if_err(){
-	if [ -n "$@" ];then
+	if (("$#"));then
 		errmsg "$@"
 	fi
 	if [ -n "$ERRMSG" ];then
