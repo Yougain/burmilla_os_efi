@@ -87,7 +87,9 @@ function blkid2(){
 	local_fun add_blist <<'	}'
 		dbv
 		local dev=${1%:*}
+		dbv
 		local tmp="$@"
+		dbv
 		local blkids[$dev]="$tmp "
 		dbv
 	}
