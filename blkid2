@@ -13,6 +13,9 @@ function _reg_b_device(){
 		local rl
 		if [ -L "$1" ];then
 			rl="$(`readlink -f "$1"`)"
+			if [ -z "$rl" ];then
+				return
+			fi
 		else
 			rl="$1"
 		fi
