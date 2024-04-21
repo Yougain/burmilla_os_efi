@@ -604,6 +604,7 @@ function local_fun(){
 	fi
 	local fName=${LOCAL_FUNC_IDS[${FUNCNAME[2]}]}_$1
 	shift
+	dbv $@
 	if [ -z "${LOCAL_FUNC_EACH[$fName]}" ] ;then
 		LOCAL_FUNC_EACH[$fName]=1
 		eval 'function '$fName"(){
