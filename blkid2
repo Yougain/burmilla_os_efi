@@ -19,6 +19,9 @@ function _reg_b_device(){
 				dev_path[$dev_id]="$1"
 			fi
 		fi
+		dbv $dev_id
+		dbv $1
+		dbv ${dev_path[$dev_id]}
 	fi
 }
 
