@@ -24,6 +24,7 @@ function _reg_b_device(){
 
 
 function blkid2(){
+	dbv
 	declare -A dev_path
 	recursive_path _reg_b_device /dev
 	local key
@@ -82,6 +83,7 @@ function blkid2(){
 	local blkids_arr
 	split blkids_arr "`blkid`" "
 "
+	dbv 2222
 	local_fun add_blist <<'	}'
 		local dev=${1%:*}
 		local tmp="$@"
@@ -117,6 +119,7 @@ function blkid2(){
 	
 	local bc
 
+	dbv 11111
 	local_fun by_lsblk << '	}'
 		local AttName
 		local val
@@ -141,7 +144,7 @@ function blkid2(){
 			fi
 		done
 	}
-
+	dbv
 	local_call by_lsblk TYPE DEV_TYPE # DEV_TYPE=disk or partition
 	local item
 	for item in NAME KNAME PKNAME VENDOR MODEL SERIAL WWN REV; do
