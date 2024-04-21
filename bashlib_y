@@ -624,7 +624,7 @@ function local_call(){
 	fi
 	local fName=${LOCAL_FUNC_IDS[${FUNCNAME[2]}]}_$1
 	shift
-	$fName $@
+	$fName "$@"
 }
 
 
@@ -877,6 +877,16 @@ trap cleanup EXIT
 trap trap_int INT
 
 function ask_yes_no {
+	case "$ASK__YES_NO" in
+		[Yy]*)
+			echo $ASK__YES_NO
+			return 0
+			;;
+		[Nn]*)
+			echo $ASK__YES_NO
+			return 1
+			;;
+	esac
 	local ANS
 	while true; do
 		read ANS
@@ -900,6 +910,56 @@ function which_dev_on {
 		ret="$(stat -f -c '%T' "$1")"
 	fi
 	echo $ret
+}
+
+
+_d_id(){
+	echo `stat -c "%d-%i" -L "$1"`
+}
+
+
+_recursive_path(){
+	if [ ! -d "$2" ]; then
+		if [ -e "$2" -o -L "$2" ]; then
+			"$1" "$f"
+		else
+			return 1
+		fi
+	else
+		local did=`_d_id "$2"`
+		dbv $did
+		if [ -z "$did" ];then # missing source
+			return
+		fi
+		if [ "${dstack[$did]}" ];then # cyclic reference
+			return
+		fi
+		"$1" "$2" # check only dir, but not check files in dir
+		local f
+		local dirs
+		local d
+		local IFS=
+		for f in "$2"/*; do
+			if [ -e "$f" ];then
+				if [ -d "$f" ];then
+					dirs+=("$f")
+				else
+					"$1" "$f"
+				fi
+			fi
+		done
+		dstack[$did]=1
+		for d in "${dirs[@]}"; do
+			_recursive_path "$1" "$d"
+		done
+		dstack[$did]=
+	fi
+}
+
+
+recursive_path(){
+	declare -A dstack
+	_recursive_path "$@"
 }
 
 

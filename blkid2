@@ -1,8 +1,34 @@
 # bash source
 
 
+function _reg_b_device(){
+	local force
+	if [ "$1" = -f ];then
+		force=1
+		shift
+	elif [ "$2" = -f ];then
+		force=1
+	fi
+	if [ -b "$1" ];then
+		local dev_id=`stat -c "%T:%t" "$1"`
+		local cur_dev_path=${dev_path[$dev_id]}
+		if [ -z "$cur_dev_path" -o "$force" ];then
+			dev_path[$dev_id]="$1"
+		else
+			if [ ${#cur_dev_path} -lt ${#1} ];then
+				dev_path[$dev_id]="$1"
+			fi
+		fi
+	fi
+}
+
 
 function blkid2(){
+	declare -A dev_path
+	recursive_path _reg_b_device /dev
+	local key
+	local devs
+
 	local args=()
 	info blkid2 $@
 	__readlink(){
@@ -30,7 +56,9 @@ function blkid2(){
 	if [ ${#args[@]} -ge 2 ];then
 		die "multiple arguments specified"
 	fi
-
+	
+	
+	
 	local i
 
 	if [ -d /dev/disk/by-id ];then
@@ -44,7 +72,7 @@ function blkid2(){
 	if [ -d /dev/disk/by-path ];then
 		local PATHnDEVs_path=(`ls /dev/disk/by-path`)
 		local PATHnDEVs_dev=($(__readlink `ls /dev/disk/by-path/*`))
-		local PATHnDEVs_n=${#IDnPATHs_path[@]}
+		local PATHnDEVs_n=${#PATHnDEVs_path[@]}
 	else
 		warn "/dev/disk/by-path not found"
 	fi
@@ -56,22 +84,78 @@ function blkid2(){
 "
 	local_fun add_blist <<'	}'
 		local dev=${1%:*}
-		blkids[$dev]="$@"
+		local tmp="$@"
+		local blkids[$dev]="$tmp "
 	}
 	local i
 	for i in "${blkids_arr[@]}"; do
 		local_call add_blist $i
 	done
-
+	
 	local dev
+
+	for dev in ${!blkids[@]}; do
+		_reg_b_device -f $dev
+	done
+	for key in ${!dev_path[@]};do
+		devs+=("${dev_path[$key]}")
+	done
+	dbv ${devs[@]}
+	local label
+	
+	__contain_entry(){
+		dbv $2 $3
+		if [ $1 = *" $2=$3 "* ];then
+			return 0
+		elif [ $1 = *" $2=\"$3\" "* ];then
+			return 0
+		elif [ $1 = *" $2='$3' "* ];then
+			return 0
+		fi
+		return 1
+	}
+	
 	local bc
+
+	local_fun by_lsblk << '	}'
+		local AttName
+		local val
+		dbv $1 $2
+		if [ -n "$2" ];then
+			AttName="$2"
+		else
+			AttName="$1"
+		fi
+		for dev in ${devs[@]}; do
+			val="$(lsblk -o $1 $dev | sed -n 2p)"
+			if [ -n "$val" ]; then
+				dbv $AttName "$val"
+				bc=${blkids[$dev]}
+				if ! __contain_entry bc $AttName "$val"; then
+					if [ -z "$bc" ];then
+						bc="$dev:"
+					fi
+					blkids[$dev]="$bc $AttName=\"$(echo "$val"|xargs)\""
+					dbv ${blkids[$dev]}
+				fi
+			fi
+		done
+	}
+
+	local_call by_lsblk TYPE DEV_TYPE # DEV_TYPE=disk or partition
+	local item
+	for item in NAME KNAME PKNAME VENDOR MODEL SERIAL WWN REV; do
+		local_call by_lsblk $item
+	done
+
 	if [ -n "$IDnDEVs_n" ];then
 		for ((i = 0; i < $IDnDEVs_n ; i++)); do
-			dev=${IDnDEVs_dev[$i]}:
+			dev=${IDnDEVs_dev[$i]}
 			bc=${blkids[$dev]}
-			if [ -n "$bc" ];then
-				blkids[$dev]="$bc ID=\""${IDnDEVs_id[$i]}'"'
+			if [ -z "$bc" ];then
+				bc="$dev: "
 			fi
+			blkids[$dev]="$bc ID=\""${IDnDEVs_id[$i]}'"'
 		done
 	fi
 	if [ -n "$PATHnDEVs_n" ];then
@@ -79,9 +163,10 @@ function blkid2(){
 			for ((i = 0; i < $PATHnDEVs_n ; i++)); do
 				dev=${PATHnDEVs_dev[$i]}
 				bc=${blkids[$dev]}
-				if [ -n "$bc" ];then
-					blkids[$dev]="$bc PATH=\""${PATHnDEVs_path[$i]}'"'
+				if [ -z "$bc" ];then
+					bc="$dev: "
 				fi
+				blkids[$dev]="$bc PATH=\""${PATHnDEVs_path[$i]}'"'
 			done
 		fi
 	fi
@@ -112,10 +197,14 @@ function blkid2(){
 	else
 		local matched=()
 		local_fun detectSymbol <<'		}'
-			local _arg=$1
+			dbv "$@"
+			local _arg="$1"
+			dbv $_arg
 			shift
 			local _dev=${1%:*}
 			shift
+			dbv "$_dev"
+			dbv "$@"
 			if [ "$_dev" = "$_arg" ];then
 				matched+=($_dev)
 				return 0
@@ -128,19 +217,26 @@ function blkid2(){
 			local a
 			local q
 			local a_key
+			dbv $_arg_key
+			dbv $_arg_val
 			if [ -n "$_arg_key" ];then
+				dbv "$@"
 				for a in "$@";do
+					dbv $a
 					for q in "" "'" "\"";do
+						dbv $a = $_arg_key="$q$_arg_val$q"
 						if [ "$a" = $_arg_key="$q$_arg_val$q" ];then
 							matched+=($_dev)
 							return 0
 						fi
 					done
 				done
+				dbv
 			else
 				for a in "$@";do
 					a_key=${a%%=*}
 					for q in "" "'" "\"";do
+						dbv $a = $a_key="$q$_arg_val$q"
 						if [ "$a" = $a_key="$q$_arg_val$q" ];then
 							matched+=($_dev)
 							return 0
@@ -150,8 +246,11 @@ function blkid2(){
 			fi
 			return 1
 		}
+		dbv "${args[0]}"
 		for bc in "${blkids[@]}";do
-			local_call detectSymbol "${args[0]}" "$bc"
+			eval "bc=($bc)"
+			dbv ${bc[@]}
+			local_call detectSymbol "${args[0]}" "${bc[@]}"
 		done
 		if [ "${#matched}" = 0 ];then
 			die No matching device found

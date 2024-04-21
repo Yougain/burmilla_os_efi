@@ -22,6 +22,12 @@ while (( "$#" )); do
 			"-f")
 				FORCE=1
 				;;
+			"-y")
+				ASK_YES_NO=yes
+				;;
+			"-n")
+				ASK_YES_NO=no
+				;;
 			"-r")
 				REINSTALL=1
 				;;
@@ -43,6 +49,9 @@ while (( "$#" )); do
 			*)
 				if [ "${1:0:1}" = "-" ];then
 					die "unknown option, '$1'"
+				fi
+				if [[ $1 =~ .+=.+ ]];then
+					TARGET_DEV=$1
 				fi
 				if [ -n "`echo $1| egrep '^[0-9]+$'`" ];then
 					PORT=$1
@@ -363,51 +372,126 @@ END
 }
 
 
-# check oem drive for getting "user_config.yml" and "$TARGET_DEV"
-ssh_do sudo mkdir -p /installing/oem_part
-ssh_do sudo umount /installing/oem_part 2> /dev/null
-for DRV in ${TARGET_DEV#/dev/}7 `ssh_do sudo ls /dev | egrep ".*7$" | grep -v tty | grep -v loop`; do
-	if ssh_do sudo mount -t btrfs -odegraded,ro,subvol=/oem_root /dev/$DRV /installing/oem_part; then
-		PARAMS="`extract_uc_params`"
-		eval "$PARAMS"
-		ssh_do sudo umount /installing/oem_part
-		if [ -n "$USER_CONFIG" ]; then
-			info "user_config.yml found"
-			break
+ssh_sudo <<'END'
+	part2Drv(){
+		if [[ ${!1} =~ ^(.+)[0-9]+$ ]]; then
+			eval "$1=${BASH_REMATCH[1]}"
+		fi
+	}
+	CMDLINE=`cat /proc/cmdline`
+	if [[ $CMDLINE =~ \ ref_boot_uuid=([^\ ]+) ]];then
+		DRV=`partNum2Drv`
+		part2Drv DRV
+	fi
+	if [[ $CMDLINE =~ \ root=([^\ ]+) ]];then
+		INST_DRIVE=`blkid2 ${BASH_REMATCH[1]}`
+		part2Drv INST_DRIVE
+	fi
+	isos="`blkid2 TYPE=iso9660`"
+	if [ -n "$isos" ];then
+		for iso in $isos; do
+			part2Drv iso
+			if ! detect ISO_DISKS "$iso"; then
+				ISO_DIKS+=("$iso")
+			fi
+		done
+	fi
+	disks="`readlink -f /dev/disk/by-id/*|sort|uniq|egrep -v '[0-9]+$'`"
+	for disk in $disks; do
+		if ! detect ISO_DIKS "$disk"; then
+			A_DISKS+=($disk)
+		fi
+	done
+	if [[ $TARGET_DEV =~ = ]];then
+		TARGET_DEVS=(`blkid2 $TARGET_DEV`)
+		case ${#TARGET_DEVS[@]} in
+			0)
+				TARGET_DEV_ERRMSG="Target device for '$TARGET_DEV', not found."
+				;;
+			1)
+				TARGET_DEV="${#TARGET_DEVS[0]}"
+				;;
+			*)
+				TARGET_DEV_ERRMSG="Multiple devices for '$TARGET_DEV', found."
+				;;
 		fi
 	fi
-done
+END
 
-# set up target device
-if [ -n "$USER_CONFIG" ];then
-	DRV=${DRV:0:-1}
-else
-	DRV=""
+if [ -n "$TARGET_DEV_ERRMSG" ];then
+	die $TARGET_DEV_ERRMSG
+fi
+
+if [ -n "$DRV" ];then
+	PARAMS="`extract_uc_params`"
+	eval "$PARAMS"
+	ssh_do sudo umount /installing/oem_part
+	if [ -n "$USER_CONFIG" ]; then
+		info "user_config.yml found in '$DRV"7"'"
+	fi
 fi
 
 if [ -n "$TARGET_DEV" ];then
-	if [ "$TARGET_DEV" = "/dev/$DRV" ]; then
-		TARGET_DEV=/dev/$DRV
+	if ! detect A_DISKS "$TARGET_DEV";then
+		err "'$TARGET_DEV' is missing or not installable (maybe installer disk)."
+		info "Available disks are $A_DISKS."
+		exit 1
+	fi
+fi
+
+if [ -n "$DRV" ];then
+	if [ -n "$TARGET_DEV" ];then
+		whiteBgRed "'$TARGET_DEV' is not the reference drive, '$DRV' for getting parameters (IP, hostname, etc) for installation."
+		whiteBgRed_n "Still installing on '$TARGET_DEV' ? "
+		yellowBgRed_n  "[y/n]: "
+		echo -n " "
+		if ask_yes_no; then
+			info "Using '$TARGET_DEV', as target drive for installation."
+		else
+			whiteBgRed_n "Installing on '$DRV'? "
+			yellowBgRed_n  "[y/n]: "
+			if ask_yes_no; then
+				TARGET_DEV=$DRV
+				info "Using '$DRV', as target drive for installation."
+			else
+				info "No drive chosen. User terminated."
+				info "Available drives are ${A_DISKS}."
+				exit 1
+			fi
+		fi
 	else
-		if [ -n "$DRV" ]; then
-			warn "Command line specified drive, '$TARGET_DEV' is different from installed drive, '/dev/$DRV'."
+		whiteBgRed "Target drive is not specified in the command line arguments."
+		whiteBgRed_n "Do you use the reference drive, '$DRV' as target drive for installation? "
+		yellowBgRed_n  "[y/n]: "
+		if ask_yes_no; then
+			TARGET_DEV=$DRV
+		else
+			info "No drive chosen. User terminated."
+			info "Available drives are ${A_DISKS}."
+			exit 1
 		fi
 	fi
 else
-	if [ -n "$DRV" ]; then
-		TARGET_DEV=/dev/$DRV
+	if [ -n "$TARGET_DEV" ];then
+		info "Using '$TARGET_DEV', as target drive for installation."
 	else
-		warning destination device not specified. Using \'/dev/sda\'.
-		TARGET_DEV=/dev/sda
+		whiteBgRed "Target drive is not specified."
+		if [ ${#A_DISKS[@]} != 0 ];then
+			whiteBgRed_n "Still installing on '${A_DISKS[0]}' ? "
+			yellowBgRed_n  "[y/n]: "
+			if ask_yes_no; then
+				TARGET_DEV=$DRV
+			else
+				info "Available drives are ${A_DISKS}."
+				info "Please specify one for target drive by command line argument."
+				exit 1
+			fi
+		else
+			die "No installable drive(s) found."
+		fi
 	fi
 fi
 
-
-if ! ssh_do ls $TARGET_DEV;then
-	A_DISKS=`ssh_do bash -c 'readlink -f /dev/disk/by-id/*'|sort|uniq|egrep -v '[0-9]+$'`
-	info "Available disks are $A_DISKS."
-	die "$TARGET_DEV not found."
-fi
 
 function reachable(){
 	local mask=$2
@@ -447,10 +531,11 @@ if [ -n "$IP" ]; then
 			fi
 		done
 		if [ -z "$UC_IP" ];then
-			if [ -n "$FORCE" ];then
-				warning "Overwrite ip address with new one, $cyan'$IP'$yellow over current ip, $cyan'$UC_IPS'$yellow defined in user_config.yml$plain"
-			else
-				die "Command line specified ip address, $cyan'$IP'$red is different from current ip, $cyan'$UC_IPS'$red defined in user_config.yml$plain"
+			whiteBgRed_n "Do you overwrite ip address with new one, $cyan'$IP'$yellow over current ip, $cyan'$UC_IPS'$yellow defined in user_config.yml$plain"
+			yellowBgRed_n "[y/n]"
+			echo -n " "
+			if ! ask_yes_no then
+				exit 1
 			fi
 		fi
 	fi
@@ -474,10 +559,11 @@ fi
 if [ -n "$PORT" ]; then
 	if [ -n "$UC_PORT" ]; then
 		if [ "$PORT" != "$UC_PORT" ];then
-			if [ -n "$FORCE" ];then
-				warn "Overwrite ssh port number with new one, $cyan'$PORT'$yellow over current ip, $cyan'$UC_PORT'$yellow defined in user_config.yml$plain"
-			else
-				die "Command line specified ssh port number, $cyan'$PORT'$red is different from current one, $cyan'$UC_PORT'$red defined in user_config.yml$plain"
+			whiteBgRed_n "Do you overwrite ssh port number with new one, $cyan'$PORT'$yellow over current ip, $cyan'$UC_PORT'$yellow defined in user_config.yml$plain"
+			yellowBgRed_n "[y/n]"
+			echo -n " "
+			if ! ask_yes_no then
+				exit 1
 			fi
 		fi
 	fi
@@ -492,10 +578,11 @@ fi
 # set up host name from command line or user_config.yml found in previous installation.
 if [ -n "$HNAME" ]; then
 	if [ -n "$UC_HNAME_FULL" -a "$HNAME_FULL" != "$UC_HNAME_FULL" ]; then
-		if [ -n "$FORCE" ]; then
-			warn "Overwriting host name with new name, $cyan'$UC_HNAME_FULL'$yellow in user_config.yml (original: $cyan'$HNAME_FULL'$yellow).$plain"
-		else
-			die "Command line specified host name, $cyan'$HNAME_FULL'$red is different from original host name, $cyan'$HNAME_FULL'$red defined in  user_config.yml.$plain"
+		whiteBgRed_n "Do you overwrite host name with new name, $cyan'$UC_HNAME_FULL'$yellow in user_config.yml (original: $cyan'$HNAME_FULL'$yellow).$plain"
+		yellowBgRed_n "[y/n]"
+		echo -n " "
+		if ! ask_yes_no then
+			exit 1
 		fi
 	fi
 else
@@ -504,10 +591,11 @@ else
 		HNAME=${UC_HNAME_FULL%%.*}
 		HNAME_FULL=$UC_HNAME_FULL
 	else
-		if [ -n "$FORCE" ]; then
-			warn "Using host name, $cyan'burmilla'$yellow, befause missing host name in both command line and user_config.yml.$plain"
-		else
-			die "Missing host name in both command line and user_config.yml.$plain"
+		whiteBgRed_n "Do you use host name, $cyan'burmilla'$yellow, befause missing host name in both command line and user_config.yml.$plain"
+		yellowBgRed_n "[y/n]"
+		echo -n " "
+		if ! ask_yes_no then
+			exit 1
 		fi
 	fi
 fi
@@ -603,42 +691,58 @@ function check_ip_and_port(){
 
 function loadOrRewrite(){
 	eval local hname='$'$1
+	local OW
 	if [ -z "$IP" -a -z "$PORT" ]; then
 		local ent=`get_ssh_config_entry $hname`
 		IP=${ent/:*}
 		PORT=${ent#*:}
 	else
-		if [ -n "$FORCE" ]; then
-			CMD_HNAME=$hname
-			check_ip_and_port
-			rewrite_ssh_config $hname
-		else
-			local ent=`get_ssh_config_entry $hname`
-			local EIP=${ent/:*}
-			local EPORT=${ent#*:}
-			if [ -n "$IP" ]; then
-				if [ -n "$EIP" ]; then
-					if [ "$IP" != "$EIP" ]; then
-						die "ip address, '$IP' is different from relevant entry, ip adderss, '$EIP' of '$1' in ~/.ssh/config."
+		local ent=`get_ssh_config_entry $hname`
+		local EIP=${ent/:*}
+		local EPORT=${ent#*:}
+		if [ -n "$IP" ]; then
+			if [ -n "$EIP" ]; then
+				if [ "$IP" != "$EIP" ]; then
+					warn "ip address, '$IP' is different from relevant entry, ip adderss, '$EIP' of '$1' in ~/.ssh/config."
+					whiteBgRed_n "Still installing on '$TARGET_DEV' ? "
+					yellowBgRed_n  "[y/n]: "
+					echo -n " "
+					if ! ask_yes_no; then
+						die "User terminated. Cannot coninue installation."
+					else
+						OW=1
 					fi
-				fi
-			else
-				if [ -n "$EIP" ]; then
-					IP=$EIP
 				fi
 			fi
-			if [ -n "$PORT" ]; then
-				if [ -n "$EPORT" ]; then
-					if [ "$PORT" != "$EPORT" ]; then
-						die "port number, '$PORT' is different from relevant entry, '$EPORT' of '$1' in ~/.ssh/config."
-					fi
-				fi
-			else
-				if [ -n "$EPORT" ]; then
-					PORT=$EPORT
-				fi
+		else
+			if [ -n "$EIP" ]; then
+				IP=$EIP
 			fi
 		fi
+		if [ -n "$PORT" ]; then
+			if [ -n "$EPORT" ]; then
+				if [ "$PORT" != "$EPORT" ]; then
+					warn "port number, '$PORT' is different from relevant entry, '$EPORT' of '$1' in ~/.ssh/config."
+					whiteBgRed_n "Still installing on '$TARGET_DEV' ? "
+					yellowBgRed_n  "[y/n]: "
+					echo -n " "
+					if ! ask_yes_no; then
+						die "User terminated. Cannot coninue installation."
+					else
+						OW=1
+					fi
+				fi
+			fi
+		else
+			if [ -n "$EPORT" ]; then
+				PORT=$EPORT
+			fi
+		fi
+	fi
+	CMD_HNAME=$hname
+	check_ip_and_port
+	if [ -n "$OW" ]; then
+		rewrite_ssh_config $hname
 	fi
 }
 
@@ -772,14 +876,6 @@ else
 	else
 		SWAP_PART_SIZE="+$MEM_SIZE"K
 	fi
-fi
-
-if [ -z "$INST_DRIVE" ];then
-	die "Installer disk not found."
-fi
-
-if [ "${INST_DRIVE:0:-1}" = "$TARGET_DEV" ];then
-	die "Installer device is same as target device, $TARGET_DEV. Stop installation."
 fi
 
 if [ "$INST_DRIVE" = "" ];then
