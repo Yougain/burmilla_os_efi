@@ -89,8 +89,8 @@ function blkid2(){
 		local dev=${1%:*}
 		dbv
 		local tmp="$@"
-		dbv
-		local blkids[$dev]="$tmp "
+		dbv $tmp
+		blkids[$dev]="$tmp "
 		dbv
 	}
 	dbv
