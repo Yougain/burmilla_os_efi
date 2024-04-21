@@ -18,6 +18,7 @@ function _reg_b_device(){
 				return
 			fi
 		else
+			dbv $1
 			rl="$1"
 		fi
 		local dev_id=`stat -c "%T:%t" "$rl"`
