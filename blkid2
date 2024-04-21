@@ -10,7 +10,12 @@ function _reg_b_device(){
 		force=1
 	fi
 	if [ -b "$1" ];then
-		local rl="$(`readlink -f "$1"`)"
+		local rl
+		if [ -L "$1" ];then
+			rl="$(`readlink -f "$1"`)"
+		else
+			rl="$1"
+		fi
 		local dev_id=`stat -c "%T:%t" "$rl"`
 		local cur_dev_path=${dev_path[$dev_id]}
 		if [ -z "$cur_dev_path" -o "$force" ];then
