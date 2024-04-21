@@ -85,13 +85,16 @@ function blkid2(){
 "
 	dbv
 	local_fun add_blist <<'	}'
+		dbv
 		local dev=${1%:*}
 		local tmp="$@"
 		local blkids[$dev]="$tmp "
+		dbv
 	}
 	dbv
 	local i
 	for i in "${blkids_arr[@]}"; do
+		dbv $i
 		local_call add_blist $i
 	done
 	
