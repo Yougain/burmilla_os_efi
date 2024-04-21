@@ -12,7 +12,7 @@ function _reg_b_device(){
 	if [ -b "$1" ];then
 		local rl
 		if [ -L "$1" ];then
-			rl="$(`readlink -f "$1"`)"
+			rl="$(`readlink -f "$1" 2>/dev/null`)"
 			if [ -z "$rl" ];then
 				return
 			fi
