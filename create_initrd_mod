@@ -441,6 +441,7 @@ $libs"
 		dmesg
 		nginx
 		strings
+		lsblk
 		cp
 		yq
 		mv

@@ -51,7 +51,10 @@ while (( "$#" )); do
 					die "unknown option, '$1'"
 				fi
 				if [[ $1 =~ .+=.+ ]];then
-					TARGET_DEV=$1
+					TARGET_DEV_ATTR+=("$1")
+					if [ -n "$TARGET_DEV" ];then
+						die "cannot use both device file ($TARGET_DEV) and attribute expression ($1)"
+					fi
 				fi
 				if [ -n "`echo $1| egrep '^[0-9]+$'`" ];then
 					PORT=$1
@@ -85,6 +88,12 @@ while (( "$#" )); do
 					fi
 				fi
 				if [ -n "`echo $1| egrep '^/dev/[a-z]+$'`" ];then
+					if [ -n "$TARGET_DEV" ];then
+						die "cannot use two devices, #{$TARGET_DEV} and $1"
+					fi
+					if [ -n "$TARGET_DEV_ATTR" ];then
+						die "cannot use both device file ($1) and attribute expression (#{$TARGET_DEV_ATTR[@]})"
+					fi
 					TARGET_DEV=$1
 				fi
 				;;
@@ -387,39 +396,40 @@ ssh_sudo <<'END'
 		INST_DRIVE=`blkid2 ${BASH_REMATCH[1]}`
 		part2Drv INST_DRIVE
 	fi
-	isos="`blkid2 TYPE=iso9660`"
-	if [ -n "$isos" ];then
-		for iso in $isos; do
-			part2Drv iso
-			if ! detect ISO_DISKS "$iso"; then
-				ISO_DIKS+=("$iso")
-			fi
-		done
-	fi
-	disks="`readlink -f /dev/disk/by-id/*|sort|uniq|egrep -v '[0-9]+$'`"
-	for disk in $disks; do
-		if ! detect ISO_DIKS "$disk"; then
-			A_DISKS+=($disk)
-		fi
-	done
-	if [[ $TARGET_DEV =~ = ]];then
-		TARGET_DEVS=(`blkid2 $TARGET_DEV`)
+	disks="`blkid2 DEV_TYPE=\"disk\"`"
+	if [ -n "$TARGET_DEV_ATTR" ];then
+		TARGET_DEVS=(`blkid2 ${TARGET_DEV_ATTR[@]}`)
 		case ${#TARGET_DEVS[@]} in
 			0)
-				TARGET_DEV_ERRMSG="Target device for '$TARGET_DEV', not found."
+				TARGET_DEV_ERRMSG="Target device for, (${TARGET_DEV_ATTR[@]}), not found."
 				;;
 			1)
 				TARGET_DEV="${#TARGET_DEVS[0]}"
 				;;
 			*)
-				TARGET_DEV_ERRMSG="Multiple devices for '$TARGET_DEV', found."
+				TARGET_DEV_ERRMSG="Multiple devices for, (${TARGET_DEV_ATTR[@]}), found."
 				;;
 		fi
 	fi
+	if [ -n "$TARGET_DEV" ];then
+		if ! detect A_DISKS "$TARGET_DEV"
+			TARGET_DEV_ERRMSG="$TARGET_DEV is not installeble."
+		fi
+	fi
+	for d in $A_DISKS; do
+		ADISK_MSG+=("`blkid2 $d`")
+	done
 END
 
+				
+
 if [ -n "$TARGET_DEV_ERRMSG" ];then
-	die $TARGET_DEV_ERRMSG
+	err $TARGET_DEV_ERRMSG
+	info available disks:
+	for AMSG in "${ADISK_MSG[@]}"; do
+		echo "$AMSG"
+	done
+	exit 1
 fi
 
 if [ -n "$DRV" ];then
@@ -441,41 +451,41 @@ fi
 
 if [ -n "$DRV" ];then
 	if [ -n "$TARGET_DEV" ];then
-		whiteBgRed "'$TARGET_DEV' is not the reference drive, '$DRV' for getting parameters (IP, hostname, etc) for installation."
+		whiteBgRed "'$TARGET_DEV' is not the reference disk, '$DRV' for getting parameters (IP, hostname, etc) for installation."
 		whiteBgRed_n "Still installing on '$TARGET_DEV' ? "
 		yellowBgRed_n  "[y/n]: "
 		echo -n " "
 		if ask_yes_no; then
-			info "Using '$TARGET_DEV', as target drive for installation."
+			info "Using '$TARGET_DEV', as target disk for installation."
 		else
 			whiteBgRed_n "Installing on '$DRV'? "
 			yellowBgRed_n  "[y/n]: "
 			if ask_yes_no; then
 				TARGET_DEV=$DRV
-				info "Using '$DRV', as target drive for installation."
+				info "Using '$DRV', as target disk for installation."
 			else
-				info "No drive chosen. User terminated."
+				info "No disk chosen. User terminated."
 				info "Available drives are ${A_DISKS}."
 				exit 1
 			fi
 		fi
 	else
-		whiteBgRed "Target drive is not specified in the command line arguments."
-		whiteBgRed_n "Do you use the reference drive, '$DRV' as target drive for installation? "
+		whiteBgRed "Target disk is not specified in the command line arguments."
+		whiteBgRed_n "Do you use the reference disk, '$DRV' as target disk for installation? "
 		yellowBgRed_n  "[y/n]: "
 		if ask_yes_no; then
 			TARGET_DEV=$DRV
 		else
-			info "No drive chosen. User terminated."
+			info "No disk specified."
 			info "Available drives are ${A_DISKS}."
 			exit 1
 		fi
 	fi
 else
 	if [ -n "$TARGET_DEV" ];then
-		info "Using '$TARGET_DEV', as target drive for installation."
+		info "Using '$TARGET_DEV', as target disk for installation."
 	else
-		whiteBgRed "Target drive is not specified."
+		whiteBgRed "Target disk is not specified."
 		if [ ${#A_DISKS[@]} != 0 ];then
 			whiteBgRed_n "Still installing on '${A_DISKS[0]}' ? "
 			yellowBgRed_n  "[y/n]: "
@@ -483,11 +493,11 @@ else
 				TARGET_DEV=$DRV
 			else
 				info "Available drives are ${A_DISKS}."
-				info "Please specify one for target drive by command line argument."
+				info "Please specify one of them by command line argument."
 				exit 1
 			fi
 		else
-			die "No installable drive(s) found."
+			die "No installable disk(s) found."
 		fi
 	fi
 fi
