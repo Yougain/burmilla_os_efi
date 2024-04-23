@@ -295,9 +295,9 @@ function do_mount(){
 				else
 					_mount $opts $moptsWithDeg $src $dst
 					res=$?
+					dbv $?
 				fi
 			else
-				erterteter
 				_mount $opts $mopts $src $dst
 				res=$?
 				dbv $?
@@ -305,6 +305,7 @@ function do_mount(){
 			if [ "$res" != "0" ];then
 				err "cannot mount $src on $dst"
 			else
+				dbv $?
 				return $res
 			fi
 		fi
