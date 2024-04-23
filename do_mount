@@ -140,7 +140,11 @@ function do_mount(){
 	local srcs
 	if [[ $src =~ ^[0-9]*$ ]];then
 		require partNum2Dev
-		srcs=("$(partNum2Dev $src)")
+		srcs=($(partNum2Dev $src))
+		partNum2Dev $src
+	DEBUG=1
+	dbv ${srcs[@]}
+	exit 1
 		case ${#srcs[@]} in
 			0)
 				_die "No disk detected."
@@ -178,9 +182,6 @@ function do_mount(){
 		srcs=($src)
 	fi
 	local multi=
-	DEBUG=1
-	dbv ${srcs[@]}
-	exit 1
 	for src in ${srcs[@]}; do
 		if ((${#srcs[@]} > 1));then
 			_info "Trying mount '${srcs[0]}' ..."
