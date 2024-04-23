@@ -446,6 +446,8 @@ $libs"
 		cp
 		yq
 		mv
+		vim
+		less
 	END
 	mkdir -p ./idev # for logger
 	mknod ./idev/null c 1 3
