@@ -297,6 +297,7 @@ function do_mount(){
 					res=$?
 				fi
 			else
+				erterteter
 				_mount $opts $mopts $src $dst
 				res=$?
 				dbv $?
