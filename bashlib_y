@@ -916,7 +916,7 @@ pqlist(){
 			if [ \$second = 1 ];then
 				echo -n ", "
 			fi
-			echo -n \"'\"$i\"'\"
+			echo -n \"'\"\$i\"'\"
 			second=1
 		done
 "
