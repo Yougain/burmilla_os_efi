@@ -295,12 +295,12 @@ function do_mount(){
 				else
 					_mount $opts $mopts $src $dst
 					res=$?
-					dbv $?
+					dbv $res
 				fi
 			else
 				_mount $opts $mopts $src $dst
 				res=$?
-				dbv $?
+				dbv $res
 			fi
 			if [ "$res" != "0" ];then
 				err "cannot mount $src on $dst"
