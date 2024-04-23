@@ -912,7 +912,7 @@ pqlist(){
 	local i
 	eval "
 		second=0
-		for i in \$$1[@]; do
+		for i in \${$1[@]}; do
 			if [ \$second = 1 ];then
 				echo -n ", "
 			fi
