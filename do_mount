@@ -178,6 +178,8 @@ function do_mount(){
 		srcs=($src)
 	fi
 	local multi=
+	DEBUG=1
+	dbv srcs
 	for src in ${srcs[@]}; do
 		if ((${#srcs[@]} > 1));then
 			_info "Trying mount '${srcs[0]}' ..."
@@ -185,7 +187,7 @@ function do_mount(){
 		if [ -d "$src" ];then
 			opts[-B]=1
 		fi
-		local type=`blkid $src|sed -r 's/.*TYPE="([^"]+)".*/\1/g'`
+		local type=`/sbin/blkid $src|sed -r 's/.*TYPE="([^"]+)".*/\1/g'`
 		if [ -z "$type" ];then
 			_err "cannot detect filesystem of '$to_mount'."
 			continue
