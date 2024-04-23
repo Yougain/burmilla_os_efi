@@ -141,7 +141,7 @@ function do_mount(){
 	if [[ $src =~ ^[0-9]*$ ]];then
 		require partNum2Dev
 		srcs=("$(partNum2Dev $src)")
-		case ${#srcs[@]}; in
+		case ${#srcs[@]} in
 			0)
 				_die "No disk detected."
 				;;
