@@ -2,6 +2,7 @@
 
 
 partNum2Dev(){
+	exit 1
 	declare -A to_mount_cand
 	local to_mount
 	local src="$1"
