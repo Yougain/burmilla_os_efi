@@ -8,7 +8,6 @@ partNum2Dev(){
 	if [[ $src =~ ^[0-9]+$ ]];then
 		local boot_part
 		local tmp_boot_uuid_arg
-		warn $ref_boot_uuid
 		if [ -n "$ref_boot_uuid" ]; then
 			tmp_boot_uuid_arg=$ref_boot_uuid
 		elif grep ref_boot_uuid= /proc/cmdline > /dev/null;then
