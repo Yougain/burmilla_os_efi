@@ -88,7 +88,7 @@ runcmd:
 END
 		fi
 		if [ -n "$ref_boot_uuid" ];then
-			do_mount -o ro,degraded 5 /mnt
+			do_mount -v --salvage-btrfs 5 /mnt
 			if [ -L /mnt/var/lib/rancher/conf ]; then
 				umount /mnt
 				do_mount -v --salvage-btrfs 7 /mnt
