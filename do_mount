@@ -179,7 +179,8 @@ function do_mount(){
 	fi
 	local multi=
 	DEBUG=1
-	dbv srcs
+	dbv ${srcs[@]}
+	exit 1
 	for src in ${srcs[@]}; do
 		if ((${#srcs[@]} > 1));then
 			_info "Trying mount '${srcs[0]}' ..."
