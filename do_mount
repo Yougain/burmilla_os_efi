@@ -88,7 +88,9 @@ function do_mount(){
 	if opt --force-degraded; then
 		forceDegraded=1
 	fi
+	dbv
 	if opt --options -o op_arg; then
+		dbv
 		split tmopts "$op_arg" ,
 		for i in "${tmopts[@]}"; do
 			if [ "$i" = "rw" -a "${mopts[ro]}" = 1 ]; then
@@ -97,9 +99,11 @@ function do_mount(){
 			if [ "$i" = "ro" -a "${mopts[rw]}" = 1 ]; then
 				_die "both 'rw' and 'ro' mount option specified"
 			fi
+			dbv $i
 			mopts[$i]=1
 		done
 	fi
+	dbv
 	local ag
 	local src
 	local dst
