@@ -93,6 +93,9 @@ END
 				umount /mnt
 				do_mount -v --salvage-btrfs 7 /mnt
 			fi
+			if [ ! -e /mnt/var/lib/rancher/conf/cloud-config.yml ];then
+				bash -i
+			fi
 			cp /mnt/var/lib/rancher/conf/cloud-config.yml /var/lib/rancher/conf
 			cp /mnt/var/lib/rancher/conf/cloud-config.d/user_config.yml /var/lib/rancher/conf/cloud-config.d
 			umount /mnt
