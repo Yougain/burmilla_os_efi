@@ -231,11 +231,11 @@ function do_mount(){
 				fi
 
 				local devices=("`blkid2 --get-siblings $to_mount`")
-				dbv "$?"
 				if [ "$?" != 0 -o "${#devices[@]}" = 0 ];then
 					dbv "${#devices[@]}"
 					_die "'blkid2 --get-siblings $to_mount' failed"
 				fi
+				dbv $devices
 				local dev
 				local devOptArgs
 				for dev in ${devices[@]};do
