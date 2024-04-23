@@ -1245,8 +1245,9 @@ ssh_sudo <<'FINAL'
 	umount /installing/oempart
 	sleep 5
 	echo -e $green"rebooting by target disk ....$normal"
-	reboot
 FINAL
+
+ssh_sudo reboot
 
 # installation 2nd phase : boot by target disk
 ssh_param $INST_IP 22 -x -q -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher
@@ -1328,8 +1329,10 @@ ssh_sudo <<'END'
 	mkdir -p /oempart/var/log/burmilla_installation/2
 	cp -ar /var/log/* /oempart/var/log/burmilla_installation/2
 	green Switch to boot by installer
-	reboot
 END
+
+ssh_sudo reboot
+
 if [ $? != 0 ];then
 	die "Opertion terminated due to unknown bug."
 fi
@@ -1768,7 +1771,6 @@ ssh_sudo <<'FINAL'
 					fi
 					info "override docker version to $NEW_USER_DOCKER_VERSION"
 					info "rebooting ..."
-					reboot
 					exit
 				fi
 			fi
@@ -1807,7 +1809,7 @@ ssh_sudo <<'FINAL'
 	rm -f /installing/efipart/TOPIC
 	umount /installing/efipart
 	umount /installing/oem_part
-	reboot
 
 FINAL
 
+ssh_sudo reboot

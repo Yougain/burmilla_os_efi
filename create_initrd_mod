@@ -442,6 +442,7 @@ $libs"
 		nginx
 		strings
 		lsblk
+		xargs
 		cp
 		yq
 		mv
