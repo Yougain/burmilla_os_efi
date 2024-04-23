@@ -159,10 +159,10 @@ function do_mount(){
 				_die "No disk detected."
 				;;
 			1)
-				info "found disk, '$srcs[0]'."
+				_info "found disk, '$srcs[0]'."
 				;;
 			*)
-				info "Multiple disks, $(pqlist srcs) detected."
+				_info "Multiple disks, $(pqlist srcs) detected."
 				;;
 		esac
 	elif [ -n "$src_attrs" ]; then
@@ -179,7 +179,7 @@ function do_mount(){
 				_die "No disk detected for $(pqlist src_attrs)"
 				;;
 			1)
-				info "found disk, '$srcs[0]' for $(pqlist src_attrs)."
+				_info "found disk, '$srcs[0]' for $(pqlist src_attrs)."
 				;;
 			*)
 				_die "Multiple disks, $(pqlist $srcs) detected for $(pqlist src_attrs)"
