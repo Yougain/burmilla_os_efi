@@ -43,9 +43,9 @@ function do_mount(){
 			fi
 		fi
 		if [ "$ret" = "0" ];then
-			_info mount successful / mount $@
+			info mount successful / mount $@
 		else
-			_err mount failed / mount $@
+			err mount failed / mount $@
 		fi
 		return $ret
 	}
@@ -298,9 +298,7 @@ function do_mount(){
 				res=$?
 				dbv $res
 			fi
-			if [ "$res" != "0" ];then
-				err "cannot mount $src on $dst"
-			else
+			if [ "$res" == "0" ];then
 				dbv $?
 				return $res
 			fi
