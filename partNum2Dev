@@ -21,6 +21,8 @@ partNum2Dev(){
 				arr=($boot_part)
 				first=""
 				for drv in $arr[@]; do
+					dbv ${drv:0: -1}
+					dbv $src
 					echo -n "$first${drv:0: -1}"$src
 					first=" "
 				done
