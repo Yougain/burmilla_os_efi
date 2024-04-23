@@ -2,15 +2,13 @@
 
 source $(dirname "$(realpath -s "$0")")/bashlib_y
 
-dbv ${!SCRIPT_FILES[@]}
-sleep 10
 require create_initrd_mod ssh_do write_script
 require -s blkid2 do_mount initrd_support do_install chain_bak partNum2Dev args parse_func
 
-dbv ${!SCRIPT_FILES[@]}
-sleep 10
+
 # argument analysis
 while (( "$#" )); do
+	dbv
 	if [ -n "$next_install_ssh_port" ];then
 		next_install_ssh_port=""
 		INSTALL_SSH_PORT=$1
@@ -55,9 +53,13 @@ while (( "$#" )); do
 					if [ -n "$TARGET_DEV" ];then
 						die "cannot use both device file ($TARGET_DEV) and attribute expression ($1)"
 					fi
+					shift
+					continue
 				fi
 				if [ -n "`echo $1| egrep '^[0-9]+$'`" ];then
 					PORT=$1
+					shift
+					continue
 				fi
 				if [ -n "`echo $1| egrep '^[A-Za-z]'`" ];then
 					CMD_HNAME=$1
@@ -72,6 +74,8 @@ while (( "$#" )); do
 							HNAME_FULL=$HNAME
 						fi
 					fi
+					shift
+					continue
 				fi
 				if [ -n "`echo $1| grep '\:' |egrep '^[0-9A-Fa-f:]+$'`" ];then
 					if [ -z "$INST_IP" ];then
@@ -79,6 +83,8 @@ while (( "$#" )); do
 					else
 						IP=$1
 					fi
+					shift
+					continue
 				fi
 				if [ -n "`echo $1| grep '\.' |egrep '^[0-9\.]+$'`" ];then
 					if [ -z "$INST_IP" ];then
@@ -86,6 +92,8 @@ while (( "$#" )); do
 					else
 						IP=$1
 					fi
+					shift
+					continue
 				fi
 				if [ -n "`echo $1| egrep '^/dev/[a-z]+$'`" ];then
 					if [ -n "$TARGET_DEV" ];then
@@ -95,6 +103,8 @@ while (( "$#" )); do
 						die "cannot use both device file ($1) and attribute expression (#{$TARGET_DEV_ATTR[@]})"
 					fi
 					TARGET_DEV=$1
+					shift
+					continue
 				fi
 				;;
 		esac
@@ -102,7 +112,7 @@ while (( "$#" )); do
 	shift
 done
 
-
+dbv
 function get_ssh_config_entry(){
 	local ENT=`sed -e 's/[ \t]*#.*//' ~/.ssh/config | grep -oiPz "(?s)^\s*Host\s+$1(.*?^\s*Host\s|.*)"`
 	local PORT=`echo "$ENT" | grep -oiPz "^\s*Port\s+\d+"| head -1 |awk '{print $2}'`
@@ -136,7 +146,7 @@ function get_ssh_config_ip_from_name(){
 		return 1
 	fi
 }
-
+dbv
 
 # indispensable arguments
 if [ -z "$INST_IP" ]; then
@@ -146,7 +156,8 @@ if [ -z "$INST_IP" ]; then
 			INST_IP=${CTMP//:*}
 			INSTALLED_PORT=${CTMP##*:}
 			dbv ssh $INST_IP -p $INSTALLED_PORT -l rancher -o ConnectTimeout=3 -o ConnectionAttempts=3 echo -n
-			test_drv="$(ssh $INST_IP -p $INSTALLED_PORT -l rancher -o ConnectTimeout=3 -o ConnectionAttempts=3 stat -f -c '%T' /opt)"
+			info testing ssh connection to $INST_IP:$INSTALLED_PORT
+			test_drv="$(ssh $INST_IP -p $INSTALLED_PORT -l rancher -o ConnectTimeout=1 -o ConnectionAttempts=3 stat -f -c '%T' /opt)"
 			if [ -z "test_drv" ];then
 				die "cannot ssh $INST_IP -p $INSTALLED_PORT"
 			fi
@@ -391,12 +402,27 @@ ssh_sudo <<'END'
 	if [[ $CMDLINE =~ \ ref_boot_uuid=([^\ ]+) ]];then
 		DRV=`partNum2Drv`
 		part2Drv DRV
+		dbv $DRV
 	fi
+	dbv $DRV
 	if [[ $CMDLINE =~ \ root=([^\ ]+) ]];then
 		INST_DRIVE=`blkid2 ${BASH_REMATCH[1]}`
 		part2Drv INST_DRIVE
 	fi
-	disks="`blkid2 DEV_TYPE=\"disk\"`"
+	disks=("`blkid2 DEV_TYPE=\"disk\"`")
+	installers=("`blkid2 LABEL=\"RANCHEROS\"`")
+	j=0
+	for i in ${installers[@]}; do
+		if [[ $i =~ ^(.*[^0-9])[0-9]+$ ]];then
+			installers[j]=${BASH_REMATCH[1]}
+		fi
+		((++j))
+	done
+	for d in $disks; do
+		if ! detect installers $d; then
+			A_DISKS+=($d)
+		fi
+	done
 	if [ -n "$TARGET_DEV_ATTR" ];then
 		TARGET_DEVS=(`blkid2 ${TARGET_DEV_ATTR[@]}`)
 		case ${#TARGET_DEVS[@]} in
@@ -404,20 +430,23 @@ ssh_sudo <<'END'
 				TARGET_DEV_ERRMSG="Target device for, (${TARGET_DEV_ATTR[@]}), not found."
 				;;
 			1)
-				TARGET_DEV="${#TARGET_DEVS[0]}"
+				TARGET_DEV="${TARGET_DEVS[0]}"
+				info "'"${TARGET_DEV_ATTR[@]}"'" is resolved to "'"$TARGET_DEV"'"
 				;;
 			*)
 				TARGET_DEV_ERRMSG="Multiple devices for, (${TARGET_DEV_ATTR[@]}), found."
 				;;
-		fi
+		esac
 	fi
 	if [ -n "$TARGET_DEV" ];then
-		if ! detect A_DISKS "$TARGET_DEV"
+		if ! detect A_DISKS "$TARGET_DEV"; then
 			TARGET_DEV_ERRMSG="$TARGET_DEV is not installeble."
 		fi
 	fi
-	for d in $A_DISKS; do
-		ADISK_MSG+=("`blkid2 $d`")
+	ADISK_MSG=
+	for d in ${A_DISKS[@]}; do
+		ADISK_MSG="$ADISK_MSG`blkid2 $d`
+"
 	done
 END
 
@@ -425,10 +454,9 @@ END
 
 if [ -n "$TARGET_DEV_ERRMSG" ];then
 	err $TARGET_DEV_ERRMSG
-	info available disks:
-	for AMSG in "${ADISK_MSG[@]}"; do
-		echo "$AMSG"
-	done
+	info "Available disks are:"
+	echo "$ADISK_MSG."
+	info "Terminated."
 	exit 1
 fi
 
@@ -444,7 +472,9 @@ fi
 if [ -n "$TARGET_DEV" ];then
 	if ! detect A_DISKS "$TARGET_DEV";then
 		err "'$TARGET_DEV' is missing or not installable (maybe installer disk)."
-		info "Available disks are $A_DISKS."
+		info "Available disks are:"
+		echo "$ADISK_MSG."
+		info "Terminated."
 		exit 1
 	fi
 fi
@@ -465,7 +495,9 @@ if [ -n "$DRV" ];then
 				info "Using '$DRV', as target disk for installation."
 			else
 				info "No disk chosen. User terminated."
-				info "Available drives are ${A_DISKS}."
+				info "Available disks are:"
+				echo "$ADISK_MSG."
+				info "Terminated."
 				exit 1
 			fi
 		fi
@@ -477,7 +509,9 @@ if [ -n "$DRV" ];then
 			TARGET_DEV=$DRV
 		else
 			info "No disk specified."
-			info "Available drives are ${A_DISKS}."
+			info "Available disks are:"
+			echo "$ADISK_MSG."
+			info "Terminated."
 			exit 1
 		fi
 	fi
@@ -492,12 +526,19 @@ else
 			if ask_yes_no; then
 				TARGET_DEV=$DRV
 			else
-				info "Available drives are ${A_DISKS}."
+				info "Available disks are:"
+				echo "$ADISK_MSG."
 				info "Please specify one of them by command line argument."
+				info "Terminated."
 				exit 1
 			fi
 		else
-			die "No installable disk(s) found."
+			err "No installable disk(s) found."
+			info "Available disks are:"
+			echo "$ADISK_MSG."
+			info "Please specify one of them by command line argument."
+			info "Terminated."
+			exit 1
 		fi
 	fi
 fi
@@ -544,7 +585,7 @@ if [ -n "$IP" ]; then
 			whiteBgRed_n "Do you overwrite ip address with new one, $cyan'$IP'$yellow over current ip, $cyan'$UC_IPS'$yellow defined in user_config.yml$plain"
 			yellowBgRed_n "[y/n]"
 			echo -n " "
-			if ! ask_yes_no then
+			if ! ask_yes_no; then
 				exit 1
 			fi
 		fi
@@ -572,7 +613,7 @@ if [ -n "$PORT" ]; then
 			whiteBgRed_n "Do you overwrite ssh port number with new one, $cyan'$PORT'$yellow over current ip, $cyan'$UC_PORT'$yellow defined in user_config.yml$plain"
 			yellowBgRed_n "[y/n]"
 			echo -n " "
-			if ! ask_yes_no then
+			if ! ask_yes_no; then
 				exit 1
 			fi
 		fi
@@ -591,7 +632,7 @@ if [ -n "$HNAME" ]; then
 		whiteBgRed_n "Do you overwrite host name with new name, $cyan'$UC_HNAME_FULL'$yellow in user_config.yml (original: $cyan'$HNAME_FULL'$yellow).$plain"
 		yellowBgRed_n "[y/n]"
 		echo -n " "
-		if ! ask_yes_no then
+		if ! ask_yes_no; then
 			exit 1
 		fi
 	fi
@@ -604,7 +645,7 @@ else
 		whiteBgRed_n "Do you use host name, $cyan'burmilla'$yellow, befause missing host name in both command line and user_config.yml.$plain"
 		yellowBgRed_n "[y/n]"
 		echo -n " "
-		if ! ask_yes_no then
+		if ! ask_yes_no; then
 			exit 1
 		fi
 	fi
@@ -694,7 +735,8 @@ function check_ip_and_port(){
 		done
 		RANDOM_PORT=1
 		PORT=$RD
-		warn using randomely chosen port number, $PORT for ssh
+		OW=1
+		warn using randomly chosen port number, $PORT for ssh
 	fi
 }
 
@@ -704,11 +746,11 @@ function loadOrRewrite(){
 	local OW
 	if [ -z "$IP" -a -z "$PORT" ]; then
 		local ent=`get_ssh_config_entry $hname`
-		IP=${ent/:*}
+		IP=${ent%:*}
 		PORT=${ent#*:}
 	else
 		local ent=`get_ssh_config_entry $hname`
-		local EIP=${ent/:*}
+		local EIP=${ent%:*}
 		local EPORT=${ent#*:}
 		if [ -n "$IP" ]; then
 			if [ -n "$EIP" ]; then
@@ -1237,6 +1279,12 @@ done
 
 dbv ${!SCRIPT_FILES[@]}
 
+cyan_n Waiting initialization.
+while [ -z "`ssh_do ps ax | grep 'containerd --config /var/run/docker/containerd/containerd.toml'`" ]; do
+    sleep 1
+    cyan_n .
+done
+
 ssh_sudo <<'END'
 	dbv ${!SCRIPT_FILES[@]}
 	if [ -n "$INSTALL_VIM" ];then
@@ -1258,7 +1306,6 @@ ssh_sudo <<'END'
 	umount /efipart
 	dbv unmounted /efipart
 	rmdir /efipart
-	rm /var/lib/rancher/conf/cloud-config.d/user_config.yml
 	apt-get -y update
 	apt-get -y upgrade
 	apt-get -y install btrfs-progs binutils
@@ -1287,9 +1334,9 @@ if [ $? != 0 ];then
 	die "Opertion terminated due to unknown bug."
 fi
 
-#ssh_param $INST_IP $PORT -x -q -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher
+ssh_param $INST_IP 22 -x -q -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher
 
-ssh_param $IP $PORT -x -q -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher
+#ssh_param $IP $PORT -x -q -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher
 
 
 wait_sshd_start
@@ -1655,8 +1702,13 @@ ssh_sudo <<'FINAL'
 		fi
 		if [ -n "$noKernelParam" ];then
 			chain_bak -10 $kpF
-			echo -n "$USER_SETTINGS_FOR_GRUB_SOURCE" > $kpF
-			chmod +x $kpF
+			echo -n "$USER_SETTINGS_FOR_GRUB_SOURCE" > $kpF2
+			if [ "`cat $kpF`" = "`cat $kpF2`" ];then
+				rm -f $kpF2
+			else
+				chain_bak -10 $kpF2 $kpF
+				chmod +x $kpF
+			fi
 		fi
 
 		mkdir -p /mnt_efi_test

@@ -45,7 +45,7 @@ function blkid2(){
 	local devs
 
 	local args=()
-	info blkid2 $@
+	dbv blkid2 $@
 	__readlink(){
 		for i in "$@"; do
 			readlink -f $i

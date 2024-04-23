@@ -190,6 +190,30 @@ chain_bak(){
 				fi
 				dbv $theme
 				dbv $center
+				dbv $before_order
+				local blim
+				local lim=$limit
+				if [ -n "$before_order" ];then
+					dbv
+					if ((before_order > center));then
+						dbv
+						blim=$((before_order - 1))
+						dbv $blim
+						if [ -z $limit ] || ((blim < limit));then
+							lim=blim
+							before_to_center_tmp=$theme.$RANDOM$RANDOM$RANDOM
+							mv $theme.$before $before_to_center_tmp
+						fi
+					elif ((before_order < center));then
+						while [ -e "$theme.$((before_order - 1))" ] || [ "$before_order" = 1 -a -e "$theme" ];do
+							((--before_order))
+						done
+					else # should be "$theme" vs "$theme.0"
+						before_order=
+					fi
+					before_order_processed=1
+				fi
+				dbv
 				_chain_bak_find_max $center
 				dbv $max
 				if [ -n "$beyondCenter" ];then
@@ -229,15 +253,55 @@ chain_bak(){
 					fi
 				fi
 				dbv "$1"
+				local before_theme=
+				local before_order=
+				local before_to_center_tmp=
+				before_order_processed=
+				dbv $before_order_processed
 				if [ -e "$1" ];then
 					dbv "$1"
+					if [[ "$f" =~ ^(.*)\.((-|)[0-9]+)$ ]];then
+						before_theme="${BASH_REMATCH[1]}"
+						before_order="${BASH_REMATCH[2]}"
+					else
+						before_theme="$f"
+						before_order=0
+					fi
+					if [[ "$1" =~ ^(.*)\.((-|)[0-9]+)$ ]];then
+						if [ "${BASH_REMATCH[1]}" != "$before_theme" ];then
+							before_order=
+						fi
+					elif [ "$1" != "$before_theme" ];then
+						before_order=
+					fi
+					dbv $before_order
+					dbv $before_order_processed
 					if ! _chain_bak "$1"; then
 						return 1
 					fi
+					dbv $before_order_processed
 				fi
 				if ! _mv_it $force "$f" "$1"; then
 					return 1
 				fi
+				if [ -n "$before_order" ];then
+					dbv $before_order
+					if [ -n "$before_to_center_tmp" ];then
+						dbv $before_to_center_tmp
+						mv $before_to_center_tmp $f
+					fi
+					before_to_center_tmp=
+					dbv $before_theme.$before_order
+					if [ -e "$before_theme.$before_order" ];then
+						dbv
+						_chain_bak "$before_theme.$before_order"
+					elif [ "$before_order" = "0" -a -e "$before_theme" ];then
+						dbv
+						_chain_bak "$before_theme"
+					fi
+					before_order_processed=1
+				fi
+				dbv $before_order_processed
 			fi
 		fi
 		return 0
@@ -299,7 +363,7 @@ chain_bak(){
 		else
 			t="$theme.$n"
 		fi
-		if [ ! -e "$t" -o "$1" = "$limit" ];then
+		if [ ! -e "$t" -o "$1" = "$lim" ];then
 			max=$1
 		else
 			_chain_bak_find_max $n
@@ -387,24 +451,28 @@ chain_bak(){
 			if ! _check_identity "$f0" "$f1"; then
 				return 1
 			fi
+			if ! _mv_it $force "$f0" "$f1"; then
+				return 1
+			fi
 			if ! _chain_bak_reverse2 "$((num - 1))"; then
 				return 1
 			fi
 		fi
-		if ! _mv_it $force "$f1" "$f0"; then
-			return 1
-		fi
 	}
 
-
+	dbv
+	local before_order_processed
 	if [ ${#argv[@]} -ge 2 ]; then
+		dbv
 		theFirst="${argv[0]}"
 		if _chain_bak "${argv[@]}"; then
 			if [ -n "$cyclicPreserved" ];then
 				_mv_it "$cyclicPreserved" "$theFirst"
 			else
 				dbv
-				_chain_bak_reverse "${argv[0]}"
+				if [ -z "$before_order_processed" ];then
+					_chain_bak_reverse "${argv[0]}"
+				fi
 			fi
 		fi
 	else

@@ -87,7 +87,7 @@ runcmd:
 - cp /opt/initrd/etc/localtime /etc
 END
 		fi
-		if [ -n "$ref_boot_uuid"  ];then
+		if [ -n "$ref_boot_uuid" ];then
 			do_mount 5 /mnt
 			if [ -L /mnt/var/lib/rancher/conf ]; then
 				umount /mnt
