@@ -975,12 +975,12 @@ _recursive_path(){
 	fi
 }
 
-
+echo 100
 recursive_path(){
 	declare -A dstack
 	_recursive_path "$@"
 }
-
+echo 101
 
 else
 	if [ -n "$DEBUG" ];then
