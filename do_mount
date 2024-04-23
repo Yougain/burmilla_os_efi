@@ -140,6 +140,7 @@ function do_mount(){
 	local srcs
 	if [[ $src =~ ^[0-9]*$ ]];then
 		require partNum2Dev
+		partNum2Dev $src
 		srcs=($(partNum2Dev $src))
 		partNum2Dev $src
 	DEBUG=1
