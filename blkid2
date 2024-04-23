@@ -22,7 +22,6 @@ function _reg_b_device(){
 			rl="$1"
 		fi
 		local dev_id=`stat -c "%T-%t" "$rl"`
-		err $dev_id
 		local cur_dev_path=${dev_path[$dev_id]}
 		if [ -z "$cur_dev_path" -o "$force" ];then
 			dev_path[$dev_id]="$1"
@@ -39,7 +38,6 @@ function _reg_b_device(){
 
 
 function blkid2(){
-	dbv
 	declare -A dev_path
 	recursive_path _reg_b_device /dev
 	local key
