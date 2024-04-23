@@ -7,28 +7,24 @@ require args
 function do_mount(){
 	. args
 	function _info(){
-		if [ -n $verbose ];then
-			echo $@
+		if [ -n "$verbose" ];then
+			info $@
 		fi
-		info $@
 	}
 	function _die(){
-		if [ -n $verbose ];then
-			echo $@
+		if [ -n "$verbose" ];then
+			die $@
 		fi
-		die $@
 	}
 	function _err(){
-		if [ -n $verbose ];then
-			echo $@
+		if [ -n "$verbose" ];then
+			err $@
 		fi
-		err $@
 	}
 	function _warn(){
-		if [ -n $verbose ];then
-			echo $@
+		if [ -n "$verbose" ];then
+			warn $@
 		fi
-		warn $@
 	}
 	function _mount(){
 		local msg="`mount $@ 2>&1`"
