@@ -121,6 +121,7 @@ function do_mount(){
 	done
 	local opts="${!opts[@]}"
 	for i in "${!mopts[@]}"; do
+		dbv $i
 		if [ "$i" != "degraded" ];then
 			moptsNoDeg[$i]=${mopts[$i]}
 		fi
