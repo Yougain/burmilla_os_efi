@@ -40,6 +40,7 @@ function _reg_b_device(){
 function blkid2(){
 	dbv
 	declare -A dev_path
+	warn
 	recursive_path _reg_b_device /dev
 	local key
 	local devs
