@@ -29,6 +29,7 @@ function do_mount(){
 	function _mount(){
 		local msg="`mount $@ 2>&1`"
 		local ret=$?
+		dbv $ret
 		if echo $msg|grep "already mounted" > /dev/null;then
 			_die $msg
 			ret=1
