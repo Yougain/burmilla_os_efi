@@ -21,7 +21,7 @@ function _reg_b_device(){
 			dbv $1
 			rl="$1"
 		fi
-		local dev_id=`stat -c "%T:%t" "$rl"`
+		local dev_id=`stat -c "%T-%t" "$rl"`
 		local cur_dev_path=${dev_path[$dev_id]}
 		if [ -z "$cur_dev_path" -o "$force" ];then
 			dev_path[$dev_id]="$1"
