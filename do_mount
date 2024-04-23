@@ -150,7 +150,7 @@ function do_mount(){
 				info "found disk, '$srcs[0]'."
 				;;
 			*)
-				info "Multiple disks, $(pqlist $srcs) detected."
+				info "Multiple disks, $(pqlist srcs) detected."
 				;;
 		esac
 	elif [ -n "$src_attrs" ]; then
