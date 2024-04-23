@@ -5,18 +5,29 @@ partNum2Dev(){
 	declare -A to_mount_cand
 	local to_mount
 	local src="$1"
-	if [[ "$src" =~ ^[0-9]*$ ]];then
+	if [[ $src =~ ^[0-9]+$ ]];then
 		if [ -z "$EFI_UUID_ARG" ];then
 			if grep efi=UUID= /proc/cmdline > /dev/null;then
 				local tmp_uuid_arg="`cat /proc/cmdline|sed -r 's/^.*[[:space:]]efi=UUID=((\\\\|)['"'"'"]|)([0-9a-fA-F-]+)\1.*$/\3/g'`"
 				if [[ "$tmp_uuid_arg" =~ ^[0-9a-fA-F-]+$ ]];then
 					EFI_UUID_ARG=$tmp_uuid_arg
 				fi
-			elif grep ref_boot_uuid= /proc/cmdline > /dev/null;then
-				local tmp_boot_uuid_arg="`cat /proc/cmdline|sed -r 's/^.*[[:space:]]ref_boot_uuid=((\\\\|)['"'"'"]|)([0-9a-fA-F-]+)\1.*$/\3/g'`"
-				local boot_part=`blkid2 UUID=$tmp_boot_uuid_arg`
+			else
+				local boot_part
+				local tmp_boot_uuid_arg
+				if [ -n "$ref_boot_uuid" ]
+					tmp_boot_uuid_arg=$ref_boot_uuid
+				elif grep ref_boot_uuid= /proc/cmdline > /dev/null;then
+					tmp_boot_uuid_arg="`cat /proc/cmdline|sed -r 's/^.*[[:space:]]ref_boot_uuid=((\\\\|)['"'"'"]|)([0-9a-fA-F-]+)\1.*$/\3/g'`"
+				fi
+				boot_part=`blkid2 UUID=$tmp_boot_uuid_arg`
 				if [ -n "$boot_part" ];then
-					echo "${boot_part:0: -1}"$src
+					arr=($boot_part)
+					first=""
+					for drv in $arr[@]; do
+						echo -n "$first${drv:0: -1}"$src
+						first=" "
+					done
 					return 0
 				fi
 			fi

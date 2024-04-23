@@ -908,6 +908,21 @@ function ask_yes_no {
 }
 
 
+pqlist(){
+	local i
+	eval "
+		second=0
+		for i in \$$1[@]; do
+			if [ \$second = 1 ];then
+				echo -n ", "
+			fi
+			echo -n \"'\"$i\"'\"
+			second=1
+		done
+"
+}
+
+
 function which_dev_on {
 	local ret=$(df "$1" | tail -1 | awk '{print $1}')
 	if [ "$ret" = "none" ];then

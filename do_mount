@@ -24,6 +24,12 @@ function do_mount(){
 		fi
 		err $@
 	}
+	function _warn(){
+		if [ -n $verbose ];then
+			echo $@
+		fi
+		warn $@
+	}
 	function _mount(){
 		local msg="`mount $@ 2>&1`"
 		local ret=$?
@@ -53,6 +59,7 @@ function do_mount(){
 	local moptShift
 	local forceDegraded
 	local verbose
+	local ro_degraded_best
 	declare -A mopts
 	declare -A moptsNoDeg
 	declare -A moptsWithDeg
@@ -93,10 +100,25 @@ function do_mount(){
 			mopts[$i]=1
 		done
 	fi
-	i=${#all_args[@]}
-	if ((i > 2)); then
-		_die "extra arguments specified"
-	fi
+	local ag
+	local src
+	local dst
+	local src_attrs
+	for ag in ${all_args[@]}; do
+		if [ "$ag" = *=* ];then
+			if [ -n "$src" ];then
+				_die "extra arguments specified"
+			fi
+			src_attrs+=($ag)
+		elif (($#scr_attrs[@] > 0)) || [ -n "$src" ]; then
+			if [ -n "$dst" ];then
+				_die "extra arguments specified"
+			fi
+			dst="$ag"
+		else
+			src="$ag"
+		fi
+	done
 	local opts="${!opts[@]}"
 	for i in "${!mopts[@]}"; do
 		if [ "$i" != "degraded" ];then
@@ -113,131 +135,161 @@ function do_mount(){
 	mopts=$(joinopt "-o " , "${!mopts[@]}")
 	moptsNoDeg=$(joinopt "-o " , "${!moptsNoDeg[@]}")
 	moptsWithDeg=$(joinopt "-o " , "${!moptsWithDeg[@]}")
-	local src=${all_args[0]}
-	local dst=${all_args[1]}
 	declare -A to_mount_cand
 	local to_mount
-	require partNum2Dev
-	src=$(partNum2Dev $src)
-	if [ -b "$src" ];then
-		to_mount_cand[$src]=1
+	local srcs
+	if [[ $src =~ ^[0-9]*$ ]];then
+		require partNum2Dev
+		srcs=("$(partNum2Dev $src)")
+		case ((${#srcs[@]} > 1)); in
+			0)
+				_die "No disk detected."
+				;;
+			1)
+				info "found disk, '$srcs[0]'."
+				;;
+			*)
+				info "Multiple disks, $(pqlist $srcs) detected."
+				;;
+		esac
+	elif [ -n "$src_attrs" ]; then
+		local attr
+		local cline="blkid2"
+		for attr in src_attrs; do
+			if [[ $attr =~ ^([^=]+)=(.*)$ ]];then
+				cline="$cline $1=\"$2\""
+			fi
+		done
+		eval "srcs=(`$cline`)"
+		case ${#srcs[@]} in
+			0)
+				_die "No disk detected for $(pqlist src_attrs)"
+				;;
+			1)
+				info "found disk, '$srcs[0]' for $(pqlist src_attrs)."
+				;;
+			*)
+				_die "Multiple disks, $(pqlist $srcs) detected for $(pqlist src_attrs)"
+				;;
+		esac
+	elif [ ! -b "$src" -o ! -d "$src" ];then
+		_die "$src is not mountable."
 	else
-		to_mount=`blkid2 "$src"`
-		if [ -b "$to_mount" ];then
-			to_mount_cand[$to_mount]=1
+		srcs=($src)
+	fi
+	local multi=
+	for src in ${srcs[@]}; do
+		if ((${#srcs[@]} > 1));then
+			_info "Trying mount '${srcs[0]}' ..."
 		fi
-	fi
-	if [ -d "$src" ];then
-		opts[-B]=1
-	fi
-	if [ -e "$src" ];then
-		to_mount_cand[$(readlink -f "$src")]=1
-	fi
-	i=${#to_mount_cand[@]}
-	if [ "$i" = 0 ];then
-		_die "'$src' is not mountable source."
-	fi
-	if ((i > 1)); then
-		i=$(joinq ', ' "'" "${!to_mount_cand[@]}")
-		_die "'$src' is ambiguous. Candidates are $i"
-	fi
-	to_mount=${!to_mount_cand[@]}
-	local type=`blkid $to_mount|sed -r 's/.*TYPE="([^"]+)".*/\1/g'`
-	if [ -z "$type" ];then
-		_die "cannot detect filesystem of '$to_mount'."
-	fi
-	if [ "$type" = "swap" ];then
-		if [ -n "$dst" ];then
-			_err "cannot mount swap partition"
+		if [ -d "$src" ];then
+			opts[-B]=1
 		fi
-		if [ -n "$opts" -o -n "$mopts" ];then
-			_err "cannot use option for swap partition"
+		local type=`blkid $src|sed -r 's/.*TYPE="([^"]+)".*/\1/g'`
+		if [ -z "$type" ];then
+			_err "cannot detect filesystem of '$to_mount'."
+			continue
 		fi
-		exit_if_err
-		swapon $to_mount
-	else
-		if [ -z "$dst" ];then
-			_die "mount point is not specified."
-		fi
-		if [ ! -d "$dst" ];then
-			if [ -e "$dst" ];then
-				_die "'$dst' is not a directory."
+		local hasErr
+		if [ "$type" = "swap" ];then
+			if [ -n "$dst" ];then
+				hasErr=1
+				_err "cannot mount swap partition"
 			fi
-			mkdir -p "$dst"
-		fi
-		local res
-		if [ "$type" = "btrfs" ];then
-			if [ ! -e /dev/btrfs-control ];then
-				if [ "`id -u`" = 0 ];then
-					mknod /dev/btrfs-control c 10 234
-				fi
+			if [ -n "$opts" -o -n "$mopts" ];then
+				hasErr=1
+				_err "cannot use option for swap partition"
 			fi
-			if [ "`id -u`" = 0 ];then
-				if [ -x /usr/bin/btrfs -o -x /bin/btrfs ];then
-					btrfs device scan > /dev/null 2>/dev/null
-				else
-					warn "'btrfs', not found"
-				fi
-			fi
-
-			local devices=("`blkid2 --get-siblings $to_mount`")
-			dbv "$?"
-			if [ "$?" != 0 -o "${#devices[@]}" = 0 ];then
-				dbv "${#devices[@]}"
-				_die "'blkid2 --get-siblings $to_mount' failed"
-			fi
-			local dev
-			local devOptArgs
-			for dev in ${devices[@]};do
-				if [ -z "$devOptArgs" ];then
-					devOptArgs="device=$dev"
-				else
-					devOptArgs="$devOptArgs,device=$dev"
-				fi
-			done
-			if [ -z "$moptsNoDeg" ];then
-				moptsNoDeg="-o "$devOptArgs
-			else
-				moptsNoDeg="$moptsNoDeg,$devOptArgs"
-			fi
-			if [ -z "$moptsWithDeg" ];then
-				moptsWithDeg="-o "$devOptArgs
-			else
-				moptsWithDeg="$moptsWithDeg,$devOptArgs"
-			fi
-			if [ -z "$forceDegraded" ];then
-				local i=0
-				while ! _mount $opts $moptsNoDeg $to_mount $dst;do
-					if [ $i = 0 ];then
-						info_n retrying .
-					else
-						echo -n .
-					fi
-					i=$((i + 1))
-					if [ $i = 5 ];then
-						echo
-						_mount $opts $moptsWithDeg $to_mount $dst
-						res=$?
-						if [ "$res" = 0 ];then
-							_warn "Mounted degraded drive."
-						fi
-						break
-					fi
-					sleep 2
-				done
-				res=$?
-			else
-				_mount $opts $moptsWithDeg $to_mount $dst
-				res=$?
+			if [ -z "$hasErr" ];then
+				swapon $to_mount
+				return $?
 			fi
 		else
-			_mount $opts $mopts $to_mount $dst
-			res=$?
+			if [ -z "$dst" ];then
+				_die "mount point is not specified."
+			fi
+			if [ ! -d "$dst" ];then
+				if [ -e "$dst" ];then
+					_die "'$dst' is not a directory."
+				fi
+				mkdir -p "$dst"
+			fi
+			local res
+			if [ "$type" = "btrfs" ];then
+				if [ ! -e /dev/btrfs-control ];then
+					if [ "`id -u`" = 0 ];then
+						mknod /dev/btrfs-control c 10 234
+					fi
+				fi
+				if [ "`id -u`" = 0 ];then
+					if [ -x /usr/bin/btrfs -o -x /bin/btrfs ];then
+						btrfs device scan > /dev/null 2>/dev/null
+					else
+						warn "'btrfs', not found"
+					fi
+				fi
+
+				local devices=("`blkid2 --get-siblings $to_mount`")
+				dbv "$?"
+				if [ "$?" != 0 -o "${#devices[@]}" = 0 ];then
+					dbv "${#devices[@]}"
+					_die "'blkid2 --get-siblings $to_mount' failed"
+				fi
+				local dev
+				local devOptArgs
+				for dev in ${devices[@]};do
+					if [ -z "$devOptArgs" ];then
+						devOptArgs="device=$dev"
+					else
+						devOptArgs="$devOptArgs,device=$dev"
+					fi
+				done
+				if [ -z "$moptsNoDeg" ];then
+					moptsNoDeg="-o "$devOptArgs
+				else
+					moptsNoDeg="$moptsNoDeg,$devOptArgs"
+				fi
+				if [ -z "$moptsWithDeg" ];then
+					moptsWithDeg="-o "$devOptArgs
+				else
+					moptsWithDeg="$moptsWithDeg,$devOptArgs"
+				fi
+				if [ -z "$forceDegraded" ];then
+					local i=0
+					while ! _mount $opts $moptsNoDeg $to_mount $dst;do
+						if [ $i = 0 ];then
+							info_n retrying .
+						else
+							echo -n .
+						fi
+						i=$((i + 1))
+						if [ $i = 5 ];then
+							echo
+							_mount $opts $moptsWithDeg $to_mount $dst
+							res=$?
+							if [ "$res" = 0 ];then
+								_warn "Mounted degraded drive."
+							fi
+							break
+						fi
+						sleep 2
+					done
+					res=$?
+				else
+					_mount $opts $moptsWithDeg $to_mount $dst
+					res=$?
+				fi
+			else
+				_mount $opts $mopts $to_mount $dst
+				res=$?
+			fi
+			if [ "$res" != "0" ];then
+				err "cannot mount $to_mount on $dst"
+			else
+				return $res
+			fi
 		fi
-		if [ "$res" != "0" ];then
-			_die "cannot mount $to_mount on $dst"
-		fi
-	fi
+	done
 }
 
 
