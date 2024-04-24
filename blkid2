@@ -38,67 +38,32 @@ function _reg_b_device(){
 
 
 function blkid2(){
-	local DEBUG=
-	dbv
-	declare -A dev_path
-	
-	#recursive_path _reg_b_device /dev
-	local key
-	local devs
-
-	local args=()
-	dbv blkid2 $@
-	__readlink(){
-		for i in "$@"; do
-			readlink -f $i
-		done
-	}
-	local local=$RANDOM$RANDOM$RANDOM
-	local PATH=/sbin:/usr/sbin:/bin:/usr/bin
-
-	local opts=()
-	local get_sibling
-	while (( "$#" )); do
-		if [ "${1:0:1}" = "-" ];then
-			opts+=("$1")
-			if [ $1 = "--get-siblings" ];then
-				get_sibling=1
-			fi
-		else
-			args+=("$1")
-		fi
-		shift
-	done
-
-	if [ ${#args[@]} -ge 2 ];then
-		die "multiple arguments specified"
-	fi
-	
-	
-	
-	local i
-
-	if [ -d /dev/disk/by-id ];then
-		local IDnDEVs_id=(`ls /dev/disk/by-id`)
-		local IDnDEVs_dev=($(__readlink `ls /dev/disk/by-id/*`))
-		local IDnDEVs_n=${#IDnDEVs_id[@]}
-	else
-		warn "/dev/disk/by-id not found"
-	fi
-	
-	if [ -d /dev/disk/by-path ];then
-		local PATHnDEVs_path=(`ls /dev/disk/by-path`)
-		local PATHnDEVs_dev=($(__readlink `ls /dev/disk/by-path/*`))
-		local PATHnDEVs_n=${#PATHnDEVs_path[@]}
-	else
-		warn "/dev/disk/by-path not found"
-	fi
-
+	local recreate
+	local BLKID_CACHE
+	local BLKID2_CACHE
 	declare -A local blkids
+	local CACHE
+	
+	
+	if [ -e "$SCRIPT_VAR_DIR/cache/blkid" -a -e "$SCRIPT_VAR_DIR/cache/blkid2" ];then
+		BLKID_CACHE="`cat $SCRIPT_VAR_DIR/cache/blkid`"
+		BLKID2_CACHE="`cat $SCRIPT_VAR_DIR/cache/blkid2`"
+		if [ "`/sbin/blkid`" != "$BLKID_CACHE" ];then
+			echo recreating ...
+			recreate=1
+			CACHE="$BLKID_CACHE"
+		else
+			CACHE="$BLKID2_CACHE"
+		fi
+	else
+		CACHE="`blkid`"
+		recreate=1
+	fi
 
 	local blkids_arr
-	split blkids_arr "`blkid`" "
+	split blkids_arr "$CACHE" "
 "
+
 	dbv
 	local_fun add_blist <<'	}'
 		dbv
@@ -115,86 +80,153 @@ function blkid2(){
 		dbv $i
 		local_call add_blist $i
 	done
-	
-	local dev
 
-	for dev in ${!blkids[@]}; do
-		_reg_b_device -f $dev
-	done
-	for key in ${!dev_path[@]};do
-		devs+=("${dev_path[$key]}")
-	done
-	dbv ${devs[@]}
-	local label
-	
-	__contain_entry(){
-		dbv $2 $3
-		if [ $1 = *" $2=$3 "* ];then
-			return 0
-		elif [ $1 = *" $2=\"$3\" "* ];then
-			return 0
-		elif [ $1 = *" $2='$3' "* ];then
-			return 0
-		fi
-		return 1
-	}
-	
-	local bc
 
-	dbv 11111
-	local_fun by_lsblk << '	}'
-		local AttName
-		local val
-		dbv $1 $2
-		if [ -n "$2" ];then
-			AttName="$2"
-		else
-			AttName="$1"
-		fi
-		for dev in ${devs[@]}; do
-			val="$(lsblk -o $1 $dev | sed -n 2p)"
-			if [ -n "$val" ]; then
-				dbv $AttName "$val"
-				bc=${blkids[$dev]}
-				if ! __contain_entry bc $AttName "$val"; then
-					if [ -z "$bc" ];then
-						bc="$dev:"
-					fi
-					blkids[$dev]="$bc $AttName=\"$(echo "$val"|xargs)\""
-					dbv ${blkids[$dev]}
+	if [ -n "$recreate" ];then
+		dbv
+		declare -A dev_path
+		
+		recursive_path _reg_b_device /dev
+		local key
+		local devs
+
+		local args=()
+		dbv blkid2 $@
+		__readlink(){
+			for i in "$@"; do
+				readlink -f $i
+			done
+		}
+		local local=$RANDOM$RANDOM$RANDOM
+		local PATH=/sbin:/usr/sbin:/bin:/usr/bin
+
+		local opts=()
+		local get_sibling
+		while (( "$#" )); do
+			if [ "${1:0:1}" = "-" ];then
+				opts+=("$1")
+				if [ $1 = "--get-siblings" ];then
+					get_sibling=1
 				fi
+			else
+				args+=("$1")
 			fi
+			shift
 		done
-	}
-	dbv
-	local_call by_lsblk TYPE DEV_TYPE # DEV_TYPE=disk or partition
-	local item
-	for item in NAME KNAME PKNAME VENDOR MODEL SERIAL WWN REV; do
-		local_call by_lsblk $item
-	done
 
-	if [ -n "$IDnDEVs_n" ];then
-		for ((i = 0; i < $IDnDEVs_n ; i++)); do
-			dev=${IDnDEVs_dev[$i]}
-			bc=${blkids[$dev]}
-			if [ -z "$bc" ];then
-				bc="$dev: "
-			fi
-			blkids[$dev]="$bc ID=\""${IDnDEVs_id[$i]}'"'
-		done
-	fi
-	if [ -n "$PATHnDEVs_n" ];then
+		if [ ${#args[@]} -ge 2 ];then
+			die "multiple arguments specified"
+		fi
+		
+		
+		
+		local i
+
+		if [ -d /dev/disk/by-id ];then
+			local IDnDEVs_id=(`ls /dev/disk/by-id`)
+			local IDnDEVs_dev=($(__readlink `ls /dev/disk/by-id/*`))
+			local IDnDEVs_n=${#IDnDEVs_id[@]}
+		else
+			warn "/dev/disk/by-id not found"
+		fi
+		
 		if [ -d /dev/disk/by-path ];then
-			for ((i = 0; i < $PATHnDEVs_n ; i++)); do
-				dev=${PATHnDEVs_dev[$i]}
+			local PATHnDEVs_path=(`ls /dev/disk/by-path`)
+			local PATHnDEVs_dev=($(__readlink `ls /dev/disk/by-path/*`))
+			local PATHnDEVs_n=${#PATHnDEVs_path[@]}
+		else
+			warn "/dev/disk/by-path not found"
+		fi
+
+
+		
+		local dev
+
+		for dev in ${!blkids[@]}; do
+			_reg_b_device -f $dev
+		done
+		for key in ${!dev_path[@]};do
+			devs+=("${dev_path[$key]}")
+		done
+		dbv ${devs[@]}
+		local label
+		
+		__contain_entry(){
+			dbv $2 $3
+			if [ $1 = *" $2=$3 "* ];then
+				return 0
+			elif [ $1 = *" $2=\"$3\" "* ];then
+				return 0
+			elif [ $1 = *" $2='$3' "* ];then
+				return 0
+			fi
+			return 1
+		}
+		
+		local bc
+
+		dbv 11111
+		local_fun by_lsblk << '		}'
+			local AttName
+			local val
+			dbv $1 $2
+			if [ -n "$2" ];then
+				AttName="$2"
+			else
+				AttName="$1"
+			fi
+			for dev in ${devs[@]}; do
+				val="$(lsblk -o $1 $dev | sed -n 2p)"
+				if [ -n "$val" ]; then
+					dbv $AttName "$val"
+					bc=${blkids[$dev]}
+					if ! __contain_entry bc $AttName "$val"; then
+						if [ -z "$bc" ];then
+							bc="$dev:"
+						fi
+						blkids[$dev]="$bc $AttName=\"$(echo "$val"|xargs)\""
+						dbv ${blkids[$dev]}
+					fi
+				fi
+			done
+		}
+		dbv
+		local_call by_lsblk TYPE DEV_TYPE # DEV_TYPE=disk or partition
+		local item
+		for item in NAME KNAME PKNAME VENDOR MODEL SERIAL WWN REV; do
+			local_call by_lsblk $item
+		done
+
+		if [ -n "$IDnDEVs_n" ];then
+			for ((i = 0; i < $IDnDEVs_n ; i++)); do
+				dev=${IDnDEVs_dev[$i]}
 				bc=${blkids[$dev]}
 				if [ -z "$bc" ];then
 					bc="$dev: "
 				fi
-				blkids[$dev]="$bc PATH=\""${PATHnDEVs_path[$i]}'"'
+				blkids[$dev]="$bc ID=\""${IDnDEVs_id[$i]}'"'
 			done
 		fi
+		if [ -n "$PATHnDEVs_n" ];then
+			if [ -d /dev/disk/by-path ];then
+				for ((i = 0; i < $PATHnDEVs_n ; i++)); do
+					dev=${PATHnDEVs_dev[$i]}
+					bc=${blkids[$dev]}
+					if [ -z "$bc" ];then
+						bc="$dev: "
+					fi
+					blkids[$dev]="$bc PATH=\""${PATHnDEVs_path[$i]}'"'
+				done
+			fi
+		fi
+		
+		mkdir -m 0777 -p "$SCRIPT_VAR_DIR/cache"
+		echo "$BLKID_CACHE" > "$SCRIPT_VAR_DIR/cache/blkid"
+		for bc in "${blkids[@]}";do
+			echo "${bc}"
+		done | sort > "$SCRIPT_VAR_DIR/cache/blkid2"
 	fi
+	
 	declare -A local uuid_list
 	declare -A local dev2VarNameSibs
 	local varNameSibs # use transformed uuid (tr - _) as variable name for array of siblings

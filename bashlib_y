@@ -356,34 +356,40 @@ debug(){
 }
 
 
-for col in `echo $allColors`; do
-	eval '
-		'$col'="\033[3$'_$col'""m"
-		function '$col'_n(){
-			echo -ne "\033[3$'_$col'""m''$@''$plain"
-		}
-		function '$col'(){
-			'$col'_n $@"\n"
-		}
-		function bg'`capitalize $col`'_n(){
-			echo -ne "\033[4$'_$col'""m''$@''$plain"
-		}
-		function bg'`capitalize $col`'(){
-			bg'`capitalize $col`'_n $@"\n"
-		}
-	'
-	for bgCol in $allColors; do
-		eval '
-			function '$col'Bg'`capitalize $bgCol`'_n(){
-				echo -ne "\033[3$'_$col'""m\033[4$'_$bgCol'""m''$@''$plain"
+if [ ! -e "/var/tmp/bashlib_y/allColors" -o "`cat /var/tmp/bashlib_y/allColors`" != "`echo $allColors`" ];then
+	mkdir -m 0777 /var/tmp/bashlib_y
+	echo $allColors > /var/tmp/bashlib_y/allColors
+	echo -n > /var/tmp/bashlib_y/allColors.src
+	for col in `echo $allColors`; do
+		echo '
+			'$col'="\033[3$'_$col'""m"
+			function '$col'_n(){
+				echo -ne "\033[3$'_$col'""m''$@''$plain"
 			}
-			function '$col'Bg'`capitalize $bgCol`'(){
-				'$col'Bg'`capitalize $bgCol`'_n $@
+			function '$col'(){
+				'$col'_n $@"\n"
 			}
-		'
+			function bg'`capitalize $col`'_n(){
+				echo -ne "\033[4$'_$col'""m''$@''$plain"
+			}
+			function bg'`capitalize $col`'(){
+				bg'`capitalize $col`'_n $@"\n"
+			}
+		' >> /var/tmp/bashlib_y/allColors.src
+		for bgCol in $allColors; do
+			echo '
+				function '$col'Bg'`capitalize $bgCol`'_n(){
+					echo -ne "\033[3$'_$col'""m\033[4$'_$bgCol'""m''$@''$plain"
+				}
+				function '$col'Bg'`capitalize $bgCol`'(){
+					'$col'Bg'`capitalize $bgCol`'_n $@
+				}
+			' >> /var/tmp/bashlib_y/allColors.src
+		done
 	done
-done
-
+else
+	. /var/tmp/bashlib_y/allColors.src
+fi
 
 function exit_if_err(){
 	if (("$#"));then
