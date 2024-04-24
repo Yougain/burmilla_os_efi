@@ -12,14 +12,10 @@ function do_mount(){
 		fi
 	}
 	function _die(){
-		if [ -n "$verbose" ];then
-			die $@
-		fi
+		die $@
 	}
 	function _err(){
-		if [ -n "$verbose" ];then
-			err $@
-		fi
+		err $@
 	}
 	function _warn(){
 		if [ -n "$verbose" ];then
@@ -36,17 +32,16 @@ function do_mount(){
 		else
 			if echo $msg|grep "wrong fs" > /dev/null;then
 				if [ "$type" = "btrfs" ]; then
-					_info mount failed / mount $@
-					return 1
+					err mount failed : mount $@
 				fi
 				err $msg
 				ret=1
 			fi
 		fi
 		if [ "$ret" = "0" ];then
-			info mount successful / mount $@
+			info mount successful : mount $@
 		else
-			err mount failed / mount $@
+			err mount failed : mount $@
 		fi
 		return $ret
 	}
@@ -110,18 +105,22 @@ function do_mount(){
 	local dst
 	local src_attrs
 	for ag in ${all_args[@]}; do
-		if [ "$ag" = *=* ];then
+		dbv $ag
+		if [[ $ag =~ = ]];then
+			dbv
 			if [ -n "$src" ];then
 				_die "extra arguments specified"
 			fi
 			src_attrs+=($ag)
-		elif ((${#scr_attrs[@]} > 0)) || [ -n "$src" ]; then
+		elif ((${#src_attrs[@]} > 0)) || [ -n "$src" ]; then
+			dbv
 			if [ -n "$dst" ];then
 				_die "extra arguments specified"
 			fi
 			dst="$ag"
 		else
-			src="$ag"
+			dbv
+			dst="$ag"
 		fi
 	done
 	local opts="${!opts[@]}"
@@ -147,7 +146,7 @@ function do_mount(){
 	moptsWithDeg=$(joinopt "-o " , "${!moptsWithDeg[@]}")
 	declare -A to_mount_cand
 	local srcs
-	if [[ $src =~ ^[0-9]*$ ]];then
+	if [[ $src =~ ^[0-9]+$ ]];then
 		require partNum2Dev
 		dbv $src
 		srcs=($(partNum2Dev $src))
@@ -163,28 +162,37 @@ function do_mount(){
 				;;
 		esac
 	elif [ -n "$src_attrs" ]; then
+		dbv
 		local attr
 		local cline="blkid2"
-		for attr in src_attrs; do
+		for attr in ${src_attrs[@]}; do
+			dbv $attr
 			if [[ $attr =~ ^([^=]+)=(.*)$ ]];then
-				cline="$cline $1=\"$2\""
+				cline="$cline ${BASH_REMATCH[1]}=\"${BASH_REMATCH[2]}\""
+				dbv "$cline"
 			fi
 		done
-		eval "srcs=(`$cline`)"
+		dbv "$cline"
+		eval "srcs=(\`$cline\`)"
 		case ${#srcs[@]} in
 			0)
+				dbv
 				_die "No disk detected for $(pqlist src_attrs)"
 				;;
 			1)
+				dbv
 				_info "found disk, '$srcs[0]' for $(pqlist src_attrs)."
 				;;
 			*)
-				_die "Multiple disks, $(pqlist $srcs) detected for $(pqlist src_attrs)"
+				dbv ${#srcs[@]}
+				_die "Multiple disks, $(pqlist srcs) detected for $(pqlist src_attrs)"
 				;;
 		esac
-	elif [ ! -b "$src" -o ! -d "$src" ];then
+	elif [ ! -b "$src" -a ! -d "$src" ];then
+		dbv $src
 		_die "$src is not mountable."
 	else
+		dbv
 		srcs=($src)
 	fi
 	local multi=
@@ -222,7 +230,9 @@ function do_mount(){
 				if [ -e "$dst" ];then
 					_die "'$dst' is not a directory."
 				fi
+				dbv $dst
 				mkdir -p "$dst"
+				dbv
 			fi
 			local res
 			if [ "$type" = "btrfs" ];then

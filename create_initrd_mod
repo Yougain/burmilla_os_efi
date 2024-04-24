@@ -448,6 +448,7 @@ $libs"
 		mv
 		vim
 		less
+		hostname
 	END
 	mkdir -p ./idev # for logger
 	mknod ./idev/null c 1 3
