@@ -140,7 +140,6 @@ boot_id(){
 	chmod 777 /tmp/$f
 	mkdir -p /tmp/$f/boot_id
 	chmod 777 /tmp/$f/boot_id
-	echo /tmp/$f/boot_id
 	for idf in /tmp/$f/boot_id/*; do
 		if [ -e "$idf" ];then
 			idft=${idf##*@}
