@@ -94,13 +94,30 @@ END
 				do_mount -v --salvage-btrfs 7 /mnt
 			fi
 			if [ ! -e /mnt/var/lib/rancher/conf/cloud-config.yml ];then
-				bash -i
+				drvs=(`blkid | grep $ref_boot_uuid | awk '{print $1}'`)
+				for drv in ${drvs[@]}; do
+					drv=${drv%??}
+					if mount -o degraded,ro $drv"5" /mnt; then
+						break
+					fi
+				done
+				if [ -L /mnt/var/lib/rancher/conf ]; then
+					umount /mnt
+					for drv in ${drvs[@]}; do
+						drv=${drv%??}
+						if mount -o degraded,ro $drv"7" /mnt; then
+							break
+						fi
+					done
+				fi
 			fi
-			cp /mnt/var/lib/rancher/conf/cloud-config.yml /var/lib/rancher/conf
-			cp /mnt/var/lib/rancher/conf/cloud-config.d/user_config.yml /var/lib/rancher/conf/cloud-config.d
-			umount /mnt
-			yq e -i 'del(.runcmd)' /var/lib/rancher/conf/cloud-config.d/user_config.yml
-			yq e -i '.runcmd.[0]|="cp /opt/initrd/etc/localtime /etc"' /var/lib/rancher/conf/cloud-config.d/user_config.yml
+			if [ -e /mnt/var/lib/rancher/conf/cloud-config.yml ];then
+				cp /mnt/var/lib/rancher/conf/cloud-config.yml /var/lib/rancher/conf
+				cp /mnt/var/lib/rancher/conf/cloud-config.d/user_config.yml /var/lib/rancher/conf/cloud-config.d
+				umount /mnt
+				yq e -i 'del(.runcmd)' /var/lib/rancher/conf/cloud-config.d/user_config.yml
+				yq e -i '.runcmd.[0]|="cp /opt/initrd/etc/localtime /etc"' /var/lib/rancher/conf/cloud-config.d/user_config.yml
+			fi
 		fi
 	elif [ -n "$INITRD_MOUNT" -a "$(stat -f -c '%T' /opt)" = "ramfs" ];then
 		mkdir -p /opt/initrd

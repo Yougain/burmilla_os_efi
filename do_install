@@ -103,9 +103,18 @@ ${to_inst##*/} \$@
 										if [ -n "$sid" ];then
 											local IFS=""
 											eval 'echo -E "${'$sid'[*]}"'  | $sudo tee "$d/usr/share/$SUPPORT_LIB_NAME/${f##*/}" > /dev/null
+											chmod -x "$d/usr/share/$SUPPORT_LIB_NAME/${f##*/}"
 											echo "#!/bin/bash
-source /usr/share/bashlib_y/bashlib_y
-source /usr/share/bashlib_y/${f##*/}
+if [ -e ./bashlib_y ];then
+	source ./bashlib_y
+else
+	source /usr/share/bashlib_y/bashlib_y
+fi
+if [ -e ./${f##*/} ];then
+	source ./${f##*/}
+else
+	source /usr/share/bashlib_y/${f##*/}
+fi
 
 $fn \$@
 

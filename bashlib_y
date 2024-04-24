@@ -1,5 +1,6 @@
 #!/bin/bash
 
+
 function env_var(){
 	local ln
 	local tmp
@@ -52,6 +53,18 @@ __FILE_NAME__(){
 }
 
 
+if [ -z "$SSH_PARAM_LIST" ];then
+	if [ $0 != */* ];then
+		if [ -e ./$(__FILE_NAME__) ];then
+			if [ $(realpath ./$(__FILE_NAME__)) != $(__FILE__) ];then
+				. ./$(__FILE_NAME__)
+				exit $?
+			fi
+		fi
+	fi
+fi
+
+
 __FILE_DIR__(){
 	local f="`__FILE__ 1`"
 	echo "${f%/*}"
@@ -73,6 +86,7 @@ __SOURCE_NAME__(){
 	local f="`__SOURCE_PATH__`"
 	echo "${f##*/}"
 }
+
 
 
 PATH=/usr/share/$(__FILE_NAME__)/:$PATH
@@ -112,49 +126,125 @@ function split(){
 }
 
 
+boot_id(){
+	local uptime_seconds=$(cat /proc/uptime | awk '{print $1}')
+	local current_seconds=$(date +%s%N)
+	current_seconds=${current_seconds%???????}
+	uptime_seconds=${uptime_seconds%???}${uptime_seconds: -2}
+	local boot_time=$((current_seconds - uptime_seconds))
+	local f="`__FILE_NAME__`"
+	local idf
+	local idft
+	local dif
+	mkdir -p /tmp/$f
+	chmod 777 /tmp/$f
+	mkdir -p /tmp/$f/boot_id
+	chmod 777 /tmp/$f/boot_id
+	echo /tmp/$f/boot_id
+	for idf in /tmp/$f/boot_id/*; do
+		if [ -e "$idf" ];then
+			idft=${idf##*@}
+			dif=$((idft - boot_time))
+			if ((-1000 < dif && dif < 1000));then
+				export BOOT_ID=${idf##*/}
+				return
+			fi
+		fi
+	done
+	# first use after boot
+	idf=/tmp/$f/boot_id/`hostname -f`-$RANDOM$RANDOM@$boot_time
+	touch $idf
+	chmod 777 $idf
+	export BOOT_ID=${idf##*/}
+	local f="`__FILE_NAME__`"
+	local t
+	echo $BOOT_ID
+	# cleanup old tmp dir
+	for d in /tmp/$f/*; do
+		for d2 in $d/*; do
+			for tmpd in $d2/*; do
+				if [ -d "$tmpd" ];then
+					t=${tmpd##*@}
+					if ((t < boot_time)); then
+						rm -rf $tmpd
+					fi
+				fi
+			done
+		done
+	done
+}
+
+
+tmp_dir(){
+	boot_id
+	local f="`__FILE_NAME__`"
+	local start_time=$(cat /proc/$$/stat | awk '{print $22}')
+	start_time=$((${BOOT_ID##*@} + start_time))
+	mkdir -p /tmp/$f/*
+	local pt
+	for d in /tmp/$f/*; do
+		for d2 in $d/*; do
+			for tmpd in $d2/*-$$@*; do
+				if [ -d "$tmpd" ];then
+					pt=${tmpd##*@}
+					dif=$((pt - start_time))
+					if ((-100 < dif && dif < 100));then
+						SCRIPT_TMP_DIR=$tmpd
+						SCRIPT_ID=${tmpd##*-}
+						SCRIPT_VAR_DIR=/var/tmp/$f
+						# already initialized
+						return 1
+					fi
+				fi
+			done
+		done
+	done
+	mkdir -p /tmp/$f
+	chmod 777 /tmp/$f
+	mkdir -p /tmp/$f/${0##*/}
+	chmod 777 /tmp/$f/${0##*/}
+	SCRIPT_TMP_DIR=/tmp/$f/${0##*/}/`date +"%y-%m-%d_%H-%M-%S.%N%z"`-$$@$start_time
+	SCRIPT_ID=$$@$start_time
+	if ! mkdir -p $SCRIPT_TMP_DIR; then
+		echo -e "$error"Cannot create script temporary directory. Terminated.$normal
+		exit 1
+	fi
+	SCRIPT_VAR_DIR=/var/tmp/$f
+	if ! mkdir -p $SCRIPT_TMP_DIR; then
+		chmod 777 $SCRIPT_VAR_DIR
+		echo -e "$error"cannot create script dir$normal
+		exit 1
+	fi
+	if [ -n "$SUDO_USER" -a -e "/etc/passwd" ];then
+		if egrep "^$SUDO_USER:" "/etc/passwd" > /dev/null; then
+			chown -R "$SUDO_USER" $SCRIPT_TMP_DIR
+			chown -R "$SUDO_USER" $SCRIPT_VAR_DIR
+		fi
+	fi
+	local lnk=$SCRIPT_TMP_DIR/../latest
+	if [ -n "$DEBUG" ];then
+		echo -e "$debug"\$SCRIPT_TMP_DIR = $SCRIPT_TMP_DIR"$normal"
+	fi
+	rm -f $lnk
+	if [ -n "$DEBUG" ];then
+		ln -sf $SCRIPT_TMP_DIR $lnk
+		if [ -n "$SUDO_USER" -a -e "/etc/passwd" ];then
+			chown "$SUDO_USER" $lnk
+		fi
+	fi
+	return 0
+}
+
+
+
 initialize_support_lib(){
 	if [ -z "$SSH_PARAM_LIST" ];then
 		declare -A SSH_PARAM_LIST
 		if [ -n "$DEBUG" ];then
 			declare -p SSH_PARAM_LIST
 		fi
-		local f="`__FILE_NAME__`"
-		if [ ! -d /tmp/$f ]; then
-			mkdir -p /tmp/$f
-			chmod 777 /tmp/$f
-		fi
-		if [ ! -d /tmp/$f/${0##*/} ];then
-			mkdir -p /tmp/$f/${0##*/}
-			chmod 777 /tmp/$f/${0##*/}
-		fi
-		SCRIPT_TMP_DIR=/tmp/$f/${0##*/}/`date +"%y-%m-%d_%H-%M-%S.%N%z"`-$$
-		SCRIPT_VAR_DIR=/var/tmp/$f
-		if ! mkdir -p $SCRIPT_TMP_DIR; then
-			echo -e "$error"cannot create script dir$normal
-			exit 1
-		fi
-		if ! mkdir -p $SCRIPT_VAR_DIR; then
-			echo -e "$error"cannot create script var dir$normal
-			exit 1
-		fi
-		if [ -n "$SUDO_USER" -a -e "/etc/passwd" ];then
-			if egrep "^$SUDO_USER:" "/etc/passwd" > /dev/null; then
-				chown -R "$SUDO_USER" $SCRIPT_TMP_DIR
-				chown -R "$SUDO_USER" $SCRIPT_VAR_DIR
-			fi
-		fi
-		local lnk=$SCRIPT_TMP_DIR/../latest
-		if [ -n "$DEBUG" ];then
-			echo -e "$debug"\$SCRIPT_TMP_DIR = $SCRIPT_TMP_DIR"$normal"
-		fi
-		rm -f $lnk
-		if [ -n "$DEBUG" ];then
-			ln -sf $SCRIPT_TMP_DIR $lnk
-			if [ -n "$SUDO_USER" -a -e "/etc/passwd" ];then
-				chown "$SUDO_USER" $lnk
-			fi
-		fi
-		SCRIPT_ID=$RANDOM$RANDOM$RANDOM
+		tmp_dir
+		ret=$?
 		if [ -n "$DEBUG" ];then
 			declare -p SCRIPT_ID
 		fi
@@ -162,9 +252,8 @@ initialize_support_lib(){
 		SUPPORT_LIB_MTIME="`stat $(__FILE__) -c %Y`"
 		SUPPORT_LIB_NAME=$f
 		SOURCES_LOADED=()
-		return 0
+		return $ret
 	else
-	
 		return 1
 	fi
 }
@@ -994,7 +1083,7 @@ fi
 dbv ${BASH_SOURCE[@]}
 dbv `declare -p SSH_PARAM_LIST`
 
-if [ "`readlink -f ${BASH_SOURCE[$((${#BASH_SOURCE[@]} - 1))]}`" = "$(__FILE_PATH__)" ];then
+if [ "`readlink -f ${BASH_SOURCE[-1]}`" = "$(__FILE_PATH__)" ];then
 	if [ "$(__FILE_NAME__)" = "$(__CMD_NAME__)" ];then
 		if [[ "$1" =~ / ]]; then # with path
 			"$@"
