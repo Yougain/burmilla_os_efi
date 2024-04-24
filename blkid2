@@ -51,7 +51,8 @@ function blkid2(){
 		if [ "`/sbin/blkid`" != "$BLKID_CACHE" ];then
 			echo recreating ...
 			recreate=1
-			CACHE="$BLKID_CACHE"
+			CACHE="`/sbin/blkid`"
+			BLKID_CACHE="$CACHE"
 		else
 			CACHE="$BLKID2_CACHE"
 		fi
