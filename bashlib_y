@@ -169,7 +169,7 @@ boot_id(){
 							rm -rf $tmpd
 						fi
 					else
-						rm -rf $tmpd
+						sudo -n rm -rf $tmpd 2>/dev/null
 					fi
 				fi
 			done
