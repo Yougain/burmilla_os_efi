@@ -57,6 +57,7 @@ function blkid2(){
 		fi
 	else
 		CACHE="`/sbin/blkid`"
+		BLKID_CACHE="$CACHE"
 		recreate=1
 	fi
 
