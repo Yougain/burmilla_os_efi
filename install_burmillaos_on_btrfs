@@ -393,6 +393,8 @@ END
 
 
 ssh_sudo <<'END'
+	apt update
+	apt -y install btrfs-progs
 	part2Drv(){
 		if [[ ${!1} =~ ^(.+)[0-9]+$ ]]; then
 			eval "$1=${BASH_REMATCH[1]}"
@@ -400,9 +402,12 @@ ssh_sudo <<'END'
 	}
 	CMDLINE=`cat /proc/cmdline`
 	if [[ $CMDLINE =~ \ ref_boot_uuid=([^\ ]+) ]];then
-		DRV=`partNum2Drv`
-		part2Drv DRV
-		dbv $DRV
+		DRV=`do_mount --salvage-btrfs --echo-mounted UUID=${BASH_REMATCH[1]} /installing/ref_boot`
+		if [ -n "$DRV" ];then
+			umount /installing/ref_boot
+			part2Drv DRV
+			dbv $DRV
+		fi
 	fi
 	dbv $DRV
 	if [[ $CMDLINE =~ \ root=([^\ ]+) ]];then
@@ -459,13 +464,20 @@ if [ -n "$TARGET_DEV_ERRMSG" ];then
 	info "Terminated."
 	exit 1
 fi
-
+dbv
 if [ -n "$DRV" ];then
-	PARAMS="`extract_uc_params`"
-	eval "$PARAMS"
-	ssh_do sudo umount /installing/oem_part
-	if [ -n "$USER_CONFIG" ]; then
-		info "user_config.yml found in '$DRV"7"'"
+	dbv
+	ssh_sudo<<"END"
+		do_mount --salvage-btrfs $DRV"7" /installing/oem_part
+END
+	dbv
+	if [ $? = 0 ];then
+		PARAMS="`extract_uc_params`"
+		eval "$PARAMS"
+		ssh_sudo sudo umount /installing/oem_part
+		if [ -n "$USER_CONFIG" ]; then
+			info "user_config.yml found in '$DRV"7"'"
+		fi
 	fi
 fi
 
@@ -481,24 +493,26 @@ fi
 
 if [ -n "$DRV" ];then
 	if [ -n "$TARGET_DEV" ];then
-		whiteBgRed "'$TARGET_DEV' is not the reference disk, '$DRV' for getting parameters (IP, hostname, etc) for installation."
-		whiteBgRed_n "Still installing on '$TARGET_DEV' ? "
-		yellowBgRed_n  "[y/n]: "
-		echo -n " "
-		if ask_yes_no; then
-			info "Using '$TARGET_DEV', as target disk for installation."
-		else
-			whiteBgRed_n "Installing on '$DRV'? "
+		if [ "$DRV" != "$TARGET_DEV" ];then
+			whiteBgRed "'$TARGET_DEV' is not the reference disk, '$DRV' for getting parameters (IP, hostname, etc) for installation."
+			whiteBgRed_n "Still installing on '$TARGET_DEV' ? "
 			yellowBgRed_n  "[y/n]: "
+			echo -n " "
 			if ask_yes_no; then
-				TARGET_DEV=$DRV
-				info "Using '$DRV', as target disk for installation."
+				info "Using '$TARGET_DEV', as target disk for installation."
 			else
-				info "No disk chosen. User terminated."
-				info "Available disks are:"
-				echo "$ADISK_MSG."
-				info "Terminated."
-				exit 1
+				whiteBgRed_n "Installing on '$DRV'? "
+				yellowBgRed_n  "[y/n]: "
+				if ask_yes_no; then
+					TARGET_DEV=$DRV
+					info "Using '$DRV', as target disk for installation."
+				else
+					info "No disk chosen. User terminated."
+					info "Available disks are:"
+					echo "$ADISK_MSG."
+					info "Terminated."
+					exit 1
+				fi
 			fi
 		fi
 	else

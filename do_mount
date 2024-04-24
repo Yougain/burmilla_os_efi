@@ -40,6 +40,7 @@ function do_mount(){
 		fi
 		if [ "$ret" = "0" ];then
 			info mount successful : mount $@
+			echo $src
 		else
 			err mount failed : mount $@
 		fi
@@ -53,6 +54,7 @@ function do_mount(){
 	local verbose
 	local ro_degraded_best
 	local salvageBtrfs
+	local echoMounted
 	declare -A mopts
 	declare -A moptsNoDeg
 	declare -A moptsWithDeg
@@ -78,6 +80,9 @@ function do_mount(){
 			_die "both 'rw' and 'ro' mount option specified"
 		fi
 		mopts[ro]=1
+	fi
+	if opt --echo-mounted; then
+		echoMounted=1
 	fi
 	if opt --force-degraded; then
 		forceDegraded=1
@@ -120,7 +125,7 @@ function do_mount(){
 			dst="$ag"
 		else
 			dbv
-			dst="$ag"
+			src="$ag"
 		fi
 	done
 	local opts="${!opts[@]}"
@@ -248,8 +253,9 @@ function do_mount(){
 						warn "'btrfs', not found"
 					fi
 				fi
-				if [ -z "$salvageBtrfs#" ];then
-					local devices=("`blkid2 --get-siblings $src`")
+				local devices
+				devices=("`blkid2 --get-siblings $src`")
+				if [ -z "$salvageBtrfs" ];then
 					if [ "$?" != 0 -o "${#devices[@]}" = 0 ];then
 						dbv "${#devices[@]}"
 						_die "'blkid2 --get-siblings $src' failed"
@@ -305,9 +311,14 @@ function do_mount(){
 					dbv $res
 				fi
 			else
-				_mount $opts $mopts $src $dst
-				res=$?
-				dbv $res
+				for dev in ${devices[@]}; do
+					_mount $opts $mopts $src $dst
+					res=$?
+					if [ $res = 0 ];then
+						break
+					fi
+					dbv $res
+				done
 			fi
 			if [ "$res" == "0" ];then
 				dbv $?
