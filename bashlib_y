@@ -164,7 +164,11 @@ boot_id(){
 			for tmpd in $d2/*; do
 				if [ -d "$tmpd" ];then
 					t=${tmpd##*@}
-					if ((t < boot_time)); then
+					if [[ $t =~ ^[0-9]+$ ]]; then
+						if ((t < boot_time)); then
+							rm -rf $tmpd
+						fi
+					else
 						rm -rf $tmpd
 					fi
 				fi
