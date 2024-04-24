@@ -181,6 +181,10 @@ boot_id(){
 tmp_dir(){
 	boot_id
 	local f="`__FILE_NAME__`"
+	SUPPORT_LIB_CONTENT="`cat $(__FILE__)`"
+	SUPPORT_LIB_MTIME="`stat $(__FILE__) -c %Y`"
+	SUPPORT_LIB_NAME=$f
+	SOURCES_LOADED=()
 	local start_time=$(cat /proc/$$/stat | awk '{print $22}')
 	start_time=$((${BOOT_ID##*@} + start_time))
 	mkdir -p /tmp/$f/*
@@ -251,10 +255,6 @@ initialize_support_lib(){
 		if [ -n "$DEBUG" ];then
 			declare -p SCRIPT_ID
 		fi
-		SUPPORT_LIB_CONTENT="`cat $(__FILE__)`"
-		SUPPORT_LIB_MTIME="`stat $(__FILE__) -c %Y`"
-		SUPPORT_LIB_NAME=$f
-		SOURCES_LOADED=()
 		return $ret
 	else
 		return 1
