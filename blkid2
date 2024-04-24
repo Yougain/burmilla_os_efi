@@ -42,7 +42,7 @@ function blkid2(){
 	dbv
 	declare -A dev_path
 	
-	recursive_path _reg_b_device /dev
+	#recursive_path _reg_b_device /dev
 	local key
 	local devs
 
