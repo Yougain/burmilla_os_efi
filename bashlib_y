@@ -54,7 +54,7 @@ __FILE_NAME__(){
 
 
 if [ -z "$SSH_PARAM_LIST" ];then
-	if [ $0 != */* ];then
+	if ! [[ $0 =~ / ]];then
 		if [ -e ./$(__FILE_NAME__) ];then
 			if [ $(realpath ./$(__FILE_NAME__)) != $(__FILE__) ];then
 				. ./$(__FILE_NAME__)
