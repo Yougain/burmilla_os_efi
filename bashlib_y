@@ -157,7 +157,6 @@ boot_id(){
 	export BOOT_ID=${idf##*/}
 	local f="`__FILE_NAME__`"
 	local t
-	echo $BOOT_ID
 	# cleanup old tmp dir
 	for d in /tmp/$f/*; do
 		for d2 in $d/*; do

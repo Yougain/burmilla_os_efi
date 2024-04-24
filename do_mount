@@ -12,6 +12,7 @@ function do_mount(){
 		fi
 	}
 	function _die(){
+		dbv dying $@
 		die $@
 	}
 	function _err(){
@@ -155,6 +156,7 @@ function do_mount(){
 		require partNum2Dev
 		dbv $src
 		srcs=($(partNum2Dev $src))
+		dbv ${srcs[@]}
 		case ${#srcs[@]} in
 			0)
 				_die "No disk detected."
@@ -202,6 +204,7 @@ function do_mount(){
 	fi
 	local multi=
 	for src in ${srcs[@]}; do
+		dbv $src
 		if ((${#srcs[@]} > 1));then
 			_info "Trying mount '${srcs[0]}' ..."
 		fi
@@ -306,19 +309,19 @@ function do_mount(){
 						res=$?
 					fi
 				else
-					_mount $opts $mopts $src $dst
-					res=$?
-					dbv $res
+					for dev in ${devices[@]}; do
+						_mount $opts $mopts $dev $dst
+						res=$?
+						if [ $res = 0 ];then
+							break
+						fi
+						dbv $res
+					done
 				fi
 			else
-				for dev in ${devices[@]}; do
-					_mount $opts $mopts $src $dst
-					res=$?
-					if [ $res = 0 ];then
-						break
-					fi
-					dbv $res
-				done
+				_mount $opts $mopts $src $dst
+				res=$?
+				dbv $res
 			fi
 			if [ "$res" == "0" ];then
 				dbv $?

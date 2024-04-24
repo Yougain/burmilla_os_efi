@@ -335,6 +335,7 @@ END
 		local i
 		local d
 		while read item; do
+			info $item
 			local l=`sfind / -name $item|grep bin/|grep -v /home/|grep -v /root/|head -1`
 			local cmd
 			if [ -z "$l" ];then
