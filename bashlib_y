@@ -137,9 +137,9 @@ boot_id(){
 	local idft
 	local dif
 	mkdir -p /tmp/$f
-	sudo -n chmod 777 /tmp/$f > /dev/null
+	sudo -n chmod 777 /tmp/$f 2> /dev/null
 	mkdir -p /tmp/$f/boot_id
-	sudo -n chmod 777 /tmp/$f/boot_id > /dev/null
+	sudo -n chmod 777 /tmp/$f/boot_id 2> /dev/null
 	for idf in /tmp/$f/boot_id/*; do
 		if [ -e "$idf" ];then
 			idft=${idf##*@}
@@ -153,7 +153,7 @@ boot_id(){
 	# first use after boot
 	idf=/tmp/$f/boot_id/`hostname -f`-$RANDOM$RANDOM@$boot_time
 	touch $idf
-	sudo -n chmod 777 $idf > /dev/null
+	sudo -n chmod 777 $idf 2> /dev/null
 	export BOOT_ID=${idf##*/}
 	local f="`__FILE_NAME__`"
 	local t
