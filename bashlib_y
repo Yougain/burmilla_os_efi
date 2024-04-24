@@ -137,9 +137,9 @@ boot_id(){
 	local idft
 	local dif
 	mkdir -p /tmp/$f
-	chmod 777 /tmp/$f
+	sudo -n chmod 777 /tmp/$f > /dev/null
 	mkdir -p /tmp/$f/boot_id
-	chmod 777 /tmp/$f/boot_id
+	sudo -n chmod 777 /tmp/$f/boot_id > /dev/null
 	for idf in /tmp/$f/boot_id/*; do
 		if [ -e "$idf" ];then
 			idft=${idf##*@}
@@ -153,7 +153,7 @@ boot_id(){
 	# first use after boot
 	idf=/tmp/$f/boot_id/`hostname -f`-$RANDOM$RANDOM@$boot_time
 	touch $idf
-	chmod 777 $idf
+	sudo -n chmod 777 $idf > /dev/null
 	export BOOT_ID=${idf##*/}
 	local f="`__FILE_NAME__`"
 	local t
@@ -203,9 +203,9 @@ tmp_dir(){
 		done
 	done
 	mkdir -p /tmp/$f
-	chmod 777 /tmp/$f
+	sudo -n chmod 777 /tmp/$f 2> /dev/null
 	mkdir -p /tmp/$f/${0##*/}
-	chmod 777 /tmp/$f/${0##*/}
+	sudo -n chmod 777 /tmp/$f/${0##*/} 2> /dev/null
 	SCRIPT_TMP_DIR=/tmp/$f/${0##*/}/`date +"%y-%m-%d_%H-%M-%S.%N%z"`-$$@$start_time
 	SCRIPT_ID=$$@$start_time
 	if ! mkdir -p $SCRIPT_TMP_DIR; then
@@ -214,7 +214,7 @@ tmp_dir(){
 	fi
 	SCRIPT_VAR_DIR=/var/tmp/$f
 	if ! mkdir -p $SCRIPT_TMP_DIR; then
-		chmod 777 $SCRIPT_VAR_DIR
+		sudo -n chmod 777 $SCRIPT_VAR_DIR 2> /dev/null
 		echo -e "$error"cannot create script dir$normal
 		exit 1
 	fi
