@@ -37,7 +37,7 @@ if [ -n "$1" ];then
 	fi
 	mkdir ~/os-$1
 	pushd ~/
-	sudo rm -rf "~/os
+	sudo rm -rf "~/os"
 	cd ~/os-$1
 	tar zxfv /tmp/$1.tar.gz
 	if "`ls | head -1`" != "`ls`"; then
