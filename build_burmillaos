@@ -25,7 +25,7 @@ if ! /usr/lib/docker/cli-plugins/docker-buildx; then
 fi
 
 if [ -n "$1" ];then
-	if ! wget https://github.com/burmilla/os/archive/refs/tags/$1.tar.gz --no-clobber -O /tmp/$1.tar.gz
+	if ! wget https://github.com/burmilla/os/archive/refs/tags/$1.tar.gz --no-clobber -O /tmp/$1.tar.gz; then
 		die "cannot download $1.tar.gz"
 	fi
 	if [ ! -e /tmp/$1.tar.gz ];then
