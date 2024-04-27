@@ -44,7 +44,7 @@ if [ -n "$1" ];then
 		echo cannot detect $1 archive directory >&2
 		exit 1
 	fi
-	ln -sf "~/os-$1/`ls`" ~/os
+	ln -sf "$HOME/os-$1/`ls`" ~/os
 	cd os
 else
 	sudo rm -rf ~/os
