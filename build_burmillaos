@@ -24,9 +24,23 @@ if ! /usr/lib/docker/cli-plugins/docker-buildx; then
 	cd ~
 fi
 
-sudo rm -rf ~/os
-git-force-clone https://github.com/burmilla/os.git ~/os
-
+if [ -n "$1" ];then
+	if ! wget https://github.com/burmilla/os/archive/refs/tags/$1.tar.gz --no-clobber -O /tmp/$1.tar.gz
+		die "cannot download $1.tar.gz"
+	fi
+	if [ ! -e /tmp/$1.tar.gz ];then
+		die "cannot download $1.tar.gz"
+	fi
+	pushd ~/
+	sudo rm -rf ~/os-$1
+	tar zx /tmp/$1.tar.gz
+	mv -f os-$1 os
+	cd os
+else
+	sudo rm -rf ~/os
+	git-force-clone https://github.com/burmilla/os.git ~/os
+	pushd ~/os
+fi
 
 #rm ~/v2.0.0.tar.gz
 #wget https://github.com/burmilla/os/archive/refs/tags/v2.0.0.tar.gz -O ~/v2.0.0.tar.gz
@@ -35,7 +49,6 @@ git-force-clone https://github.com/burmilla/os.git ~/os
 #rm -rf os
 #mv os-2.0.0 os
 
-pushd ~/os
 PVER=`cat ~/burmilla_os_efi/version`
 PVER=`echo $PVER|awk '{print $1}'`
 sed "s/__PVER__/$PVER/" ~/burmilla_os_efi/mountOpt.patch > ~/burmilla_os_efi/mountOpt.patch.$PVER
