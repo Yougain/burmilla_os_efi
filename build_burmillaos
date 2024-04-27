@@ -43,6 +43,8 @@ if [ -n "$1" ];then
 		mv -f "os-$1" os
 	elif [ -e "$1" ]; then
 		mv -f "$1" os
+	else
+		die
 	fi
 	cd os
 else
