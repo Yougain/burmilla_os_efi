@@ -35,7 +35,7 @@ if [ -n "$1" ];then
 	commits=(`egrep -o "/os/commit/[0-9a-f]+" /tmp/burmilla-releases | uniq`)
 	hit=
 	i=0
-	for release in releases; do
+	for release in ${releases[@]}; do
 		echo "$release"
 		if [ "$release" = "$1" ];then
 			hit=1
