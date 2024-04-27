@@ -95,6 +95,7 @@ while (( "$#" )); do
 			;;
 		* )
 			if ! detect NON_EFI_BTRFS_VERSIONS $1; then
+				info build $1
 				su $SUDO_USER -c ./build_burmillaos $1
 			fi
 			BURMILLAOS_VER=$1
