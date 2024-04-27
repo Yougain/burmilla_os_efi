@@ -36,8 +36,7 @@ if [ -n "$1" ];then
 	hit=
 	i=0
 	for release in ${releases[@]}; do
-		echo "$release"
-		if [ "$release" = "$1" ];then
+		if [ "${release##*/}" = "$1" ];then
 			hit=1
 			break
 		fi
