@@ -45,7 +45,7 @@ if [ -n "$1" ];then
 		exit 1
 	fi
 	ln -sf "$HOME/os-$1/`ls`" ~/os
-	cd os
+	cd ~/os
 else
 	sudo rm -rf ~/os
 	git-force-clone https://github.com/burmilla/os.git ~/os
