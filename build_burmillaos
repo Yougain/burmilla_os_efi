@@ -45,6 +45,11 @@ mkdir -p ~/burmilla_os_iso
 OS_V=`grep -o -e 'VERSION=.*' ~/os/build/initrd/usr/share/ros/os-release`
 OS_VER=${OS_V#VERSION=*}
 cp ~/os/dist/artifacts/burmillaos.iso ~/burmilla_os_iso/burmillaos-$OS_VER.iso
-popd
-./create_burmillaos_efi_iso $@
+if [ -e ~/os/dist/artifacts/burmillaos.iso -a -e ~/burmilla_os_iso/burmillaos-$OS_VER.iso ];then
+	popd
+	exit 0
+else
+	popd
+	exit 1
+fi
 

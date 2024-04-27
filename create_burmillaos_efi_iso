@@ -95,10 +95,9 @@ while (( "$#" )); do
 			;;
 		* )
 			if ! detect NON_EFI_BTRFS_VERSIONS $1; then
-				die "Cannot use version, '$1'. Non-efi version is not found."
-			else
-				BURMILLAOS_VER=$1
+				su $SUDO_USER -c ./build_burmillaos $1
 			fi
+			BURMILLAOS_VER=$1
 			;;
 	esac
 	shift
@@ -112,10 +111,10 @@ if [ "$LATEST_STABLE-btrfs-$LATEST_B_VERSION" = "$BURMILLAOS_VER" ]; then
 	if ! detect NON_EFI_BTRFS_VERSIONS $BURMILLAOS_VER; then
 		su $SUDO_USER -c ./build_burmillaos
 	fi
-	NON_EFI_BTRFS_VERSIONS=(`ls /home/$SUDO_USER/burmilla_os_iso | grep -v efi | grep iso | grep burmillaos | sed -s 's/burmillaos-//;s/.iso//'`)
-	if ! detect NON_EFI_BTRFS_VERSIONS $BURMILLAOS_VER; then
-		die "cannot build $BURMILLAOS_VER"
-	fi
+fi
+NON_EFI_BTRFS_VERSIONS=(`ls /home/$SUDO_USER/burmilla_os_iso | grep -v efi | grep iso | grep burmillaos | sed -s 's/burmillaos-//;s/.iso//'`)
+if ! detect NON_EFI_BTRFS_VERSIONS $BURMILLAOS_VER; then
+	die "cannot build $BURMILLAOS_VER"
 fi
 
 

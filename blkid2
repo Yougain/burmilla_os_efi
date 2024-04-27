@@ -70,7 +70,7 @@ function blkid2(){
 		BLKID_CACHE="`cat $SCRIPT_VAR_DIR/cache/blkid`"
 		BLKID2_CACHE="`cat $SCRIPT_VAR_DIR/cache/blkid2`"
 		if [ "`/sbin/blkid`" != "$BLKID_CACHE" ];then
-			echo recreating ...
+			echo recreating blkid2 cache ... >&2
 			recreate=1
 			CACHE="`/sbin/blkid`"
 			BLKID_CACHE="$CACHE"
