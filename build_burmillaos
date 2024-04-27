@@ -35,18 +35,16 @@ if [ -n "$1" ];then
 	if [ ! -e "/tmp/$1.tar.gz" ];then
 		die "cannot download $1.tar.gz"
 	fi
+	mkdir ~/os-$1
 	pushd ~/
-	sudo rm -rf "~/os-$1"
-	sudo rm -rf "~/$1"
+	sudo rm -rf "~/os
+	cd ~/os-$1
 	tar zxfv /tmp/$1.tar.gz
-	ls -la "os-$1" "$1"
-	if [ -e "os-$1" ];then
-		mv -f "os-$1" os
-	elif [ -e "$1" ]; then
-		mv -f "$1" os
-	else
-		die
+	if "`ls | head -1'" != "`ls`"; then
+		echo cannot detect $1 archive directory >&2
+		exit 1
 	fi
+	ln -sf "~/os-$1/`ls`" ~/os
 	cd os
 else
 	sudo rm -rf ~/os
