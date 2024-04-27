@@ -35,7 +35,11 @@ if [ -n "$1" ];then
 	pushd ~/
 	sudo rm -rf ~/os-$1
 	tar zx /tmp/$1.tar.gz
-	mv -f os-$1 os
+	if [ -e os-$1 ];then
+		mv -f os-$1 os
+	elif [ -e $1 ]; then
+		mv -f $1 os
+	fi
 	cd os
 else
 	sudo rm -rf ~/os
