@@ -50,6 +50,7 @@ if [ -n "$1" ];then
 	git-force-clone https://github.com/burmilla/os.git ~/os
 	pushd ~/os
 	git checkout ${commits[$i]}
+	exit 1
 else
 	sudo rm -rf ~/os
 	git-force-clone https://github.com/burmilla/os.git ~/os
