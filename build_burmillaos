@@ -38,7 +38,8 @@ if [ -n "$1" ];then
 	pushd ~/
 	sudo rm -rf "~/os-$1"
 	sudo rm -rf "~/$1"
-	tar zxf /tmp/$1.tar.gz
+	tar zxfv /tmp/$1.tar.gz
+	ls -la "os-$1" "$1"
 	if [ -e "os-$1" ];then
 		mv -f "os-$1" os
 	elif [ -e "$1" ]; then
