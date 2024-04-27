@@ -40,7 +40,7 @@ if [ -n "$1" ];then
 	sudo rm -rf "~/os
 	cd ~/os-$1
 	tar zxfv /tmp/$1.tar.gz
-	if "`ls | head -1'" != "`ls`"; then
+	if "`ls | head -1`" != "`ls`"; then
 		echo cannot detect $1 archive directory >&2
 		exit 1
 	fi
