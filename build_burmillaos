@@ -49,6 +49,7 @@ if [ -n "$1" ];then
 	sudo rm -rf ~/os
 	git-force-clone https://github.com/burmilla/os.git ~/os
 	pushd ~/os
+	echo git checkout ${commits[$i]}
 	git checkout ${commits[$i]}
 	exit 1
 else
