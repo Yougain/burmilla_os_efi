@@ -24,9 +24,6 @@ if ! /usr/lib/docker/cli-plugins/docker-buildx; then
 	cd ~
 fi
 
-echo "$1"
-sleep 10
-exit 1
 
 if [ -n "$1" ];then
 	if ! wget https://github.com/burmilla/os/archive/refs/tags/$1.tar.gz --no-clobber -O /tmp/$1.tar.gz; then
@@ -40,9 +37,7 @@ if [ -n "$1" ];then
 	tar zx /tmp/$1.tar.gz
 	mv -f os-$1 os
 	cd os
-	exit 1
 else
-	exit 1
 	sudo rm -rf ~/os
 	git-force-clone https://github.com/burmilla/os.git ~/os
 	pushd ~/os
