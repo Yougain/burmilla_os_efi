@@ -10,7 +10,7 @@
 sudo apt-get install -y make patch apt-utils
 
 
-if ! /usr/lib/docker/cli-plugins/docker-buildx; then
+if ! /usr/lib/docker/cli-plugins/docker-buildx 2> /dev/null; then
 	TAG=v`wget -q https://github.com/docker/buildx/releases/latest -O - | grep Welcome | head -1 | grep -o -e '[0-9][^ "]*' | head -1`
 	sudo mkdir -p /usr/lib/docker/cli-plugins
 	sudo wget https://github.com/docker/buildx/releases/download/$TAG/buildx-$TAG.linux-amd64 -O /usr/lib/docker/cli-plugins/docker-buildx
@@ -40,14 +40,11 @@ if [ -n "$1" ];then
 	sudo rm -rf "~/os
 	cd ~/os-$1
 	tar zxfv /tmp/$1.tar.gz
-	ls -la "os-$1" "$1"
-	if [ -e "os-$1" ];then
-		mv -f "os-$1" os
-	elif [ -e "$1" ]; then
-		mv -f "$1" os
-	else
-		die
+	if "`ls | head -1`" != "`ls`"; then
+		echo cannot detect $1 archive directory >&2
+		exit 1
 	fi
+	ln -sf "~/os-$1/`ls`" ~/os
 	cd os
 else
 	sudo rm -rf ~/os
