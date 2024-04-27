@@ -26,26 +26,30 @@ fi
 
 
 if [ -n "$1" ];then
-	if [ ! -e /tmp/$1.tar.gz ];then
-		if ! wget https://github.com/burmilla/os/archive/refs/tags/$1.tar.gz --no-clobber -O /tmp/$1.tar.gz; then
-			echo "cannot download $1.tar.gz" >&2
-			exit 1
-		fi
-	fi
-	if [ ! -e "/tmp/$1.tar.gz" ];then
-		die "cannot download $1.tar.gz"
-	fi
-	mkdir ~/os-$1
-	pushd ~/
-	sudo rm -rf "~/os"
-	cd ~/os-$1
-	tar zxfv /tmp/$1.tar.gz
-	if [ "`ls | head -1`" != "`ls`" ]; then
-		echo cannot detect $1 archive directory >&2
+	wget https://github.com/burmilla/os/releases -O /tmp/burmilla-releases
+	if [ ! -e /tmp/burmilla-releases ];then
+		echo "cannot download https://github.com/burmilla/os/releases" >&2
 		exit 1
 	fi
-	ln -sf "$HOME/os-$1/`ls`" ~/os
-	cd ~/os
+	releases=(egrep -o "/burmilla/os/tree/v[^\"]+" /tmp/burmilla-releases | uniq)
+	commits=( egrep -o "/os/commit/[0-9a-f]+" releases | uniq)
+	hit=
+	i=0
+	for release in releases; do
+		if [ "$release" = "$1" ];then
+			hit=1
+			break
+		fi
+		((++i))
+	done
+	if [ -z "$hit" ];then
+		echo "cannot find $1 in burmilla releases" <&2
+		exit 1
+	fi
+	sudo rm -rf ~/os
+	git-force-clone https://github.com/burmilla/os.git ~/os
+	pushd ~/os
+	git checkout ${commits[$i]}
 else
 	sudo rm -rf ~/os
 	git-force-clone https://github.com/burmilla/os.git ~/os
