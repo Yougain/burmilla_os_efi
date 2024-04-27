@@ -38,6 +38,7 @@ if [ -n "$1" ];then
 	cd os
 	exit 1
 else
+	die No!
 	sudo rm -rf ~/os
 	git-force-clone https://github.com/burmilla/os.git ~/os
 	pushd ~/os
