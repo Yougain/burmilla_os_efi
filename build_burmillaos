@@ -31,8 +31,8 @@ if [ -n "$1" ];then
 		echo "cannot download https://github.com/burmilla/os/releases" >&2
 		exit 1
 	fi
-	releases=(egrep -o "/burmilla/os/tree/v[^\"]+" /tmp/burmilla-releases | uniq)
-	commits=( egrep -o "/os/commit/[0-9a-f]+" releases | uniq)
+	releases=(`egrep -o "/burmilla/os/tree/v[^\"]+" /tmp/burmilla-releases | uniq`)
+	commits=(`egrep -o "/os/commit/[0-9a-f]+" releases | uniq`)
 	hit=
 	i=0
 	for release in releases; do
