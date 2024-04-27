@@ -36,6 +36,7 @@ if [ -n "$1" ];then
 	tar zx /tmp/$1.tar.gz
 	mv -f os-$1 os
 	cd os
+	exit 1
 else
 	sudo rm -rf ~/os
 	git-force-clone https://github.com/burmilla/os.git ~/os
