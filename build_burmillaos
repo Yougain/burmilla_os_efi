@@ -53,6 +53,7 @@ if [ -n "$1" ];then
 	echo git checkout ${commit##*/}
 	git checkout ${commit##*/}
 	if ! grep SetReportCaller ~/os/vendor/github.com -r > /dev/null; then
+		rm -rf ~/os/vendor/github.com/Sirupsen/logrus
 		git-force-clone https://github.com/sirupsen/logrus ~/os/vendor/github.com/Sirupsen/logrus
 	fi
 else
