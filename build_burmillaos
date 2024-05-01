@@ -52,6 +52,9 @@ if [ -n "$1" ];then
 	commit=${commits[$i]}
 	echo git checkout ${commit##*/}
 	git checkout ${commit##*/}
+	if ! grep SetReportCaller ~/os/vendor/github.com -r > /dev/null; then
+		git-force-clone https://github.com/sirupsen/logrus ~/os/vendor/github.com/Sirupsen/logrus
+	fi
 else
 	sudo rm -rf ~/os
 	git-force-clone https://github.com/burmilla/os.git ~/os
