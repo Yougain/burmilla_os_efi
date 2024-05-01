@@ -55,6 +55,7 @@ if [ -n "$1" ];then
 	if ! grep SetReportCaller ~/os/vendor/github.com -r > /dev/null; then
 		rm -rf ~/os/vendor/github.com/Sirupsen/logrus
 		git-force-clone https://github.com/sirupsen/logrus ~/os/vendor/github.com/Sirupsen/logrus
+		ln -sf Sirupsen ~/os/vendor/github.com/sirupsen
 	fi
 else
 	sudo rm -rf ~/os
