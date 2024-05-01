@@ -668,7 +668,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-04-10 14:55:30.330000000 +0900
++++ os.new/pkg/log/log.go	2024-05-01 22:10:35.211599700 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -860,7 +860,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,8 +236,194 @@
+@@ -120,8 +236,203 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -913,6 +913,38 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +}
 +
 +
++func ReadInt(filename string) (int, error) {
++	file, err := os.Open(filename)
++	if err != nil {
++		return 0, err
++	}
++	defer file.Close()
++
++	var buffer bytes.Buffer
++	_, err = io.Copy(&buffer, file)
++	if err != nil {
++		return 0, err
++	}
++	base, _ := strconv.Atoi(buffer.String())
++	return base, nil
++}
++
++func ReadAll(filename string) (string, error) {
++	file, err := os.Open(filename)
++	if err != nil {
++		return "", err
++	}
++	defer file.Close()
++
++	var buffer bytes.Buffer
++	_, err = io.Copy(&buffer, file)
++	if err != nil {
++		return "", err
++	}
++
++	return buffer.String(), nil
++}
++
 +// InitLogger sets up Logging to log to /dev/kmsg and to Syslog
 +func initFormat() {
 +	if !initFormatExecuted {
@@ -942,14 +974,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +					Errorf("envromental variable, 'TZS=%s', namely, time difference by seconds, is not a numeric.", tzs)
 +				}
 +			} else {
-+				file, err := os.Open(timeDiffFN2)
-+				if err == nil { // file exists
-+					byteData, err := io.ReadAll(file)
-+					if err == nil {
-+						base, _ = strconv.Atoi(string(byteData))
-+					}
-+					file.Close()
-+				}
++				base, _ = ReadInt(timeDiffFN2)
 +			}
 +			nullSymlinked := false
 +			if base == 0 {
@@ -961,19 +986,10 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +						nullSymlinked = true // initrd started
 +					}
 +				} else {
-+					file, err := os.Open(timeDiffFN)
++					base, _ = ReadInt(timeDiffFN)
++					str, err := ReadAll(tzFN)
 +					if err == nil { // file exists
-+						byteData, err := io.ReadAll(file)
-+						file.Close()
-+						base, err = strconv.Atoi(string(byteData))
-+						if err == nil {
-+							file, err := os.Open(tzFN)
-+							if err == nil { // file exists
-+								byteData, err = io.ReadAll(file)
-+								file.Close()
-+								tz = strings.TrimSpace(string(byteData))
-+							}
-+						}
++						tz = strings.TrimSpace(str)
 +					}
 +				}
 +				if err != nil || base == 0 {
@@ -1005,11 +1021,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +			}
 +			if base == 0 {
 +				Debug("Trying read /proc/cmdline")
-+				file, err := os.Open("/proc/cmdline")
-+				if err == nil { // file exists
-+					byteData, err := io.ReadAll(file)
++					cmdline, err := ReadAll("/proc/cmdline")
 +					if err == nil {
-+						cmdline := string(byteData)
 +						Debugf("/proc/cmdline = $s", cmdline)
 +						ti := strings.Index(cmdline, " TZS=")
 +						if ti != -1 {
@@ -1024,10 +1037,6 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +					}else{
 +						Debugf("cannot read /proc/cmdline")
 +					}
-+					file.Close()
-+				}else{
-+					Debugf("cannot open /proc/cmdline")
-+				}
 +			}
 +			Debugf("before set: base = %d", base)
 +			if base != 0 {
@@ -1055,7 +1064,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	if logTheseApps() {
  		innerInit(false)
  		FsReady()
-@@ -131,6 +433,8 @@
+@@ -131,6 +442,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1064,7 +1073,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +467,7 @@
+@@ -163,6 +476,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1072,7 +1081,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -249,8 +554,10 @@
+@@ -249,8 +563,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
