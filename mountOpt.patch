@@ -242,7 +242,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/init/init.go os.new/cmd/init/init.go
  	}
 diff -Naur '--exclude=.git' os.prev/config/config.go os.new/config/config.go
 --- os.prev/config/config.go	2024-03-14 20:29:45.957485300 +0900
-+++ os.new/config/config.go	2024-05-02 14:26:15.130660500 +0900
++++ os.new/config/config.go	2024-05-02 14:28:41.350660500 +0900
 @@ -2,13 +2,19 @@
  
  import (
@@ -273,7 +273,7 @@ diff -Naur '--exclude=.git' os.prev/config/config.go os.new/config/config.go
 +	tz := ""
 +	if os.Getenv("TZ") == "" {
 +		log.Debug("Trying read /proc/cmdline")
-+		cmdline, err := io.ReadAll(file)
++		cmdline, err := ReadAll("/proc/cmdline")
 +		if err == nil {
 +			log.Debugf("/proc/cmdline = $s", cmdline)
 +			ti := strings.Index(cmdline, " TZ=")
@@ -297,7 +297,7 @@ diff -Naur '--exclude=.git' os.prev/config/config.go os.new/config/config.go
 +}
 diff -Naur '--exclude=.git' os.prev/config/docker_config.go os.new/config/docker_config.go
 --- os.prev/config/docker_config.go	2024-03-14 20:29:45.957485300 +0900
-+++ os.new/config/docker_config.go	2024-05-02 14:26:16.950660500 +0900
++++ os.new/config/docker_config.go	2024-05-02 14:29:03.440660500 +0900
 @@ -2,9 +2,13 @@
  
  import (
@@ -338,7 +338,7 @@ diff -Naur '--exclude=.git' os.prev/config/docker_config.go os.new/config/docker
 +	tz := ""
 +	if os.Getenv("TZ") == "" {
 +		log.Debug("Trying read /proc/cmdline")
-+		cmdline, err := io.ReadAll(file)
++		cmdline, err := ReadAll("/proc/cmdline")
 +		if err == nil {
 +			log.Debugf("/proc/cmdline = $s", cmdline)
 +			ti := strings.Index(cmdline, " TZ=")
