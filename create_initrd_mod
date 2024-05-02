@@ -335,7 +335,6 @@ END
 		local i
 		local d
 		while read item; do
-			info $item
 			local l=`sfind / -name $item|grep bin/|grep -v /home/|grep -v /root/|head -1`
 			local cmd
 			if [ -z "$l" ];then
@@ -495,7 +494,9 @@ $libs"
 			done
 		fi
 	done
+	mkdir ./bin
 	ln -svf bash ./bin/sh
+	ln -svf ../usr/bin/bash ./bin/bash
 	if [ -d "$for_state" ];then
 		ln -svf bash $for_state/bin/sh
 	fi
