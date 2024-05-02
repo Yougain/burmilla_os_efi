@@ -41,6 +41,7 @@ function blkid2(){
 	local local=$RANDOM$RANDOM$RANDOM
 	local PATH=/sbin:/usr/sbin:/bin:/usr/bin
 
+	local args=()
 	local opts=()
 	local get_sibling
 	while (( "$#" )); do
@@ -113,7 +114,6 @@ function blkid2(){
 		local key
 		local devs
 
-		local args=()
 		dbv blkid2 $@
 		__readlink(){
 			for i in "$@"; do
@@ -248,12 +248,12 @@ function blkid2(){
 
 
 	if [ "${#args}" = 0 ];then
-		dbv $args
 		for bc in "${blkids[@]}";do
 			echo "${bc}"
 		done | sort
 		return 0
 	else
+		dbv ${args[@]}
 		local matched=()
 		local_fun detectSymbol <<'		}'
 			dbv "$@"
