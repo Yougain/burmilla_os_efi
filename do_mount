@@ -3,7 +3,6 @@
 
 require args
 
-DEBUG=1
 
 function do_mount(){
 	echo do_mount $@
