@@ -242,15 +242,13 @@ diff -Naur '--exclude=.git' os.prev/cmd/init/init.go os.new/cmd/init/init.go
  	}
 diff -Naur '--exclude=.git' os.prev/config/config.go os.new/config/config.go
 --- os.prev/config/config.go	2024-03-14 20:29:45.957485300 +0900
-+++ os.new/config/config.go	2024-05-02 14:28:41.350660500 +0900
-@@ -2,13 +2,19 @@
++++ os.new/config/config.go	2024-05-02 14:30:14.040660500 +0900
+@@ -2,13 +2,17 @@
  
  import (
  	"io/ioutil"
-+	"io"
 +	"os"
  	"strings"
-+	"bytes"
  
 +	"github.com/burmilla/os/pkg/log"
  	"github.com/burmilla/os/config/cmdline"
@@ -263,7 +261,7 @@ diff -Naur '--exclude=.git' os.prev/config/config.go os.new/config/config.go
  const Banner = `
      ____                       _ _ _        ____   _____
     |  _ \\                     (_) | |      / __ \\ / ____|
-@@ -94,3 +100,31 @@
+@@ -94,3 +98,31 @@
  	elem := strings.Split(string(b), " ")
  	return elem[2]
  }
