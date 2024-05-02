@@ -63,8 +63,8 @@ if [ -n "$1" ];then
 		done
 		rm -rf ~/os/vendor/golang.org/x/sys
 		cp -af ~/sys ~/os/vendor/golang.org/x
-		mkdir -p ~/pkg/math
-		cp -af ~/go/src/math/bits ~/pkg/math
+		mkdir -p ~/os/pkg/math
+		cp -af ~/go/src/math/bits ~/os/pkg/math
 	fi
 else
 	sudo rm -rf ~/os
