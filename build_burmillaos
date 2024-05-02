@@ -48,7 +48,7 @@ if [ -n "$1" ];then
 	fi
 	sudo rm -rf ~/os
 	git-force-clone https://github.com/burmilla/os.git ~/os
-	cp -a ~/os.org/vendor/golang.org/x/sys/unix ~/unix
+	cp -a ~/os/vendor/golang.org/x/sys/unix ~/unix
 	pushd ~/os
 	commit=${commits[$i]}
 	echo git checkout ${commit##*/}
