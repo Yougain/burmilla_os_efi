@@ -1035,14 +1035,16 @@ _d_id(){
 
 
 _recursive_path(){
-	if [ ! -d "$2" ]; then
-		if [ -e "$2" -o -L "$2" ]; then
-			"$1" "$f"
+	local th="$1"
+	shift
+	if [ ! -d "$th" ]; then
+		if [ -e "$th" -o -L "$th" ]; then
+			"$@" "$th"
 		else
 			return 1
 		fi
 	else
-		local did=`_d_id "$2"`
+		local did=`_d_id "$th"`
 		dbv $did
 		if [ -z "$did" ];then # missing source
 			return
@@ -1050,23 +1052,23 @@ _recursive_path(){
 		if [ "${dstack[$did]}" ];then # cyclic reference
 			return
 		fi
-		"$1" "$2" # check only dir, but not check files in dir
+		"$@" "$th" # check only dir, but not check files in dir
 		local f
 		local dirs
 		local d
 		local IFS=
-		for f in "$2"/*; do
+		for f in "$th"/*; do
 			if [ -e "$f" ];then
 				if [ -d "$f" ];then
 					dirs+=("$f")
 				else
-					"$1" "$f"
+					"$@" "$f"
 				fi
 			fi
 		done
 		dstack[$did]=1
 		for d in "${dirs[@]}"; do
-			_recursive_path "$1" "$d"
+			_recursive_path "$d" "$@"
 		done
 		dstack[$did]=
 	fi
