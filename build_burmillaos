@@ -55,7 +55,7 @@ if [ -n "$1" ];then
 	if ! grep SetReportCaller ~/os/vendor/github.com -r > /dev/null; then
 		rm -rf ~/os/vendor/github.com/Sirupsen/logrus
 		git-force-clone https://github.com/sirupsen/logrus ~/os/vendor/github.com/Sirupsen/logrus
-		for f in ~/os/vendor/github.com/Sirupsen/logrus/**/*.go; do
+		for f in ~/os/vendor/github.com/Sirupsen/logrus/**/*.go ~/os/vendor/github.com/Sirupsen/logrus/*.go; do
 			sed -i 's/sirupsen/Sirupsen/g' $f
 			echo $f
 			grep sirupsen $f
