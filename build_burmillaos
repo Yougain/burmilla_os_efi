@@ -54,16 +54,18 @@ if [ -n "$1" ];then
 	echo git checkout ${commit##*/}
 	git checkout ${commit##*/}
 	if ! grep SetReportCaller ~/os/vendor/github.com -r > /dev/null; then
-		rm -rf ~/os/vendor/github.com/Sirupsen/logrus
-		git-force-clone https://github.com/sirupsen/logrus ~/os/vendor/github.com/Sirupsen/logrus
-		for f in `find ~/os/vendor/github.com/Sirupsen/logrus -name '*.go'`; do
-			sed -i 's/sirupsen/Sirupsen/g' $f
-			echo $f
-			grep sirupsen $f
-		done
-		rm -rf ~/os/vendor/golang.org/x/sys/unix
-		cp -af ~/unix ~/os/vendor/golang.org/x/sys
+		NoSetReportCaller=1
 	fi
+#		rm -rf ~/os/vendor/github.com/Sirupsen/logrus
+#		git-force-clone https://github.com/sirupsen/logrus ~/os/vendor/github.com/Sirupsen/logrus
+#		for f in `find ~/os/vendor/github.com/Sirupsen/logrus -name '*.go'`; do
+#			sed -i 's/sirupsen/Sirupsen/g' $f
+#			echo $f
+#			grep sirupsen $f
+#		done
+#		rm -rf ~/os/vendor/golang.org/x/sys/unix
+#		cp -af ~/unix ~/os/vendor/golang.org/x/sys
+#	fi
 else
 	sudo rm -rf ~/os
 	git-force-clone https://github.com/burmilla/os.git ~/os
@@ -81,6 +83,9 @@ PVER=`cat ~/burmilla_os_efi/version`
 PVER=`echo $PVER|awk '{print $1}'`
 sed "s/__PVER__/$PVER/" ~/burmilla_os_efi/mountOpt.patch > ~/burmilla_os_efi/mountOpt.patch.$PVER
 patch -p1 < ~/burmilla_os_efi/mountOpt.patch.$PVER
+if [ -n "$NoSetReportCaller" ];then
+	sed -i '/SetReportCaller/d' ~/os/pkg/log/log.go
+fi
 sudo make
 mkdir -p ~/burmilla_os_iso
 OS_V=`grep -o -e 'VERSION=.*' ~/os/build/initrd/usr/share/ros/os-release`
