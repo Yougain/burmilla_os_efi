@@ -48,7 +48,7 @@ if [ -n "$1" ];then
 	fi
 	sudo rm -rf ~/os
 	git-force-clone https://github.com/burmilla/os.git ~/os
-	cp -a ~/os/vendor/golang.org/x/sys ~/sys
+	cp -a ~/os/vendor/golang.org/x/sys/unix ~/unix
 	pushd ~/os
 	commit=${commits[$i]}
 	echo git checkout ${commit##*/}
@@ -61,10 +61,8 @@ if [ -n "$1" ];then
 			echo $f
 			grep sirupsen $f
 		done
-		rm -rf ~/os/vendor/golang.org/x/sys
-		cp -af ~/sys ~/os/vendor/golang.org/x
-		mkdir -p ~/os/pkg/math
-		cp -af ~/go/src/math/bits ~/os/pkg/math
+		rm -rf ~/os/vendor/golang.org/x/sys/unix
+		cp -af ~/unix ~/os/vendor/golang.org/x/sys
 	fi
 else
 	sudo rm -rf ~/os
