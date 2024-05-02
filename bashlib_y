@@ -924,6 +924,7 @@ require(){
 					fi
 					dbv $to_load $ret
 				else
+					dbv `ls -la $to_load`
 					die "cannot require '$to_load'."
 				fi
 				for f in `(echo -E "$funcs"; declare -F) | sort | uniq -u | awk '{print $3}'`; do
