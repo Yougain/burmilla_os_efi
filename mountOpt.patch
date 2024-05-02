@@ -242,14 +242,15 @@ diff -Naur '--exclude=.git' os.prev/cmd/init/init.go os.new/cmd/init/init.go
  	}
 diff -Naur '--exclude=.git' os.prev/config/config.go os.new/config/config.go
 --- os.prev/config/config.go	2024-03-14 20:29:45.957485300 +0900
-+++ os.new/config/config.go	2024-05-02 14:22:06.280660500 +0900
-@@ -2,13 +2,18 @@
++++ os.new/config/config.go	2024-05-02 14:26:15.130660500 +0900
+@@ -2,13 +2,19 @@
  
  import (
  	"io/ioutil"
 +	"io"
 +	"os"
  	"strings"
++	"bytes"
  
 +	"github.com/burmilla/os/pkg/log"
  	"github.com/burmilla/os/config/cmdline"
@@ -262,26 +263,10 @@ diff -Naur '--exclude=.git' os.prev/config/config.go os.new/config/config.go
  const Banner = `
      ____                       _ _ _        ____   _____
     |  _ \\                     (_) | |      / __ \\ / ____|
-@@ -94,3 +99,47 @@
+@@ -94,3 +100,31 @@
  	elem := strings.Split(string(b), " ")
  	return elem[2]
  }
-+
-+func ReadAll(filename string) (string, error) {
-+	file, err := os.Open(filename)
-+	if err != nil {
-+		return "", err
-+	}
-+	defer file.Close()
-+
-+	var buffer bytes.Buffer
-+	_, err = io.Copy(&buffer, file)
-+	if err != nil {
-+		return "", err
-+	}
-+
-+	return buffer.String(), nil
-+}
 +
 +
 +func Environ() []string {
@@ -312,21 +297,22 @@ diff -Naur '--exclude=.git' os.prev/config/config.go os.new/config/config.go
 +}
 diff -Naur '--exclude=.git' os.prev/config/docker_config.go os.new/config/docker_config.go
 --- os.prev/config/docker_config.go	2024-03-14 20:29:45.957485300 +0900
-+++ os.new/config/docker_config.go	2024-05-02 14:20:55.320660500 +0900
-@@ -2,9 +2,12 @@
++++ os.new/config/docker_config.go	2024-05-02 14:26:16.950660500 +0900
+@@ -2,9 +2,13 @@
  
  import (
  	"fmt"
 +	"io"
  	"os"
 +	"strings"
++	"bytes"
  
  	"github.com/fatih/structs"
 +	"github.com/burmilla/os/pkg/log"
  )
  
  func (d *DockerConfig) FullArgs() []string {
-@@ -23,8 +26,53 @@
+@@ -23,8 +27,53 @@
  	return args
  }
  
