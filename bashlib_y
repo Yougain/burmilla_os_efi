@@ -924,11 +924,14 @@ require(){
 					fi
 					dbv $to_load $ret
 				else
-					error "-r '$to_load', failed."
+					info "'$to_load' is not readable."
 					dbv `ls -la $to_load`
 					source "$to_load"
 					ret=$?
-					ebv $ret
+					if [ "$ret" != "0" ];then
+						error "-r '$to_load', failed."
+					fi
+					dbv $ret
 					#die "cannot require '$to_load'."
 				fi
 				for f in `(echo -E "$funcs"; declare -F) | sort | uniq -u | awk '{print $3}'`; do
