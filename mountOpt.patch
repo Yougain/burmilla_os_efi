@@ -394,7 +394,7 @@ diff -Naur '--exclude=.git' os.prev/install_burmillaos_on_btrfs os.new/install_b
 +
 diff -Naur '--exclude=.git' os.prev/main.go os.new/main.go
 --- os.prev/main.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/main.go	2024-04-10 15:24:05.540000000 +0900
++++ os.new/main.go	2024-05-02 14:34:28.150660500 +0900
 @@ -3,6 +3,10 @@
  import (
  	"fmt"
@@ -406,9 +406,28 @@ diff -Naur '--exclude=.git' os.prev/main.go os.new/main.go
  
  	"github.com/burmilla/os/cmd/cloudinitexecute"
  	"github.com/burmilla/os/cmd/cloudinitsave"
-@@ -39,6 +43,32 @@
+@@ -38,7 +42,47 @@
+ 	"shutdown": power.Shutdown,
  }
  
++
++func ReadAll(filename string) (string, error) {
++	file, err := os.Open(filename)
++	if err != nil {
++		return "", err
++	}
++	defer file.Close()
++
++	var buffer bytes.Buffer
++	_, err = io.Copy(&buffer, file)
++	if err != nil {
++		return "", err
++	}
++
++	return buffer.String(), nil
++}
++
++
  func main() {
 +	tzs := os.Getenv("TZS")
 +	base := 0
@@ -416,20 +435,16 @@ diff -Naur '--exclude=.git' os.prev/main.go os.new/main.go
 +		base, _ = strconv.Atoi(tzs)
 +	}
 +	if base == 0 {
-+		file, err := os.Open("/proc/cmdline")
-+		if err == nil { // file exists
-+			byteData, err := io.ReadAll(file)
-+			if err == nil {
-+				cmdline := string(byteData)
-+				ti := strings.Index(cmdline, " TZS=")
-+				if ti != -1 {
-+					tw := strings.Index(cmdline[ti + 5:], " ")
-+					if tw != -1 {
-+						base, _ = strconv.Atoi(cmdline[ti + 5:ti + 5 + tw])
-+					}
++		cmdline, err := ReadAll("/proc/cmdline")
++		if err == nil {
++			log.Debugf("/proc/cmdline = $s", cmdline)
++			ti := strings.Index(cmdline, " TZS=")
++			if ti != -1 {
++				tw := strings.Index(cmdline[ti + 5:], " ")
++				if tw != -1 {
++					base, _ = strconv.Atoi(cmdline[ti + 5:ti + 5 + tw])
 +				}
 +			}
-+			file.Close()
 +		}
 +	}
 +	if base != 0 {
