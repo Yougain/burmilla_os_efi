@@ -3,23 +3,30 @@
 
 require args
 
+DEBUG=1
 
 function do_mount(){
+	echo do_mount $@
+	dbv $@
 	rm -f $SCRIPT_VAR_DIR/degraded
 	. args
 	function _info(){
 		if [ -n "$verbose" ];then
+			echo $@
 			info $@
 		fi
 	}
 	function _die(){
+			echo $@
 		dbv dying $@
 		die $@
 	}
 	function _err(){
+			echo $@
 		err $@
 	}
 	function _warn(){
+			echo $@
 		if [ -n "$verbose" ];then
 			warn $@
 		fi
