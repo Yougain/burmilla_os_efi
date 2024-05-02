@@ -394,8 +394,8 @@ diff -Naur '--exclude=.git' os.prev/install_burmillaos_on_btrfs os.new/install_b
 +
 diff -Naur '--exclude=.git' os.prev/main.go os.new/main.go
 --- os.prev/main.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/main.go	2024-05-02 14:34:28.150660500 +0900
-@@ -3,6 +3,10 @@
++++ os.new/main.go	2024-05-02 14:35:46.820660500 +0900
+@@ -3,6 +3,11 @@
  import (
  	"fmt"
  	"os"
@@ -403,10 +403,11 @@ diff -Naur '--exclude=.git' os.prev/main.go os.new/main.go
 +    "time"
 +    "io"
 +	"strings"
++	"bytes"
  
  	"github.com/burmilla/os/cmd/cloudinitexecute"
  	"github.com/burmilla/os/cmd/cloudinitsave"
-@@ -38,7 +42,47 @@
+@@ -38,7 +43,47 @@
  	"shutdown": power.Shutdown,
  }
  
