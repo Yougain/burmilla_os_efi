@@ -57,6 +57,8 @@ if [ -n "$1" ];then
 		git-force-clone https://github.com/sirupsen/logrus ~/os/vendor/github.com/Sirupsen/logrus
 		for f in ~/os/vendor/github.com/Sirupsen/logrus/**/*.go; do
 			sed -i 's/sirupsen/Sirupsen/g' $f
+			echo $f
+			grep sirupsen $f
 		done
 	fi
 else
