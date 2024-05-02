@@ -5,6 +5,7 @@ require args
 
 
 function do_mount(){
+	rm -f $SCRIPT_VAR_DIR/degraded
 	. args
 	function _info(){
 		if [ -n "$verbose" ];then
@@ -298,6 +299,7 @@ function do_mount(){
 								res=$?
 								if [ "$res" = 0 ];then
 									_warn "Mounted degraded drive."
+									echo "Mounted degraded drive." > $SCRIPT_VAR_DIR/degraded
 								fi
 								break
 							fi

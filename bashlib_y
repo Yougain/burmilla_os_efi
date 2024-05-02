@@ -356,7 +356,7 @@ debug(){
 }
 
 
-if [ ! -e "/var/tmp/bashlib_y/allColors" -o "`cat /var/tmp/bashlib_y/allColors`" != "`echo $allColors`" ];then
+if [ ! -e "/var/tmp/bashlib_y/allColors" -o "`cat /var/tmp/bashlib_y/allColors 2> /dev/null`" != "`echo $allColors`" ];then
 	mkdir -p -m 0777 /var/tmp
 	mkdir -p -m 0777 /var/tmp/bashlib_y
 	echo $allColors > /var/tmp/bashlib_y/allColors

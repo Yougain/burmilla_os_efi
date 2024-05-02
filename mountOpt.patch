@@ -514,7 +514,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/configfiles/configfiles.go os.new/p
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2024-04-18 07:47:30.067533700 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2024-05-02 18:45:26.940660500 +0900
 @@ -4,6 +4,8 @@
  	"fmt"
  	"strings"
@@ -552,7 +552,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  		log.Debugf("Not mounting BOOT: %v", err)
  	} else {
  		log.Infof("Mounted BOOT: %s", cfg.Rancher.State.BootDev)
-@@ -54,32 +56,51 @@
+@@ -54,32 +56,50 @@
  	return cfg, nil
  }
  
@@ -579,14 +579,13 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 -		return err
 +	if _, err := os.Stat("/usr/bin/do_mount"); err == nil {
 +		cmd := exec.Command("/usr/bin/do_mount", "--verbose", "-o", option, dname, target)
-+		out, errb := cmd.Output()
-+		log.Print(string(out))
++		errb := cmd.Run()
 +		if errb != nil {
 +			log.Infof("exec /usr/bin/do_mount, failed.")
 +			log.Infof("Mouting %s failed", display)
 +			return err
 +		}
-+		if strings.Index(string(out), "Mounted degraded drive") != -1 {
++		if _, err := os.Stat("/var/tmp/do_mount/degraded"); err == nil {
 +			MountDegraded = true
 +		}
 +		return nil
