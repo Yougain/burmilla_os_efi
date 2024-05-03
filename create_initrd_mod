@@ -154,23 +154,14 @@ function create_initrd_mod(){
 		item=$1
 		info cp_lib $item
 		shift
-		local l=`sfind / -name $item|grep -v /home/|grep -v /root/|head -1`
+		local lf
 		local cmd
-		if [ -z "$l" ];then
-			l=`find / -name $item|grep -v /home/|grep -v /root/|head -1`
-			if [ -z "$l" ];then
-				die cannot find $item docker, udev nor local.
-			else
-				cmd="cp "
-			fi
-		else
-			cmd="system-docker cp udev:"
-		fi
+		find_file
 		local d=./usr/lib
 		for i in $@; do
 			if [ -d "$i" ];then
-				echo $cmd$l $i/$d
-				$cmd$l $i/$d
+				echo $cmd$lf $i/$d
+				$cmd$lf $i/$d
 			fi
 		done
 		if [ -L $1/$d/$item ];then
@@ -331,29 +322,50 @@ END
 		mknod ./dev/null c 1 3
 	}
 	
+	function find_file(){
+		local l=(`sfind / -name $item|grep bin/|grep -v /mnt/|grep -v /home/|grep -v /root/`)
+		for lf in ${l[@]};do
+			if [ -e "$lf" ];then
+				break
+			else
+				lf=
+			fi
+		done
+		if [ ! -e "$lf" ];then
+			l=(`find / -name $item|grep bin/|grep -v /mnt/|grep -v /home/|grep -v /root/`)
+			for lf in ${l[@]};do
+				if [ -e "$lf" ];then
+					break
+				else
+					lf=
+				fi
+			done
+			if [ -z "$lf" ];then
+				die cannot find $item in docker, udev nor in local.
+			else
+				cmd="cp "
+			fi
+		else
+			cmd="system-docker cp udev:"
+		fi
+	}
+
 	function cp_bin(){
 		local libs=""
 		local i
 		local d
+		local cmd
+		local lf
 		while read item; do
 			info cp_bin $item
-			local l=`sfind / -name $item|grep bin/|grep -v /home/|grep -v /root/|head -1`
-			local cmd
-			if [ -z "$l" ];then
-				l=`find / -name $item|grep bin/|grep -v /home/|grep -v /root/|head -1`
-				if [ -z "$l" ];then
-					die cannot find $item in docker, udev nor in local.
-				else
-					cmd="cp "
-				fi
-			else
-				cmd="system-docker cp udev:"
-			fi
+			find_file
 			for i in $@; do
 				if [ -d "$i" ];then
 					d=$i
-					echo $cmd$l $i/usr/bin
-					$cmd$l $i/usr/bin 2> >(check_cp_udev_out "$i" "$item")
+					echo $cmd$lf $i/usr/bin
+					if ! $cmd$lf $i/usr/bin 2> >(check_cp_udev_out "$i" "$item");then
+						die cannot copy: $cmd$l $i/usr/bin
+					fi
 				fi
 			done
 			if [ -n "$d" ];then
