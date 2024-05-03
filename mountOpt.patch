@@ -647,7 +647,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
  }
 diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg/init/switchroot/switchroot.go
 --- os.prev/pkg/init/switchroot/switchroot.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/switchroot/switchroot.go	2024-04-09 22:36:14.555163400 +0900
++++ os.new/pkg/init/switchroot/switchroot.go	2024-05-03 09:01:47.550660500 +0900
 @@ -4,6 +4,7 @@
  	"fmt"
  	"io/ioutil"
@@ -656,7 +656,59 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	"path"
  	"strings"
  	"syscall"
-@@ -141,6 +142,7 @@
+@@ -51,12 +52,26 @@
+ 	return true, nil
+ }
+ 
++func createSymLink(src string, target string) (error) {
++	if err := os.Remove(target); err != nil {
++		log.Infof("$s does not exist", target)
++	}
++
++	if err = os.Symlink(src, target); err != nil{
++		log.Errorf("Cannot create symlink, %s -> %s", src, target)
++	}else{
++		log.Infof("Created symlink, %s -> %s", src, target)
++	}
++	return err
++}
++
++
+ func copyMoveRoot(rootfs string, rmUsr bool) error {
+ 	usrVer := fmt.Sprintf("usr-%s", config.Version)
+ 	usr := path.Join(rootfs, usrVer)
+-	targetUsr := path.Join(rootfs, "usr")
+ 	tmpDir := path.Join(rootfs, "tmp")
+ 
++	
+ 	if rmUsr {
+ 		log.Warnf("Development setup. Removing old usr: %s", usr)
+ 		if err := os.RemoveAll(usr); err != nil {
+@@ -95,19 +110,10 @@
+ 		return err
+ 	}
+ 
+-	for _, file := range files {
+-		filename := path.Join("/", file.Name())
+-
+-		if filename == rootfs || strings.HasPrefix(rootfs, filename+"/") {
+-			log.Debugf("Skipping Deleting %s", filename)
+-			continue
+-		}
+-
+-		log.Debugf("Deleting %s", filename)
+-		if err := os.RemoveAll(filename); err != nil {
+-			return err
+-		}
+-	}
++	createSymLink("usr/bin", path.Join(rootfs, "bin"))
++	createSymLink("usr/lib", path.Join(rootfs, "lib"))
++	createSymLink("lib", path.Join(rootfs, "lib64"))
++	createSymLink("usr/sbin", path.Join(rootfs, "sbin"))
+ 
+ 	return nil
+ }
+@@ -141,6 +147,7 @@
  		if err := syscall.Mount(i, path.Join(rootfs, i), "", syscall.MS_MOVE, ""); err != nil {
  			return err
  		}
@@ -664,7 +716,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
  
  	if err := copyMoveRoot(rootfs, rmUsr); err != nil {
-@@ -154,10 +156,19 @@
+@@ -154,10 +161,19 @@
  
  	log.Debugf("mount MS_MOVE %s", rootfs)
  	if err := syscall.Mount(rootfs, "/", "", syscall.MS_MOVE, ""); err != nil {

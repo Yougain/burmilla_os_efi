@@ -81,7 +81,7 @@ function create_initrd_mod(){
 		if [ -n "$TARGET_DEV4" ];then
 			do_mount 4 $EXTD/boot_dev
 			do_mount 5 $EXTD/state_root
-			local for_state=$EXTD/state_root
+			#local for_state=$EXTD/state_root
 		else
 			die boot drive not found
 		fi
@@ -481,22 +481,20 @@ $libs"
 			ln -sf /dev/null $d/lib/udev/rules.d/75-net-description.rules
 			ln -sf /dev/null $d/lib/udev/rules.d/80-net-name-slot.rules
 			local f
-			for f in blkid2                      \
-					do_mount                     \
+			for f in blkid2                     \
+					do_mount                    \
 					chain_bak					\
 					partNum2Dev					\
-					after_save_cmd_line                \
+					after_save_cmd_line         \
 					args						\
-					parse_func				\
+					parse_func				    \
 					before_sysinit; do
 				dbv $f $d
 				do_install $f $d
 			done
 		fi
 	done
-	mkdir ./bin
-	ln -svf bash ./bin/sh
-	ln -svf ../usr/bin/bash ./bin/bash
+	ln -svf usr/bin ./bin
 	if [ -d "$for_state" ];then
 		ln -svf bash $for_state/bin/sh
 	fi

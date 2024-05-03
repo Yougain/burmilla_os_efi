@@ -166,7 +166,7 @@ function blkid2(){
 		
 		local bc
 
-		dbv 11111
+		dbv
 		local_fun by_lsblk << '		}'
 			local AttName
 			local val

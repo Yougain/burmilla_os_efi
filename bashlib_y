@@ -901,7 +901,7 @@ require(){
 				local funcs="$(declare -F)"
 				local ln
 				local lno
-				if [ -r "$to_load" ];then
+				if [ -e "$to_load" ];then
 					dbv $to_load
 					if [ -n "$DEBUG" -a "$(stat -f -c '%T' /)" != "ramfs"  ]; then
 						source <(
