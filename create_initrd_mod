@@ -325,7 +325,7 @@ END
 	function find_file(){
 		fix=($@)
 		for fx in ${fix[@]}; do
-			local l=(`sfind / -name $item|grep $fx/|grep -v /mnt/|grep -v /home/|grep -v /root/`)
+			local l=(`sfind / -name $item|grep -v /tmp/|grep $fx/|grep -v /mnt/|grep -v /home/|grep -v /root/`)
 			info ${l[@]}
 			for lf in ${l[@]};do
 				if [ -e "$lf" ];then
@@ -340,7 +340,7 @@ END
 		done
 		if [ ! -e "$lf" ];then
 			for fx in ${fix[@]}; do
-				l=(`find / -name $item|grep $fx/|grep -v /mnt/|grep -v /home/|grep -v /root/`)
+				l=(`find / -name $item|grep -v /tmp/|grep $fx/|grep -v /mnt/|grep -v /home/|grep -v /root/`)
 				info ${l[@]}
 				for lf in ${l[@]};do
 					if [ -e "$lf" ];then
