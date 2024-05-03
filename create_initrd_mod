@@ -377,7 +377,7 @@ END
 						done
 					fi
 				else
-					local ldd_res_nf="`ldd $d/usr/bin/$item|grep 'not found (required'|awk '{print $2}'|sort|uniq`"
+					local ldd_res_nf="`ldd $d/usr/bin/$item|grep -v 'statically linked'|grep 'not found (required'|awk '{print $2}'|sort|uniq`"
 					ldd_res="$ldd_res_nf 
 	""`ldd $1/usr/bin/$item|grep -v 'not found (required'|awk '{print $item}'`"
 					info $item
