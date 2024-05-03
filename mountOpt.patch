@@ -647,8 +647,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
  }
 diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg/init/switchroot/switchroot.go
 --- os.prev/pkg/init/switchroot/switchroot.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/switchroot/switchroot.go	2024-05-03 09:07:41.670660500 +0900
-@@ -4,8 +4,8 @@
++++ os.new/pkg/init/switchroot/switchroot.go	2024-05-03 09:13:18.480660500 +0900
+@@ -4,9 +4,10 @@
  	"fmt"
  	"io/ioutil"
  	"os"
@@ -656,9 +656,11 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	"path"
 -	"strings"
  	"syscall"
++	"strings"
  
  	"github.com/burmilla/os/config"
-@@ -51,12 +51,26 @@
+ 	"github.com/burmilla/os/pkg/dfs"
+@@ -51,12 +52,26 @@
  	return true, nil
  }
  
@@ -685,31 +687,19 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	if rmUsr {
  		log.Warnf("Development setup. Removing old usr: %s", usr)
  		if err := os.RemoveAll(usr); err != nil {
-@@ -95,19 +109,10 @@
- 		return err
+@@ -109,6 +124,11 @@
+ 		}
  	}
  
--	for _, file := range files {
--		filename := path.Join("/", file.Name())
--
--		if filename == rootfs || strings.HasPrefix(rootfs, filename+"/") {
--			log.Debugf("Skipping Deleting %s", filename)
--			continue
--		}
--
--		log.Debugf("Deleting %s", filename)
--		if err := os.RemoveAll(filename); err != nil {
--			return err
--		}
--	}
 +	createSymLink("usr/bin", path.Join(rootfs, "bin"))
 +	createSymLink("usr/lib", path.Join(rootfs, "lib"))
 +	createSymLink("lib", path.Join(rootfs, "lib64"))
 +	createSymLink("usr/sbin", path.Join(rootfs, "sbin"))
- 
++
  	return nil
  }
-@@ -141,6 +146,7 @@
+ 
+@@ -141,6 +161,7 @@
  		if err := syscall.Mount(i, path.Join(rootfs, i), "", syscall.MS_MOVE, ""); err != nil {
  			return err
  		}
@@ -717,7 +707,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
  
  	if err := copyMoveRoot(rootfs, rmUsr); err != nil {
-@@ -154,10 +160,19 @@
+@@ -154,10 +175,19 @@
  
  	log.Debugf("mount MS_MOVE %s", rootfs)
  	if err := syscall.Mount(rootfs, "/", "", syscall.MS_MOVE, ""); err != nil {
