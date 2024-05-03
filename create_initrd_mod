@@ -325,6 +325,8 @@ END
 	function find_file(){
 		info find_file $item
 		fix=($@)
+		lf=
+		cmd=
 		for fx in ${fix[@]}; do
 			local l=(`sfind / -name $item|grep -v /tmp/|grep $fx/|grep -v /mnt/|grep -v /home/|grep -v /root/`)
 			info l are ${l[@]}
