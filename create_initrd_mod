@@ -323,14 +323,14 @@ END
 	}
 	
 	function find_file(){
-		info find_file $item
+		dbv find_file $item
 		fix=($@)
 		lf=
 		cmd=
 		for fx in ${fix[@]}; do
-			info fx=$fx
+			dbv fx=$fx
 			local l=(`sfind / -name $item|grep -v /tmp/|grep $fx/|grep -v /mnt/|grep -v /home/|grep -v /root/`)
-			info l are ${l[@]}
+			dbv l are ${l[@]}
 			for lf in ${l[@]};do
 				if [ -e "$lf" ];then
 					break
@@ -345,8 +345,8 @@ END
 		if [ ! -e "$lf" ];then
 			for fx in ${fix[@]}; do
 				l=(`find / -name $item|grep -v /tmp/|grep $fx/|grep -v /mnt/|grep -v /home/|grep -v /root/`)
-				info l are ${l[@]}
-				info ${l[@]}
+				dbv l are ${l[@]}
+				dbv ${l[@]}
 				for lf in ${l[@]};do
 					if [ -e "$lf" ];then
 						break
@@ -366,7 +366,7 @@ END
 		else
 			cmd="system-docker cp udev:"
 		fi
-		info lf=$lf
+		dbv lf=$lf
 	}
 
 	function cp_bin(){
@@ -376,9 +376,9 @@ END
 		local cmd
 		local lf
 		while read item; do
-			info cp_bin $item
+			dbv cp_bin $item
 			find_file bin
-			info lf=$lf
+			dbv lf=$lf
 			for i in $@; do
 				if [ -d "$i" ];then
 					d=$i
@@ -412,10 +412,10 @@ END
 					local ldd_res_nf="`ldd $d/usr/bin/$item|grep -v 'statically linked'|grep 'not found (required'|awk '{print $2}'|sort|uniq`"
 					ldd_res="$ldd_res_nf 
 	""`ldd $1/usr/bin/$item|grep -v 'statically linked'|grep -v 'not found (required'|awk '{print $item}'`"
-					info $item
-					info `ldd $d/usr/bin/$item`
-					info "$ldd_res_nf"
-					info "$ldd_res"
+					dbv $item
+					dbv `ldd $d/usr/bin/$item`
+					dbv "$ldd_res_nf"
+					dbv "$ldd_res"
 					while read f; do
 						f=${f##*/}
 						f=${f%%:*}
