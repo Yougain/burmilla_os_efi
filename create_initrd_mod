@@ -323,10 +323,11 @@ END
 	}
 	
 	function find_file(){
+		info find_file $item
 		fix=($@)
 		for fx in ${fix[@]}; do
 			local l=(`sfind / -name $item|grep -v /tmp/|grep $fx/|grep -v /mnt/|grep -v /home/|grep -v /root/`)
-			info ${l[@]}
+			info l are ${l[@]}
 			for lf in ${l[@]};do
 				if [ -e "$lf" ];then
 					break
@@ -341,6 +342,7 @@ END
 		if [ ! -e "$lf" ];then
 			for fx in ${fix[@]}; do
 				l=(`find / -name $item|grep -v /tmp/|grep $fx/|grep -v /mnt/|grep -v /home/|grep -v /root/`)
+				info l are ${l[@]}
 				info ${l[@]}
 				for lf in ${l[@]};do
 					if [ -e "$lf" ];then
@@ -361,6 +363,7 @@ END
 		else
 			cmd="system-docker cp udev:"
 		fi
+		info lf=$lf
 	}
 
 	function cp_bin(){
@@ -372,6 +375,7 @@ END
 		while read item; do
 			info cp_bin $item
 			find_file bin
+			info lf=$lf
 			for i in $@; do
 				if [ -d "$i" ];then
 					d=$i
