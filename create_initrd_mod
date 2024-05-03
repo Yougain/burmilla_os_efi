@@ -329,20 +329,12 @@ END
 		cmd=
 		for fx in ${fix[@]}; do
 			dbv fx=$fx
-			local l=(`sfind / -name $item|grep -v /tmp/|grep $fx/|grep -v /mnt/|grep -v /home/|grep -v /root/`)
-			dbv l are ${l[@]}
-			for lf in ${l[@]};do
-				if [ -e "$lf" ];then
-					break
-				else
-					lf=
-				fi
-			done
+			lf=`sfind / -name $item|grep -v /tmp/|grep $fx/|grep -v /mnt/|grep -v /home/|grep -v /root/|head -1`
 			if [ -n "$lf" ];then
 				break
 			fi
 		done
-		if [ ! -e "$lf" ];then
+		if [ -z "$lf" ];then
 			for fx in ${fix[@]}; do
 				l=(`find / -name $item|grep -v /tmp/|grep $fx/|grep -v /mnt/|grep -v /home/|grep -v /root/`)
 				dbv l are ${l[@]}
