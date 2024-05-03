@@ -328,6 +328,7 @@ END
 		lf=
 		cmd=
 		for fx in ${fix[@]}; do
+			info fx=$fx
 			local l=(`sfind / -name $item|grep -v /tmp/|grep $fx/|grep -v /mnt/|grep -v /home/|grep -v /root/`)
 			info l are ${l[@]}
 			for lf in ${l[@]};do
