@@ -156,7 +156,7 @@ function create_initrd_mod(){
 		shift
 		local lf
 		local cmd
-		find_file
+		find_file lib lib64
 		local d=./usr/lib
 		for i in $@; do
 			if [ -d "$i" ];then
@@ -323,23 +323,34 @@ END
 	}
 	
 	function find_file(){
-		local l=(`sfind / -name $item|grep bin/|grep -v /mnt/|grep -v /home/|grep -v /root/`)
-		info ${l[@]}
-		for lf in ${l[@]};do
-			if [ -e "$lf" ];then
-				break
-			else
-				lf=
-			fi
-		done
-		if [ ! -e "$lf" ];then
-			l=(`find / -name $item|grep bin/|grep -v /mnt/|grep -v /home/|grep -v /root/`)
+		fix=($@)
+		for fx in ${fix[@]}; do
+			local l=(`sfind / -name $item|grep $fx/|grep -v /mnt/|grep -v /home/|grep -v /root/`)
 			info ${l[@]}
 			for lf in ${l[@]};do
 				if [ -e "$lf" ];then
 					break
 				else
 					lf=
+				fi
+			done
+			if [ -n "$lf" ];then
+				break
+			fi
+		done
+		if [ ! -e "$lf" ];then
+			for fx in ${fix[@]}; do
+				l=(`find / -name $item|grep $fx/|grep -v /mnt/|grep -v /home/|grep -v /root/`)
+				info ${l[@]}
+				for lf in ${l[@]};do
+					if [ -e "$lf" ];then
+						break
+					else
+						lf=
+					fi
+				done
+				if [ -n "$lf" ];then
+					break
 				fi
 			done
 			if [ -z "$lf" ];then
@@ -360,7 +371,7 @@ END
 		local lf
 		while read item; do
 			info cp_bin $item
-			find_file
+			find_file bin
 			for i in $@; do
 				if [ -d "$i" ];then
 					d=$i
