@@ -379,7 +379,7 @@ END
 				else
 					local ldd_res_nf="`ldd $d/usr/bin/$item|grep -v 'statically linked'|grep 'not found (required'|awk '{print $2}'|sort|uniq`"
 					ldd_res="$ldd_res_nf 
-	""`ldd $1/usr/bin/$item|grep -v 'not found (required'|awk '{print $item}'`"
+	""`ldd $1/usr/bin/$item|grep -v 'statically linked'|grep -v 'not found (required'|awk '{print $item}'`"
 					info $item
 					info `ldd $d/usr/bin/$item`
 					info "$ldd_res_nf"
