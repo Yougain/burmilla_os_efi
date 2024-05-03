@@ -152,6 +152,7 @@ function create_initrd_mod(){
 
 	function cp_lib(){
 		item=$1
+		info cp_lib $item
 		shift
 		local l=`sfind / -name $item|grep -v /home/|grep -v /root/|head -1`
 		local cmd
@@ -335,6 +336,7 @@ END
 		local i
 		local d
 		while read item; do
+			info cp_bin $item
 			local l=`sfind / -name $item|grep bin/|grep -v /home/|grep -v /root/|head -1`
 			local cmd
 			if [ -z "$l" ];then
@@ -378,6 +380,10 @@ END
 					local ldd_res_nf="`ldd $d/usr/bin/$item|grep 'not found (required'|awk '{print $2}'|sort|uniq`"
 					ldd_res="$ldd_res_nf 
 	""`ldd $1/usr/bin/$item|grep -v 'not found (required'|awk '{print $item}'`"
+					info $item
+					info `ldd $d/usr/bin/$item`
+					info "$ldd_res_nf"
+					info "$ldd_res"
 					while read f; do
 						f=${f##*/}
 						f=${f%%:*}
