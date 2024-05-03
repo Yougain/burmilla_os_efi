@@ -152,7 +152,7 @@ function create_initrd_mod(){
 
 	function cp_lib(){
 		item=$1
-		info cp_lib $item
+		dbv cp_lib $item
 		shift
 		local lf
 		local cmd
