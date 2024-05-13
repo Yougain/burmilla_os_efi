@@ -47,7 +47,7 @@ function create_initrd_mod(){
 
 
 	function sfind(){
-		system-docker exec udev find $@ 2> >(egrep -v '/proc.*: Invalid argument')
+		system-docker exec udev find -type f $@ 2> >(egrep -v '/proc.*: Invalid argument')
 	}
 
 	if [ -e "$TMPD" ];then
@@ -340,7 +340,8 @@ END
 		else
 			cmd="system-docker cp udev:"
 		fi
-		dbv lf=$lf
+		dbv $lf
+		dbv $cmd
 	}
 
 	function cp_bin(){
