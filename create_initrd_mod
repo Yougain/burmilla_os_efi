@@ -326,6 +326,11 @@ END
 			dbv fx=$fx
 			lf=`sfind / -name $item|grep -v /tmp/|grep $fx/|grep -v /mnt/|grep -v /home/|grep -v /root/|head -1`
 			if [ -n "$lf" ];then
+				local rf="`system-docker exec udev readlink -f $lf`"
+				if [ "${rf##*/}" = "busybox" ];then
+					lf=""
+					continue
+				fi
 				break
 			fi
 		done
