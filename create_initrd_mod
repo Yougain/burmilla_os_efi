@@ -358,7 +358,7 @@ END
 					d=$i
 					echo $cmd$lf $i/usr/bin
 					if ! $cmd$lf $i/usr/bin 2> >(check_cp_udev_out "$i" "$item");then
-						die cannot copy: $cmd$l $i/usr/bin
+						die cannot copy: $cmd$lf $i/usr/bin
 					fi
 				fi
 			done
