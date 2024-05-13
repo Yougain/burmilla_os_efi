@@ -148,7 +148,7 @@ function create_initrd_mod(){
 		done
 		if [ -L $1/$d/$item ];then
 			local f=`readlink $1/$d/$item`
-			local e=`dirname $1`
+			local e=`dirname $1/$d/$item`
 			for i in $@; do
 				if [ -d "$i" ];then
 					echo $cmd$e/$f $i/$d
