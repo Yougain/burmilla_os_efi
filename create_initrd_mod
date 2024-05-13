@@ -313,6 +313,9 @@ END
 			if [ "${lnkf##*/}" != "${1##*/}" ];then
 				ln -sv "${lnkf##*/}" $2/"${1##*/}"
 			fi
+		else
+			echo system-docker cp "udev:$1" $2
+			system-docker cp "udev:$1" $2
 		fi
 		
 	}
