@@ -306,7 +306,7 @@ END
 	
 	function udev_cp(){
 		if system-docker exec udev bash -c '[ -L "'$1'" ]'; then
-			local lnkf="`system-docker exec readlink -f $1`"
+			local lnkf="`system-docker exec udev readlink -f $1`"
 			local lnkfname="${lnkf##*/}"
 			system-docker cp "udev:$lnkf" $2
 			echo system-docker cp "udev:$lnkf" $2
