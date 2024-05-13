@@ -124,16 +124,6 @@ function create_initrd_mod(){
 		zcat $EXTD/boot_dev/$INITRD_FILE | cpio -idm
 	fi
 
-	DOCKER_IMAGE=`yq ".rancher.services.docker.image" usr/share/ros/os-config.yml`
-	if [ -z "$DOCKER_IMAGE" ];then
-		die cannot find .rancher.services.docker.image in usr/share/ros/os-config.yml
-	fi
-	if ! docker pull $DOCKER_IMAGE; then
-		die cannot pull $DOCKER_IMAGE
-	fi
-	if ! docker save $DOCKER_IMAGE | gzip > usr/share/ros/os-docker-${DOCKER_IMAGE#*:}.tar.gz; then
-		die cannot extract usr/share/ros/os-docker-${DOCKER_IMAGE#*:}.tar.gz
-	fi
 
 	local d
 	for d in . $for_state; do
@@ -158,7 +148,7 @@ function create_initrd_mod(){
 		done
 		if [ -L $1/$d/$item ];then
 			local f=`readlink $1/$d/$item`
-			local e=`dirname $l`
+			local e=`dirname $1`
 			for i in $@; do
 				if [ -d "$i" ];then
 					echo $cmd$e/$f $i/$d
@@ -524,6 +514,18 @@ $libs"
 		ln -svf usr/bin $for_state/bin
 	fi
 	chown root:root usr/bin/busybox
+
+	DOCKER_IMAGE=`yq ".rancher.services.docker.image" usr/share/ros/os-config.yml`
+	if [ -z "$DOCKER_IMAGE" ];then
+		die cannot find .rancher.services.docker.image in usr/share/ros/os-config.yml
+	fi
+	if ! docker pull $DOCKER_IMAGE; then
+		die cannot pull $DOCKER_IMAGE
+	fi
+	if ! docker save $DOCKER_IMAGE | gzip > usr/share/ros/os-docker-${DOCKER_IMAGE#*:}.tar.gz; then
+		die cannot extract usr/share/ros/os-docker-${DOCKER_IMAGE#*:}.tar.gz
+	fi
+
 	ls -la init
 	
 	setup_nginx_files
