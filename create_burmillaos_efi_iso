@@ -238,6 +238,9 @@ if [ -z "$SKIP_RECREATE" ];then
 
 require create_initrd_mod
 pushd "$T"
+if [ -n "$DEBUG" ];then
+	export DEBUG
+fi
 create_initrd_mod
 popd
 INITRD_FILE_MOD="`ls -d \"$T\"/initrd-*`"
