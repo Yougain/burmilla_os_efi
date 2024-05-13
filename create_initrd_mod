@@ -47,7 +47,7 @@ function create_initrd_mod(){
 
 
 	function sfind(){
-		system-docker exec udev find -f $@ 2> >(egrep -v '/proc.*: Invalid argument')
+		system-docker exec udev find $@ 2> >(egrep -v '/proc.*: Invalid argument')
 	}
 
 	if [ -e "$TMPD" ];then
@@ -139,16 +139,8 @@ function create_initrd_mod(){
 	for d in . $for_state; do
 		ln -s usr/lib $d/lib
 		ln -s lib $d/lib64
-		if [ -d $d/bin ];then
-			ln -s ../usr/bin/bash $d/bin/bash
-		fi
 	done
 	
-	if [ -n "$for_state" ];then
-		if [ ! -d $for_state/bin ];then
-			ln -s usr/bin $for_state/bin
-		fi
-	fi
 
 	function cp_lib(){
 		item=$1
@@ -524,9 +516,12 @@ $libs"
 			done
 		fi
 	done
+	rm -rf ./bin
 	ln -svf usr/bin ./bin
+	ln -svf bash usr/bin/sh
 	if [ -d "$for_state" ];then
-		ln -svf bash $for_state/bin/sh
+		rm -rf $for_state/bin
+		ln -svf usr/bin $for_state/bin
 	fi
 	chown root:root usr/bin/busybox
 	ls -la init
