@@ -344,6 +344,7 @@ END
 	}
 
 	function cp_bin(){
+		DEBUG=1
 		local libs=""
 		local i
 		local d
