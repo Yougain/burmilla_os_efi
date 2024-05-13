@@ -31,27 +31,32 @@ before_sysinit(){
 	info udev stopped
 	info /opt is on $(stat -f -c '%T' /opt)
 	info / is on $(stat -f -c '%T' /)
-	if [ "$(stat -f -c '%T' /)" = "ramfs" ];then
-		mkdir -p /opt/initrd
-		mount --bind / /opt/initrd
-		local found
-		for f in `find /usr/share/zoneinfo`; do
-			for t in `strings $f`; do
-				if [ "$t" = "$TZ" ] ; then
-					found=$f
-					info $TZ found in $f
-					break
-				fi
-			done
-			if [ -n "$found" ];then
-				if [ -e /etc/localtime ];then
-					mv -f /etc/localtime /etc/localtime.org
-				fi
-				cp -f $found /etc/localtime
-				info cp $found /etc/localtime
+	local found
+	for f in `find /usr/share/zoneinfo`; do
+		for t in `strings $f`; do
+			if [ "$t" = "$TZ" ] ; then
+				found=$f
+				info $TZ found in $f
 				break
 			fi
 		done
+		if [ -n "$found" ];then
+			if [ -e /etc/localtime ];then
+				if ! diff /etc/localtime $found; then
+					cp -f $found /etc/localtime/localtime.0
+					chain_bak /etc/localtime.0 /etc/localtime
+					info cp $found /etc/localtime
+				fi
+			else
+				cp -f $found /etc/localtime
+				info cp $found /etc/localtime
+			fi
+			break
+		fi
+	done
+	if [ "$(stat -f -c '%T' /)" = "ramfs" ];then
+		mkdir -p /opt/initrd
+		mount --bind / /opt/initrd
 		mkdir -p /var/lib/rancher/conf/cloud-config.d
 		if [ -n "$TZ" ]; then
 			cat - > /var/lib/rancher/conf/cloud-config.d/user_config.yml <<END
@@ -119,9 +124,19 @@ END
 				yq e -i '.runcmd.[0]|="cp /opt/initrd/etc/localtime /etc"' /var/lib/rancher/conf/cloud-config.d/user_config.yml
 			fi
 		fi
-	elif [ -n "$INITRD_MOUNT" -a "$(stat -f -c '%T' /opt)" = "ramfs" ];then
-		mkdir -p /opt/initrd
-		mount --bind / /opt/initrd
+	else
+		if [ -n "$INITRD_MOUNT" -a "$(stat -f -c '%T' /opt)" = "ramfs" ];then
+			mkdir -p /opt/initrd
+			mount --bind / /opt/initrd
+		fi
+		do_mount 5 -o subvol=/ /state_top_lvl
+		do_mount 7 -o subvol=/ /oem_top_lvl
+		do_mount 2 /boot/efi
+		do_mount 3
+		btrfs quota enable /state_top_lvl
+		btrfs quota enable /state_top_lvl/state_root
+		btrfs quota enable /oem_top_lvl
+		btrfs quota enable /oem_top_lvl/oem_root
 	fi
 	info Using /usr/share/ros/os-config.yml on `which_dev_on /usr/share/ros/os-config.yml`.
 	USER_DOCKER_IMAGE=`yq ".rancher.services.docker.image" /usr/share/ros/os-config.yml`

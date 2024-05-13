@@ -387,6 +387,17 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
  	BootDev    string   `yaml:"boot_dev,omitempty"`
  }
  
+diff -Naur '--exclude=.git' os.prev/images/02-console/sshd_config.append.tpl os.new/images/02-console/sshd_config.append.tpl
+--- os.prev/images/02-console/sshd_config.append.tpl	2024-03-14 20:29:45.967485300 +0900
++++ os.new/images/02-console/sshd_config.append.tpl	2024-05-13 11:49:07.371028200 +0900
+@@ -22,6 +22,7 @@
+ PermitEmptyPasswords no
+ AllowTcpForwarding no
+ DebianBanner no
++PasswordAuthentication no
+ 
+ # Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com hardening guide.
+ KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256
 diff -Naur '--exclude=.git' os.prev/install_burmillaos_on_btrfs os.new/install_burmillaos_on_btrfs
 --- os.prev/install_burmillaos_on_btrfs	1970-01-01 09:00:00.000000000 +0900
 +++ os.new/install_burmillaos_on_btrfs	2024-04-09 22:36:14.555163400 +0900
@@ -454,6 +465,65 @@ diff -Naur '--exclude=.git' os.prev/main.go os.new/main.go
  	if 0 == 1 {
  		// TODO: move this into a "dev/debug +build"
  		fmt.Fprintf(os.Stderr, "ros main(%s) ppid:%d - print to stdio\n", os.Args[0], os.Getppid())
+diff -Naur '--exclude=.git' os.prev/os-config.tpl.yml os.new/os-config.tpl.yml
+--- os.prev/os-config.tpl.yml	2024-03-14 20:29:45.967485300 +0900
++++ os.new/os-config.tpl.yml	2024-05-13 12:56:20.841028200 +0900
+@@ -147,11 +147,12 @@
+       - /usr/share/ros:/usr/share/ros
+       - /var/lib/boot2docker:/var/lib/boot2docker
+       - /var/lib/rancher/cache:/var/lib/rancher/cache
+-      - /var/lib/rancher/conf:/var/lib/rancher/conf
++      - /var/lib/rancher/conf:/usr/share/ros/oem/var/lib/rancher/conf
+       - /var/lib/rancher:/var/lib/rancher
+       - /var/lib/waagent:/var/lib/waagent
+-      - /var/log:/var/log
++      - /var/log:/usr/share/ros/oem/var/log
+       - /var/run:/var/run
++      - /etc/localtime:/etc/localtime
+     container-data-volumes:
+       image: {{.OS_REPO}}/os-base:{{.VERSION}}{{.SUFFIX}}
+       command: echo
+@@ -163,8 +164,8 @@
+       privileged: true
+       read_only: true
+       volumes:
+-      - /var/lib/user-docker:/var/lib/docker
+-      - /var/lib/m-user-docker:/var/lib/m-user-docker
++      - /var/lib/user-docker:/usr/share/ros/oem/var/lib/docker
++      - /var/lib/m-user-docker:/usr/share/ros/oem/var/lib/m-user-docker
+     user-volumes:
+       image: {{.OS_REPO}}/os-base:{{.VERSION}}{{.SUFFIX}}
+       command: echo
+@@ -176,9 +177,11 @@
+       privileged: true
+       read_only: true
+       volumes:
+-      - /home:/home
+-      - /opt:/opt
+-      - /var/lib/kubelet:/var/lib/kubelet
++      - /root:/usr/share/ros/oem/root
++      - /home:/usr/share/ros/oem/home
++      - /opt:/usr/share/ros/oem/opt
++      - /etc/ssh:/usr/share/ros/oem/ssh
++      - /var/lib/kubelet:/usr/share/ros/oem/var/lib/kubelet
+     media-volumes:
+       image: {{.OS_REPO}}/os-base:{{.VERSION}}{{.SUFFIX}}
+       command: echo
+@@ -260,6 +263,14 @@
+       volumes:
+       - /media:/media:shared
+       - /mnt:/mnt:shared
++      - /boot:/boot
++      - /state_top_level:/state_top_level
++      - /oem_top_level:/oem_top_level
++      - /etc/ssh:/usr/share/ros/oem/etc/ssh
++      - /usr/bin/bashlib_y:/usr/bin/bashlib_y
++      - /usr/bin/blkid2:/usr/bin/blkid2
++      - /usr/bin/do_mount:/usr/bin/do_mount
++      - /usr/share/bashlib_y:/usr/share/bashlib_y
+     logrotate:
+       image: {{.OS_REPO}}/os-logrotate:{{.VERSION}}{{.SUFFIX}}
+       command: /usr/sbin/logrotate -v /etc/logrotate.conf
 diff -Naur '--exclude=.git' os.prev/pkg/dfs/scratch.go os.new/pkg/dfs/scratch.go
 --- os.prev/pkg/dfs/scratch.go	2024-03-14 20:29:45.967485300 +0900
 +++ os.new/pkg/dfs/scratch.go	2024-04-09 22:36:14.555163400 +0900

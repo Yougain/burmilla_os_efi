@@ -931,15 +931,18 @@ DISK_SIZE=`ssh_do -t sudo fdisk -l $TARGET_DEV \|grep \"Disk $TARGET_DEV\"\|awk 
 MEM_SIZE=`ssh_do -t cat /proc/meminfo\|grep MemTotal\|awk \"{print $\"\"2}\"`
 DISK_SIZE=${DISK_SIZE%$'\r'}
 MEM_SIZE=${MEM_SIZE%$'\r'}
-
+BOOT_PART_SIZE="+3G"
+RESERVED_PART_SIZE="+3G"
+STATE_PART_SIZE="+10G"
 if [ "$DISK_SIZE" -ge 2199023255552 ];then # over 2Tbytes
     SWAP_PART_SIZE="+64G"
-    STATE_PART_SIZE="+1T"
 else
-	STATE_PART_SIZE="+$(( DISK_SIZE/2048 ))K"
 	if [ "$DISK_SIZE" -ge 1099511627776 ];then # over 1Tbytes
     	SWAP_PART_SIZE="+64G"
 	else
+		BOOT_PART_SIZE="+1G"
+		STATE_PART_SIZE="+1G"
+		RESERVED_PART_SIZE="+1K"
 		SWAP_PART_SIZE="+$MEM_SIZE"K
 	fi
 fi
@@ -1033,7 +1036,7 @@ ssh_sudo <<'FINAL'
 	n
 	4
 
-	+1G
+	$BOOT_PART_SIZE
 	8300
 	n
 	5
@@ -1043,7 +1046,7 @@ ssh_sudo <<'FINAL'
 	n
 	6
 
-	+1G
+	$RESERVED_PART_SIZE
 	8300
 	n
 	7
@@ -1064,32 +1067,6 @@ ssh_sudo <<'FINAL'
 	END
 	mkfs.vfat -F32 -n EFI $TARGET_DEV2 <<END
 	y
-	END
-
-	# initial cloud-config.yml
-	write_env_file cloud-config.yml <<'END'
-		environment:
-		  ROS_BTRFS_WRAPPER: 1
- 		rancher:
-		  network:
-		    dns:
-		      nameservers:
-		$DNS_SETTINGS
-		    interfaces:
-		      eth*:
-		        dhcp: false
-		      $NET_DEV:
-		        address: $INST_IP/$NETMASK
-		        gateway: $GATEWAY
-		ssh_authorized_keys:
-		- $KEY
-		runcmd:
-		- export BOOT_DEV=/dev/$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|sed -r 's/^.*[[:space:]]efi=UUID=(([\\]|)['"'"'"]|)([0-9a-fA-F-]+)\1.*$/\3/g'`|sed -r 's/^\/dev\/([a-z]+)[0-9]+$/\1/g')
-		- mkdir -p /efi_dev
-		- mount "\$BOOT_DEV"2 /efi_dev
-		- rm -f /efi_dev/TOPIC
-		- umount /efi_dev
-		- rmdir /efi_dev
 	END
 
 	# install on $TARGET_DEV4 (initial state drive, no boot, no state, no oem drive) first
@@ -1158,9 +1135,26 @@ ssh_sudo <<'FINAL'
 		btrfs subvolume create /installing/oem_top/oem_root
 		echo btrfs subvolume set-default `btrfs subvolume list /installing/oem_top|grep oem_root|awk '{print $2}'` /installing/oem_top
 		btrfs subvolume set-default `btrfs subvolume list /installing/oem_top|grep oem_root|awk '{print $2}'` /installing/oem_top
+		cp -a /installing/state_top/state_root/opt /installing/oem_top/oem_root
+		cp -a /installing/state_top/state_root/home /installing/oem_top/oem_root
+		mkdir -p /installing/oem_top/oem_root/var/lib/rancher/conf
+		cp -a /installing/state_top/state_root/var/lib/rancher/conf /installing/oem_top/oem_root/var/lib/rancher
+		cp -a /installing/state_top/state_root/var/lib/kubelet /installing/oem_top/oem_root/var/lib
+		cp -a /root /installing/oem_top/oem_root
+		cp -a /installing/state_top/state_root/var/lib/user-docker /installing/oem_top/oem_root/var/lib
+		cp -a /installing/state_top/state_root/var/lib/m-user-docker /installing/oem_top/oem_root/var/lib
+		chmod 550 /installing/oem_top/oem_root/root
+		mkdir -p /installing/oem_top/oem_root/root/.ssh
+		chmod 700 /installing/oem_top/oem_root/root/.ssh
+		cp -a /var/log /installing/oem_top/oem_root/var
 		mkdir -p /installing/oem_top/oem_root/opt/rancher/conf/grub
 		echo -n "USER_SETTINGS='TZ="$TZL" TZS=$TZS rancher.network.interfaces.$NET_DEV.address=$IP/$NETMASK rancher.network.interfaces.$NET_DEV.gateway=$GATEWAY rancher.network.dns.nameservers=$DNS_SETTINGS_YQ'" > /installing/oem_top/oem_root/opt/rancher/conf/grub/USER_SETTINGS
 		chmod +x /installing/oem_top/oem_root/opt/rancher/conf/grub/USER_SETTINGS
+		rm_all /installing/state_top/state_root/{root,opt,home,var/log}
+		rm_all /installing/state_top/state_root/var/lib/rancher/conf
+		rm_all /installing/state_top/state_root/var/lib/{,m-}user-docker
+
+
 		umount /installing/oem_top
 	else
 		OEM_UUID_SUB=`/sbin/blkid $TARGET_DEV7| awk '{print $4}'`
@@ -1187,7 +1181,7 @@ ssh_sudo <<'FINAL'
 	ln -sf ../efi/EFI/boot/grub.cfg /installing/boot_dev/grub/grub.cfg
 	rm -rf /installing/state_top/state_root/boot/*
 
-	INITRD_FILE=`cd /installing/boot_dev;ls -d initrd-*|grep -v mod| grep btrfs`
+	INITRD_FILE=`cd /installing/boot_dev;ls -d initrd-*|grep mod| grep btrfs`
 	INITRD_FILE_COUNT=`echo "$INITRD_FILE" | wc | awk '{print $1}'`
 	if [ "$INITRD_FILE_COUNT" != "1" ];then
 	    die cannot detect patched initrd, or multiple initrd detected.
@@ -1223,7 +1217,7 @@ ssh_sudo <<'FINAL'
 	echo VERSION="$VERSION"
 	store_env -s /installing/efipart/LINUX-$VERSION
 	store_env -s /installing/efipart/LINUX_DEBUG-$VERSION
-	store_env -s /installing/efipart/INITRD-$VERSION
+	store_env -s /installing/efipart/INITRD-$VERSION-mod
 	store_env -s /installing/efipart/VERSION
 	
 FINAL
@@ -1243,6 +1237,10 @@ if [ -z "$INITRD_FILE" ];then
 	die 'missing $INITRD_FILE'
 fi
 
+
+UF=/installing/state/var/lib/rancher/conf/cloud-config.d/user_config.yml
+UFL=/installing/oem_part/var/lib/rancher/conf_lib/cloud-config.d/user_config.yml
+
 ssh_sudo <<'FINAL'
 	dbv ${!SCRIPT_FILES[@]}
 	umount /installing/boot_dev
@@ -1257,141 +1255,6 @@ ssh_sudo <<'FINAL'
 	mkdir -p /installing/oempart/var/log/burmilla_installation/1
 	cp -a /var/log/* /installing/oempart/var/log/burmilla_installation/1
 	umount /installing/oempart
-	sleep 5
-	echo -e $green"rebooting by target disk ....$normal"
-FINAL
-
-ssh_sudo reboot
-
-# installation 2nd phase : boot by target disk
-ssh_param $INST_IP 22 -x -q -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher
-dbv ${!SCRIPT_FILES[@]}
-
-
-function reboot_by_passwd(){
-	expect -c "
-	set timeout 1
-	spawn ssh -p 22 -o \"StrictHostKeyChecking no\" -o \"UserKnownHostsFile /dev/null\" -l rancher $INST_IP
-	expect \"assword:\"
-	send \"rancher\n\"
-	expect \"rancher ~]$ \"
-	send \"sudo reboot\n\"
-	"
-}
-
-
-wait_sshd_start
-dbv ${!SCRIPT_FILES[@]}
-
-
-while ! ssh_do echo; do
-	green Switch to boot by target disk
-	green rebooting ...
-	reboot_by_passwd
-	sleep 10
-	wait_sshd_start
-done
-
-dbv ${!SCRIPT_FILES[@]}
-
-cyan_n Waiting initialization.
-while [ -z "`ssh_do ps ax | grep 'containerd --config /var/run/docker/containerd/containerd.toml'`" ]; do
-    sleep 1
-    cyan_n .
-done
-
-ssh_sudo <<'END'
-	dbv ${!SCRIPT_FILES[@]}
-	if [ -n "$INSTALL_VIM" ];then
-		install_vim
-	fi
-	mkdir -p /efipart
-	do_install args
-	do_install do_mount
-	do_install blkid2
-	do_install chain_bak
-	do_install do_install
-	do_install partNum2Dev
-	do_install parse_func
-	dbv ${!SCRIPT_FILES[@]}
-	do_mount 2 /efipart
-	dbv mounted 2 /efipart
-	store_env /efipart/TOPIC ""
-	dbv TOPIC written
-	umount /efipart
-	dbv unmounted /efipart
-	rmdir /efipart
-	apt-get -y update
-	apt-get -y upgrade
-	apt-get -y install btrfs-progs binutils
-	local found_
-	for f_ in `find /usr/share/zoneinfo`; do
-		for t_ in `strings $f_`; do
-			if [ "$t_" = "$TZL" ] ; then
-				found_=$f_
-				info $TZL found in $f_
-				break
-			fi
-		done
-		if [ -n "$found_" ];then
-			mv -f /etc/localtime /etc/localtime.org
-			ln -sf $found_ /etc/localtime
-			break
-		fi
-	done
-	do_mount 7 /oempart
-	mkdir -p /oempart/var/log/burmilla_installation/2
-	cp -ar /var/log/* /oempart/var/log/burmilla_installation/2
-	green Switch to boot by installer
-END
-
-ssh_sudo reboot
-
-if [ $? != 0 ];then
-	die "Opertion terminated due to unknown bug."
-fi
-
-ssh_param $INST_IP 22 -x -q -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher
-
-#ssh_param $IP $PORT -x -q -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" -l rancher
-
-
-wait_sshd_start
-
-
-# installation 3rd phase : boot by installer
-
-install_ssh_key
-
-
-if [ -n "$INSTALL_VIM" ];then
-	ssh_do <<'	END'
-		install_vim
-	END
-fi
-
-
-#ssh_do sudo mkdir -p /installing/state /installing/oem_part
-#ssh_do sudo mount $TARGET_DEV5 /installing/state
-#if [ -z "`ssh_do ls -ld /installing/state/home`" ];then
-#	die "Please boot from installed hard disk only ONCE."
-#fi
-#if [ -n "`ssh_do ls -ld /installing/state/home|grep oem`" ];then#
-#	die "Already installed with oem disk."
-#fi
-
-UF=/installing/state/var/lib/rancher/conf/cloud-config.d/user_config.yml
-UFL=/installing/oem_part/var/lib/rancher/conf_lib/cloud-config.d/user_config.yml
-ssh_sudo <<'FINAL'
-	#!/bin/bash
-
-	do_install args
-	do_install do_mount
-	do_install blkid2
-	do_install chain_bak
-	do_install do_install
-	do_install partNum2Dev
-	do_install parse_func
 
 	apt-get -y update
 	apt-get -y install btrfs-progs binutils
@@ -1404,11 +1267,9 @@ ssh_sudo <<'FINAL'
 		die "btrfs not found"
 	fi
 	
-	do_mount 5 /installing/state
+	mount $TARGET_DEV5 /installing/state
 
- 	create_initrd_mod $INITRD
-
-	if ! do_mount 4 /installing/boot_dev; then
+	if ! mount $TARGET_DEV4 /installing/boot_dev; then
 		die cannot mount
 	fi
 	ls -la /installing/boot_dev
@@ -1430,7 +1291,7 @@ ssh_sudo <<'FINAL'
 		exit 1
 	fi
 
-	if ! do_mount 7 /installing/oem_part; then
+	if ! mount $TARGET_DEV7 /installing/oem_part; then
 		die cannot mount
 	fi
 	if [ -e "$UF" ];then
@@ -1482,16 +1343,6 @@ ssh_sudo <<'FINAL'
 			      environment:
 			        TZ: $TZL
 			runcmd:
-			- do_mount 5 -o subvol=/ /state_top_lvl
-			- do_mount 7 -o subvol=/ /oem_top_lvl
-			- do_mount 4 /boot
-			- do_mount 2 /boot/efi
-			- rm -f /boot/efi/TOPIC
-			- swapon `cat /tmp/boot_drive`3
-			- btrfs quota enable /state_top_lvl
-			- btrfs quota enable /state_top_lvl/state_root
-			- btrfs quota enable /oem_top_lvl
-			- btrfs quota enable /oem_top_lvl/oem_root
 			#cloud-config
 			ssh_authorized_keys:
 			- $KEY
@@ -1508,34 +1359,6 @@ ssh_sudo <<'FINAL'
 			yq e -i ".rancher.services.$i__.environment.TZ|=\"$TZL\"" $UF
 		done
 		unset __i
-		c=""
-		i=0
-		pre="sudo sed -i 's/#Port 22/Port "
-		post="/' /etc/ssh/sshd_config"
-		while [ 1 ]; do
-			case "`yq e '.write_files.['$i'].path' $UF`" in
-				"/opt/rancher/bin/start.sh" )
-					yq e '.write_files.['$i'].content' $UF > ./tmp_file
-					while IFS= read line; do
-						if [ "${line:0:${#pre}}" ==  "$pre" ]; then
-							if [ "${line:$((${#line} - ${#post})):${#post}}" == "$post" ]; then
-								line="$pre"$PORT"$post"
-							fi
-						fi
-						echo "$line"
-					done < ./tmp_file > ./tmp_file2
-					yq e -i '.write_files.['$i'].content|="'"`cat ./tmp_file2`"'"' $UF
-					break
-					;;
-				"null" )
-					break
-					;;
-			esac
-			i=$(( i + 1 ))
-			if [ "$i" == "1000" ];then
-				break
-			fi
-		done
 		i=0
 		while [ 1 ]; do
 			k="`yq e '.ssh_authorized_keys.['$i']' $UF`"
@@ -1559,71 +1382,6 @@ ssh_sudo <<'FINAL'
 		fi
 	fi
 
-	mkdir -p /installing/state/oem_top_lvl
-	mkdir -p /installing/state/state_top_lvl
-
-	[ ! -e /installing/oem_part/home ] && cp -af /installing/state/home /installing/oem_part
-	[ ! -e /installing/oem_part/root ] && cp -af /installing/state/root /installing/oem_part
-	cp_bak --compare -10 /installing/state/opt /installing/oem_part
-	mkdir -p /installing/oem_part/var/log/burmilla_installation/3
-	cp_bak --compare -10 /installing/state/var/log/* /installing/oem_part/var/log/burmilla_installation/3
-	mkdir -p /installing/oem_part/var/lib/rancher/{conf,conf_lib}
-	cp_bak --compare -10 /installing/oem_part/var/lib/rancher/conf/* /installing/oem_part/var/lib/rancher/conf_lib
-	cp_bak --compare -10 /installing/state/var/lib/rancher/conf/* /installing/oem_part/var/lib/rancher/conf_lib
-	rm -rf /installing/oem_part/var/lib/rancher/conf
-	cp -a /installing/state/var/lib/rancher/conf /installing/oem_part/var/lib/rancher
-	mkdir -p /installing/oem_part/usr/share
-	cp_bak -10 --compare /installing/state/usr/share/ros /installing/oem_part/usr/share
-	cp_bak -10 --compare /opt/initrd/usr/share/ros /installing/oem_part/usr/share
-	
-	rm_all /installing/state/{root,opt,home,var/log}
-	rm_all /installing/state/var/lib/rancher/conf
-
-	chmod 550 /installing/oem_part/root
-	mkdir -p /installing/oem_part/root/.ssh
-	chmod 700 /installing/oem_part/root/.ssh
-	
-	ln -s /usr/share/ros/oem/root /installing/state/root
-	ln -s /usr/share/ros/oem/home /installing/state/home
-	ln -s /usr/share/ros/oem/opt /installing/state/opt
-	ln -s /usr/share/ros/oem/var/log /installing/state/var/log
-	ln -s /usr/share/ros/oem/var/lib/rancher/conf /installing/state/var/lib/rancher/conf
-	for f in /installing/oem_part/usr/share/ros/*; do
-		if [ -e "$f" ];then
-			fn="${f##*/}"
-			if [ "$fn" != "oem" ];then
-				rm -rf /installing/state/usr/share/ros/"$fn"
-				ln -s /usr/share/ros/oem/usr/share/ros/"$fn" /installing/state/usr/share/ros
-			fi
-		fi
-	done
-
-	# ssh config directory
-	mkdir -p /installing/oem_part/etc/ssh
-	ssh_file=`find /installing/state -name "ssh_host_*_key*"| head -1`
-	ssh_dir=${ssh_file%/*}
-	if [ ! -e /installing/oem_part/etc/ssh/sshd_config ];then
-		NEW_SSHD_CONF=1
-	fi
-	cp -an $ssh_dir /installing/oem_part/etc # not overwrite
-	if [ -n "$NEW_SSHD_CONF" ];then
-		sed -i 's/#Port 22/Port '$PORT'/' /installing/oem_part/etc/ssh/sshd_config
-		sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /installing/oem_part/etc/ssh/sshd_config
-	else
-		if [ -n "$FORCE" ];then
-			sed -i 's/#Port 22/Port '$PORT'/' /installing/oem_part/etc/ssh/sshd_config
-			sed -i 's/Port[[:space:]]*[0-9][0-9]*/Port '$PORT'/' /installing/oem_part/etc/ssh/sshd_config
-			echo -e $red`grep Port /installing/oem_part/etc/ssh/sshd_config`$plain
-		else
-			echo -e $purple"No force option."$plain
-		fi
-	fi
-	echo -e $green"Rewirte sshd_config finished"$plain
-	echo rm -rf $ssh_dir
-	rm -rf $ssh_dir
-	echo ln -sf /usr/share/ros/oem/etc/ssh $ssh_dir
-	ln -sf /usr/share/ros/oem/etc/ssh $ssh_dir
-
 	#local time
 	#etc_localtime=`find /installing/state -name "localtime"| awk '{print $1}'`
 
@@ -1637,22 +1395,13 @@ ssh_sudo <<'FINAL'
 
 	# create startup script
 	mkdir -p /installing/oem_part/opt/rancher/bin
-	write_script 0755 /installing/oem_part/opt/rancher/bin/start.sh.0 <<'START_UP'
+	write_env_file 0755 /installing/oem_part/opt/rancher/bin/start.sh.0 <<'START_UP'
 		#!/bin/bash
 		# Do not edit this file
 		# Please use ./startup.d/foo.sh
 		source bashlib_y
 		
 		chain_bak -10 /var/log/boot/init.log /var/log/boot/init.log.0
-		info mount --bind /usr/share/ros/oem/etc/ssh /etc/ssh
-		rm -rf /etc/ssh
-		mkdir /etc/ssh
-		mount --bind /usr/share/ros/oem/etc/ssh /etc/ssh
-		kill -HUP $(ps ax |grep 'sshd -D' | grep -v grep | awk '{ print $1 }')
-		info mount --bind /usr/share/ros/oem/root /root
-		rm -rf /root
-		mkdir /root
-		mount --bind /usr/share/ros/oem/root /root
 		if [  ! -e /bin/env ];then
 			ln -s /usr/bin/env /bin/env
 		fi
@@ -1664,70 +1413,6 @@ ssh_sudo <<'FINAL'
 		if [ ! -e /etc/profile.d/timezone.sh ]; then
 			echo export TZ=$TZL > /etc/profile.d/timezone.sh
 		fi
-		# get network parameters from target server booted by installer
-		NET_DEV=`ip route show|grep default|awk '{print $5}'|head -1`
-		if [ -z "$NET_DEV" ]; then
-			die Cannot find net device for default route.
-		fi
-		DS=`cat /etc/resolv.conf| sed -e 's/[ \t]*#.*//' | grep "nameserver" | sed -e 's/^[ \t]*//' | awk '{print $2}'`
-		DNS_SETTINGS=`echo "$DS" | sed -e 's/^/      - /'`
-		DSX=""
-		DSX2=""
-		for i in $DS; do
-			if [ -z "$DSX" ]; then
-				DSX='"'$i'"'
-				DSX2='\"'$i'\"'
-			else
-				DSX="$DSX",'"'$i'"'
-				DSX2="$DSX2",'\"'$i'\"'
-			fi
-		done
-		DNS_SETTINGS_YQ="[$DSX]"
-		DNS_SETTINGS_YQ2="[$DSX2]"
-		if [ -z "$DNS_SETTINGS" ]; then
-			die Cannot find DNS setting.
-		fi
-
-		NETMASK=`ip address show dev $NET_DEV | grep 'inet ' | grep global | awk '{print $2}'| sed -e 's/.*\///'|head -1`
-		IP=`ip address show dev $NET_DEV | grep 'inet ' | grep global | awk '{print $2}'| sed -e 's/\/.*//'|head -1`
-		if [ -z "$NETMASK" ]; then
-			die Cannot find net mask.
-		else
-			for i in 8 16 24; do
-				if [ "$NETMASK" = "$i" ]; then
-					netmask_ok=1
-				fi
-			done
-			if [ -z "$netmask_ok" ];then
-				die Unsupported netmask, $NETMASK
-			fi
-		fi
-		GATEWAY=`ip route |egrep '^default via'|awk '{print $3}'|head -1`
-		if [ -z "$GATEWAY" ]; then
-			die Cannot find default gateway.
-		fi
-
-		USER_SETTINGS_FOR_GRUB_SOURCE="USER_SETTINGS='TZ=$TZL TZS=$TZS rancher.network.interfaces.$NET_DEV.address=$IP/$NETMASK rancher.network.interfaces.$NET_DEV.gateway=$GATEWAY rancher.network.dns.nameservers=$DNS_SETTINGS_YQ'"
-		mkdir -p /oem_top_lvl/oem_root/opt/rancher/conf/grub
-		kpF=/oem_top_lvl/oem_root/opt/rancher/conf/grub/USER_SETTINGS
-		if [ ! -e $kpF ];then
-			noKernelParam=1
-		else
-			if [ "$USER_SETTINGS_FOR_GRUB_SOURCE" != "`cat $kpF`" ]; then
-				noKernelParam=1
-			fi
-		fi
-		if [ -n "$noKernelParam" ];then
-			chain_bak -10 $kpF
-			echo -n "$USER_SETTINGS_FOR_GRUB_SOURCE" > $kpF2
-			if [ "`cat $kpF`" = "`cat $kpF2`" ];then
-				rm -f $kpF2
-			else
-				chain_bak -10 $kpF2 $kpF
-				chmod +x $kpF
-			fi
-		fi
-
 		mkdir -p /mnt_efi_test
 		# clear booting flags on all sibling drives
 		/sbin/blkid | grep LABEL=\"EFI\" | awk '{print substr($1, 1, length($1) - 1)}' | while read efi; do
@@ -1741,54 +1426,6 @@ ssh_sudo <<'FINAL'
 		umount /mnt_efi_test
 		rmdir /mnt_efi_test
 		
-		USER_DOCKER_IMAGE="`system-docker ps | grep os-docker | awk '{print $2}'`"
-		if [ -z "$USER_DOCKER_IMAGE" ];then
-			warn "cannot find running docker, $USER_DOCKER_IMAGE"
-		else
-			NEW_USER_DOCKER_VERSION="`cat /usr/share/ros/user_docker_version_override`"
-			if [[ $NEW_USER_DOCKER_VERSION =~ ^(LATEST|Latest|latest)$ ]];then
-				apt-get install -y jq
-				READ="`docker run --rm goodwithtech/dockertags -limit 1 -format json burmilla/os-docker`"
-                first=
-                IFS=
-				NEW_USER_DOCKER_VERSION=$(echo -E $READ | while read ln; do
-					if [ "$ln" = "[" ];then
-						first=1
-					fi
-					if [ -n "$first" ];then
-						echo "$ln"
-					fi
-				done | jq -r ".[0].tags[0]")
-				if [ -z "$NEW_USER_DOCKER_VERSION" ];then
-					warn "cannot get latest tag for burmilla/os-docker"
-					warn "using default $USER_DOCKER_IMAGE"
-				fi
-			fi
-			if [ -n "$NEW_USER_DOCKER_VERSION" -a "$NEW_USER_DOCKER_VERSION" != "${USER_DOCKER_IMAGE##*:}" ];then
-				if [ ! -e /usr/share/ros/os-docker-$NEW_USER_DOCKER_VERSION.tar.gz ];then
-					if docker pull "$NEW_USER_DOCKER_VERSION"; then
-						docker save "$NEW_USER_DOCKER_VERSION" | gzip > /usr/share/ros/os-docker-$NEW_USER_DOCKER_VERSION.tar.gz
-					fi
-				fi
-				if [ ! -e /usr/share/ros/os-docker-$NEW_USER_DOCKER_VERSION.tar.gz ];then
-					warn "cannot pull burmilla/os-docker:$NEW_USER_DOCKER_VERSION"
-					warn "using default $USER_DOCKER_IMAGE"
-				else
-					cp /usr/share/ros/os-config.yml /usr/share/ros/os-config.yml.0
-					yq e -i ".rancher.defaults.docker.engine|=\"docker-$NEW_USER_DOCKER_VERSION\"" /usr/share/ros/os-config.yml.0
-					yq e -i ".rancher.services.docker.image|=\"burmilla/os-docker:$NEW_USER_DOCKER_VERSION\"" /usr/share/ros/os-config.yml.0
-					yq e -i ".rancher.docker.engine|=\"docker-$NEW_USER_DOCKER_VERSION\"" /usr/share/ros/os-config.yml.0
-					if [ "`cat /usr/share/ros/os-config.yml`" != "`/usr/share/ros/os-config.yml.0`" ];then
-						chain_bak -10 /usr/share/ros/os-config.yml.0 /usr/share/ros/os-config.yml
-					else
-						rm /usr/share/ros/os-config.yml.0
-					fi
-					info "override docker version to $NEW_USER_DOCKER_VERSION"
-					info "rebooting ..."
-					exit
-				fi
-			fi
-		fi
 		mkdir -p $(__FILE_DIR__)/startup.d
 		ls $(__FILE_DIR__)/startup.d/*.sh 2>/dev/null|sort|while read sh;do
 			if [ -n "$sh" ];then
@@ -1819,7 +1456,6 @@ ssh_sudo <<'FINAL'
 	mkdir -p /installing/efipart
 	/usr/bin/do_mount 2  /installing/efipart
 	INITRD=$INITRD_FILE-mod
-	store_env -s /installing/efipart/INITRD-$VERSION
 	rm -f /installing/efipart/TOPIC
 	umount /installing/efipart
 	umount /installing/oem_part

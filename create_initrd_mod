@@ -81,7 +81,7 @@ function create_initrd_mod(){
 		if [ -n "$TARGET_DEV4" ];then
 			do_mount 4 $EXTD/boot_dev
 			do_mount 5 $EXTD/state_root
-			#local for_state=$EXTD/state_root
+			local for_state=$EXTD/state_root
 		else
 			die boot drive not found
 		fi
