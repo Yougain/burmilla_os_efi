@@ -19,6 +19,8 @@ function create_initrd_mod(){
 	local tmpd=`pwd`
 	local PATH="$tmpd:$PATH"
 	local TMPD="$SCRIPT_TMP_DIR/create_initrd_mod"
+	local VTMPD="$SCRIPT_VAR_DIR/create_initrd_mod"
+	mkdir -p $VTMPD
 	local IMGD="$TMPD/initrd"
 	local EXTD="$TMPD/extd"
 	local IMGD_INIT="$TMPD/initrd_init"
@@ -146,7 +148,13 @@ function create_initrd_mod(){
 		cp -av $IMGD_INIT/usr/bin/ros ./usr/bin
 		ls -la ./usr/bin/ros*
 	else
-		zcat $EXTD/boot_dev/$INITRD_FILE | cpio -idm
+		if [ ! -d "$VTMPD/$INITRD_FILE" ];then
+			mkdir -p $VTMPD/$INITRD_FILE
+			pushd $VTMPD/$INITRD_FILE
+			zcat $EXTD/boot_dev/$INITRD_FILE | cpio -idm
+			popd
+		fi
+		cp -a $VTMPD/$INITRD_FILE/* ./
 	fi
 
 	local d
