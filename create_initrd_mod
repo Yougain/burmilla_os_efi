@@ -418,6 +418,7 @@ $libs"
 	cp_lib libpcre.so.3 . $for_state
 	cp_lib libGeoIP.so.1 . $for_state
 	
+	ls -la ./usr/bin
 	cp_bin . $for_state <<"	END"
 		bash
 		diff
