@@ -444,7 +444,6 @@ $libs"
 	
 	cp_bin . $for_state <<"	END"
 		bash
-		busybox
 		diff
 		df
 		id
