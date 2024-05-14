@@ -53,6 +53,7 @@ function create_initrd_mod(){
 		pruneD="$pruneD -o -path $i "
 	done
 	function fnd(){
+		echo fnd $@ >&2
 		local D=$1
 		shift
 		local fN=$1
@@ -62,6 +63,7 @@ function create_initrd_mod(){
 			for d in '"$D"'; do
 				f="$d'/$fN'"
 				if [ -e "$f" ];then
+					echo "$f" >&2
 					echo "$f"
 				else
 					f=
@@ -69,6 +71,7 @@ function create_initrd_mod(){
 				fi
 			done
 			if [ -z "'$@'" -a -z "$f" ];then
+				echo  find / \('"$pruneD"'\) -prune -o -name "'$fN'" -print >&2
 				find / \('"$pruneD"'\) -prune -o -name "'$fN'" -print| head -1
 			fi
 		'
