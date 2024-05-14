@@ -60,17 +60,18 @@ before_sysinit(){
 		mkdir -p /var/lib/rancher/conf/cloud-config.d
 		if [ -n "$ref_boot_uuid" ];then
 			do_mount -v --salvage-btrfs 7 /mnt
-			if [ -e /mnt/var/lib/rancher/conf/cloud-config.yml ];then
-				cp /mnt/var/lib/rancher/conf/cloud-config.yml /var/lib/rancher/conf
-				cp /mnt/var/lib/rancher/conf/cloud-config.d/user_config.yml /var/lib/rancher/conf/cloud-config.d
+			if [ -e /mnt/var/lib/rancher/conf ];then
+				cp -av /mnt/var/lib/rancher/conf/cloud-config.yml /var/lib/rancher/conf
+				cp -av /mnt/var/lib/rancher/conf/cloud-config.d /var/lib/rancher/conf
 				mkdir -p /opt/etc
-				cp -a /mnt/etc/ssh /opt/etc
-				umount /mnt
+				cp -av /mnt/etc/ssh /opt/etc
 				yq e -i 'del(.runcmd)' /var/lib/rancher/conf/cloud-config.d/user_config.yml
 				yq e -i '.runcmd.[0]|="cp /opt/initrd/etc/localtime /etc"' /var/lib/rancher/conf/cloud-config.d/user_config.yml
-				yq e -i '.runcmd.[1]|="rm -rf /etc/ssh; cp -af /opt/etc/ssh /etc"' /var/lib/rancher/conf/cloud-config.d/user_config.yml
-				yq e -i '.runcmd.[2]|="ps ax | grep sshd | grep -v grep | xargs kill -s SIGHUP"' /var/lib/rancher/conf/cloud-config.d/user_config.yml
+				yq e -i '.runcmd.[1]|="rm -rf /etc/ssh"' /var/lib/rancher/conf/cloud-config.d/user_config.yml
+				yq e -i '.runcmd.[2]|="cp -af /opt/etc/ssh /etc"' /var/lib/rancher/conf/cloud-config.d/user_config.yml
+				yq e -i '.runcmd.[3]|="ps ax | grep sshd | grep -v grep | xargs kill -s SIGHUP"' /var/lib/rancher/conf/cloud-config.d/user_config.yml
 			fi
+			umount /mnt
 		elif [ -n "$TZ" ]; then
 			cat - > /var/lib/rancher/conf/cloud-config.d/user_config.yml <<END
 rancher:
