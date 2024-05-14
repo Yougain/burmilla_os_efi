@@ -55,8 +55,9 @@ function create_initrd_mod(){
 		shift
 		local fN=$1
 		shift
+		D="`eval 'echo ${'$D'[@]}'`"
 		$@ bash -c '
-			for d in '"`eval 'echo ${'$D'[@]}'`"'; do
+			for d in '"$D"'; do
 				f="$d'/$fN'"
 				if [ -e "$f" ];then
 					echo "$f"
