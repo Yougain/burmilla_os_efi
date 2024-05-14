@@ -41,13 +41,37 @@ function create_initrd_mod(){
 	if [ "`id -u`" != 0 ];then
 		die "not super user"
 	fi
-	function find(){
-		/usr/bin/find $@ 2> >(egrep -v '/proc.*: Invalid argument')
+
+	local B=("/bin" "/usr/bin" "/sbin" "/usr/sbin")
+	local L=("/lib" "/usr/lib" "/lib64" "/usr/lib64")
+	local ExD=("/tmp" "/mnt" "/home" "/root")
+	local pruneD=" -path ${ExD[0]} "
+	local i
+	for i in ${ExD[@]:1}; do
+		pruneD="$pruneD -o -path $i "
+	done
+	function fnd(){
+		local exD=$1
+		shift
+		local fN=$1
+		shift
+		$@ bash -c '
+			for d in ${'$exD'[@]}; do
+				f="$d'/$fN'"
+				if [ -e "$f" ];then
+					echo "$f"
+				else
+					f=
+					break
+				fi
+			done
+			if [ -n "$@" -a -z "$f" ];then
+				find / \('$pruneD'\) -prune -o -name "'$fN'" -print 2> >(egrep -v '/proc.*: Invalid argument')| head -1
+			fi
+		'
 	}
-
-
-	function sfind(){
-		system-docker exec udev find $@ 2> >(egrep -v '/proc.*: Invalid argument')
+	function sfnd(){
+		fnd $1 $2 system-docker exec udev
 	}
 
 	if [ -e "$TMPD" ];then
@@ -153,10 +177,10 @@ function create_initrd_mod(){
 	function cp_lib(){
 		item=$1
 		shift
-		local l=`sfind / -name $item|grep -v /home/|grep -v /root/|head -1`
+		local l=`sfnd L $item`
 		local cmd
 		if [ -z "$l" ];then
-			l=`find / -name $item|grep -v /home/|grep -v /root/|head -1`
+			l=`fnd L $item`
 			if [ -z "$l" ];then
 				die cannot find $item docker, udev nor local.
 			else
@@ -186,7 +210,7 @@ function create_initrd_mod(){
 
 	function cp_lib_back(){
 		while read item; do
-			local l=`find / -name $item|head -1`
+			local l=`fnd L $item`
 			if [ -z "$l" ];then
 				die cannot find $item
 			fi
@@ -339,7 +363,7 @@ END
 			if [ -e ./usr/bin/$item ];then
 				continue
 			fi
-			local l=`sfind / -name $item|grep -v /tmp|grep bin/|grep -v /mnt|grep -v /home/|grep -v /root/|head -1`
+			local l=`sfnd B $item`
 			if [ -n "$l" ];then
 				local rf="`system-docker exec udev readlink -f $l`"
 				if [ "${rf##*/}" = "busybox" ];then
@@ -348,7 +372,7 @@ END
 			fi
 			local cmd
 			if [ -z "$l" ];then
-				l=`find / -name $item|grep -v /tmp|grep bin/|grep -v /mnt|grep -v /home/|grep -v /root/|head -1`
+				l=`fnd B $item`
 				if [ -z "$l" ];then
 					die cannot find $item in docker, udev nor in local.
 				else
