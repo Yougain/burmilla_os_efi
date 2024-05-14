@@ -55,9 +55,8 @@ function create_initrd_mod(){
 		shift
 		local fN=$1
 		shift
-		#$@ bash -c
-		echo '
-			for d in ${'$D'[@]}; do
+		$@ bash -c '
+			for d in '"`eval 'echo ${'$D'[@]}'`"'; do
 				f="$d'/$fN'"
 				if [ -e "$f" ];then
 					echo "$f"
@@ -66,11 +65,10 @@ function create_initrd_mod(){
 					break
 				fi
 			done
-			if [ -n "$@" -a -z "$f" ];then
-				find / \('$pruneD'\) -prune -o -name "'$fN'" -print 2> >(egrep -v '/proc.*: Invalid argument')| head -1
+			if [ -z "$@" -a -z "$f" ];then
+				find / \('"$pruneD"'\) -prune -o -name "'$fN'" -print| head -1
 			fi
 		'
-		die
 	}
 	function sfnd(){
 		fnd $1 $2 system-docker exec udev
