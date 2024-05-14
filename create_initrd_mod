@@ -417,7 +417,6 @@ $libs"
 	
 	cp_bin . $for_state <<"	END"
 		bash
-		busybox
 		diff
 		df
 		id
@@ -501,9 +500,12 @@ $libs"
 			done
 		fi
 	done
-	ln -svf bash ./bin/sh
+	rm -rf ./bin
+	ln -svf usr/bin ./bin
+	ln -svf bash usr/bin/sh
 	if [ -d "$for_state" ];then
-		ln -svf bash $for_state/bin/sh
+		rm -rf $for_state/bin
+		ln -svf usr/bin $for_state/bin
 	fi
 	chown root:root usr/bin/busybox
 	ls -la init
