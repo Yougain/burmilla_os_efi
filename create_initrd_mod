@@ -124,31 +124,57 @@ function create_initrd_mod(){
 		zcat $EXTD/boot_dev/$INITRD_FILE | cpio -idm
 	fi
 
+	DOCKER_IMAGE=`yq ".rancher.services.docker.image" usr/share/ros/os-config.yml`
+	if [ -z "$DOCKER_IMAGE" ];then
+		die cannot find .rancher.services.docker.image in usr/share/ros/os-config.yml
+	fi
+	if ! docker pull $DOCKER_IMAGE; then
+		die cannot pull $DOCKER_IMAGE
+	fi
+	if ! docker save $DOCKER_IMAGE | gzip > usr/share/ros/os-docker-${DOCKER_IMAGE#*:}.tar.gz; then
+		die cannot extract usr/share/ros/os-docker-${DOCKER_IMAGE#*:}.tar.gz
+	fi
 
 	local d
 	for d in . $for_state; do
 		ln -s usr/lib $d/lib
 		ln -s lib $d/lib64
+		if [ -d $d/bin ];then
+			ln -s ../usr/bin/bash $d/bin/bash
+		fi
 	done
 	
+	if [ -n "$for_state" ];then
+		if [ ! -d $for_state/bin ];then
+			ln -s usr/bin $for_state/bin
+		fi
+	fi
 
 	function cp_lib(){
 		item=$1
-		dbv cp_lib $item
 		shift
-		local lf
+		local l=`sfind / -name $item|grep -v /home/|grep -v /root/|head -1`
 		local cmd
-		find_file lib lib64
+		if [ -z "$l" ];then
+			l=`find / -name $item|grep -v /home/|grep -v /root/|head -1`
+			if [ -z "$l" ];then
+				die cannot find $item docker, udev nor local.
+			else
+				cmd="cp "
+			fi
+		else
+			cmd="system-docker cp udev:"
+		fi
 		local d=./usr/lib
 		for i in $@; do
 			if [ -d "$i" ];then
-				echo $cmd$lf $i/$d
-				$cmd$lf $i/$d
+				echo $cmd$l $i/$d
+				$cmd$l $i/$d
 			fi
 		done
 		if [ -L $1/$d/$item ];then
 			local f=`readlink $1/$d/$item`
-			local e=`dirname $1/$d/$item`
+			local e=`dirname $l`
 			for i in $@; do
 				if [ -d "$i" ];then
 					echo $cmd$e/$f $i/$d
@@ -304,84 +330,29 @@ END
 		mknod ./dev/null c 1 3
 	}
 	
-	function udev_cp(){
-		if system-docker exec udev bash -c '[ -L "'$1'" ]'; then
-			local lnkf="`system-docker exec udev readlink -f $1`"
-			local lnkfname="${lnkf##*/}"
-			system-docker cp "udev:$lnkf" $2
-			echo system-docker cp "udev:$lnkf" $2
-			if [ "${lnkf##*/}" != "${1##*/}" ];then
-				ln -sv "${lnkf##*/}" $2/"${1##*/}"
-			fi
-		else
-			echo system-docker cp "udev:$1" $2
-			system-docker cp "udev:$1" $2
-		fi
-		
-	}
-	
-	function find_file(){
-		dbv find_file $item
-		fix=($@)
-		lf=
-		cmd=
-		for fx in ${fix[@]}; do
-			dbv fx=$fx
-			lf=`sfind / -name $item|grep -v /tmp/|grep $fx/|grep -v /mnt/|grep -v /home/|grep -v /root/|head -1`
-			if [ -n "$lf" ];then
-				local rf="`system-docker exec udev readlink -f $lf`"
-				if [ "${rf##*/}" = "busybox" ];then
-					lf=""
-					continue
-				fi
-				break
-			fi
-		done
-		if [ -z "$lf" ];then
-			for fx in ${fix[@]}; do
-				l=(`find / -name $item|grep -v /tmp/|grep $fx/|grep -v /mnt/|grep -v /home/|grep -v /root/`)
-				dbv l are ${l[@]}
-				dbv ${l[@]}
-				for lf in ${l[@]};do
-					if [ -e "$lf" ];then
-						break
-					else
-						lf=
-					fi
-				done
-				if [ -n "$lf" ];then
-					break
-				fi
-			done
-			if [ -z "$lf" ];then
-				die cannot find $item in docker, udev nor in local.
-			else
-				cmd="cp "
-			fi
-		else
-			cmd="udev_cp "
-		fi
-		dbv $lf
-		dbv $cmd
-	}
-
 	function cp_bin(){
 		local libs=""
 		local i
 		local d
-		local cmd
-		local lf
 		while read item; do
-			dbv cp_bin $item
-			find_file bin
-			dbv lf=$lf
+			info $item
+			local l=`sfind / -name $item|grep bin/|grep -v /home/|grep -v /root/|head -1`
+			local cmd
+			if [ -z "$l" ];then
+				l=`find / -name $item|grep bin/|grep -v /home/|grep -v /root/|head -1`
+				if [ -z "$l" ];then
+					die cannot find $item in docker, udev nor in local.
+				else
+					cmd="cp "
+				fi
+			else
+				cmd="system-docker cp udev:"
+			fi
 			for i in $@; do
 				if [ -d "$i" ];then
 					d=$i
-					echo $cmd$lf $i/usr/bin
-					if ! $cmd$lf $i/usr/bin 2> >(check_cp_udev_out "$i" "$item");then
-						die cannot copy: $cmd$lf $i/usr/bin
-					fi
+					echo $cmd$l $i/usr/bin
+					$cmd$l $i/usr/bin 2> >(check_cp_udev_out "$i" "$item")
 				fi
 			done
 			if [ -n "$d" ];then
@@ -405,13 +376,9 @@ END
 						done
 					fi
 				else
-					local ldd_res_nf="`ldd $d/usr/bin/$item|grep -v 'statically linked'|grep 'not found (required'|awk '{print $2}'|sort|uniq`"
+					local ldd_res_nf="`ldd $d/usr/bin/$item|grep 'not found (required'|awk '{print $2}'|sort|uniq`"
 					ldd_res="$ldd_res_nf 
-	""`ldd $1/usr/bin/$item|grep -v 'statically linked'|grep -v 'not found (required'|awk '{print $item}'`"
-					dbv $item
-					dbv `ldd $d/usr/bin/$item`
-					dbv "$ldd_res_nf"
-					dbv "$ldd_res"
+	""`ldd $1/usr/bin/$item|grep -v 'not found (required'|awk '{print $item}'`"
 					while read f; do
 						f=${f##*/}
 						f=${f%%:*}
@@ -444,6 +411,7 @@ $libs"
 	
 	cp_bin . $for_state <<"	END"
 		bash
+		busybox
 		diff
 		df
 		id
@@ -514,39 +482,24 @@ $libs"
 			ln -sf /dev/null $d/lib/udev/rules.d/75-net-description.rules
 			ln -sf /dev/null $d/lib/udev/rules.d/80-net-name-slot.rules
 			local f
-			for f in blkid2                     \
-					do_mount                    \
+			for f in blkid2                      \
+					do_mount                     \
 					chain_bak					\
 					partNum2Dev					\
-					after_save_cmd_line         \
+					after_save_cmd_line                \
 					args						\
-					parse_func				    \
+					parse_func				\
 					before_sysinit; do
 				dbv $f $d
 				do_install $f $d
 			done
 		fi
 	done
-	rm -rf ./bin
-	ln -svf usr/bin ./bin
-	ln -svf bash usr/bin/sh
+	ln -svf bash ./bin/sh
 	if [ -d "$for_state" ];then
-		rm -rf $for_state/bin
-		ln -svf usr/bin $for_state/bin
+		ln -svf bash $for_state/bin/sh
 	fi
 	chown root:root usr/bin/busybox
-
-	DOCKER_IMAGE=`yq ".rancher.services.docker.image" usr/share/ros/os-config.yml`
-	if [ -z "$DOCKER_IMAGE" ];then
-		die cannot find .rancher.services.docker.image in usr/share/ros/os-config.yml
-	fi
-	if ! docker pull $DOCKER_IMAGE; then
-		die cannot pull $DOCKER_IMAGE
-	fi
-	if ! docker save $DOCKER_IMAGE | gzip > usr/share/ros/os-docker-${DOCKER_IMAGE#*:}.tar.gz; then
-		die cannot extract usr/share/ros/os-docker-${DOCKER_IMAGE#*:}.tar.gz
-	fi
-
 	ls -la init
 	
 	setup_nginx_files
