@@ -44,19 +44,19 @@ function create_initrd_mod(){
 
 	local B=("/bin" "/usr/bin" "/sbin" "/usr/sbin")
 	local L=("/lib" "/usr/lib" "/lib64" "/usr/lib64")
-	local ExD=("/tmp" "/mnt" "/home" "/root")
+	local ExD=("/tmp" "/mnt" "/home" "/root" "/dev" "/sys" "/proc")
 	local pruneD=" -path ${ExD[0]} "
 	local i
 	for i in ${ExD[@]:1}; do
 		pruneD="$pruneD -o -path $i "
 	done
 	function fnd(){
-		local exD=$1
+		local D=$1
 		shift
 		local fN=$1
 		shift
 		$@ bash -c '
-			for d in ${'$exD'[@]}; do
+			for d in ${'$D'[@]}; do
 				f="$d'/$fN'"
 				if [ -e "$f" ];then
 					echo "$f"
