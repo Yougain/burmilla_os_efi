@@ -46,7 +46,7 @@ function create_initrd_mod(){
 
 	local B=("/bin" "/usr/bin" "/sbin" "/usr/sbin")
 	local L=("/lib" "/usr/lib" "/lib64" "/usr/lib64")
-	local ExD=("/tmp" "/mnt" "/home" "/root" "/dev" "/sys" "/proc")
+	local ExD=("/tmp" "/mnt" "/home" "/root" "/dev" "/sys" "/proc" "/usr/share/ros/oem")
 	local pruneD=" -path ${ExD[0]} "
 	local i
 	for i in ${ExD[@]:1}; do
@@ -71,7 +71,7 @@ function create_initrd_mod(){
 				fi
 			done
 			if [ -z "'$@'" -a -z "$f" ];then
-				echo  find / \('"$pruneD"'\) -prune -o -name "'$fN'" -print >&2
+				echo  find / \\\('"$pruneD"'\\\) -prune -o -name "'$fN'" -print >&2
 				find / \('"$pruneD"'\) -prune -o -name "'$fN'" -print| head -1
 			fi
 		'
