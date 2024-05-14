@@ -639,7 +639,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
  }
 diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg/init/switchroot/switchroot.go
 --- os.prev/pkg/init/switchroot/switchroot.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/switchroot/switchroot.go	2024-05-14 14:54:06.227314900 +0900
++++ os.new/pkg/init/switchroot/switchroot.go	2024-05-14 19:38:38.767314900 +0900
 @@ -4,9 +4,10 @@
  	"fmt"
  	"io/ioutil"
@@ -683,10 +683,10 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  		}
  	}
  
-+	//createSymLink("usr/bin", path.Join(rootfs, "bin"))
-+	//createSymLink("usr/lib", path.Join(rootfs, "lib"))
-+	//createSymLink("lib", path.Join(rootfs, "lib64"))
-+	//createSymLink("usr/sbin", path.Join(rootfs, "sbin"))
++	createSymLink("usr/bin", path.Join(rootfs, "bin"))
++	createSymLink("usr/lib", path.Join(rootfs, "lib"))
++	createSymLink("lib", path.Join(rootfs, "lib64"))
++	createSymLink("usr/sbin", path.Join(rootfs, "sbin"))
 +
  	return nil
  }

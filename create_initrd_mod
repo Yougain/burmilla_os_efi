@@ -336,7 +336,10 @@ END
 		local d
 		while read item; do
 			info $item
-			local l=`sfind / -name $item|grep bin/|grep -v /mnt|grep -v /home/|grep -v /root/|head -1`
+			if [ -n ./usr/bin/$item ];then
+				continue
+			fi
+			local l=`sfind / -name $item|grep -v /tmp|grep bin/|grep -v /mnt|grep -v /home/|grep -v /root/|head -1`
 			if [ -n "$l" ];then
 				local rf="`system-docker exec udev readlink -f $l`"
 				if [ "${rf##*/}" = "busybox" ];then
@@ -345,7 +348,7 @@ END
 			fi
 			local cmd
 			if [ -z "$l" ];then
-				l=`find / -name $item|grep bin/|grep -v /mnt|grep -v /home/|grep -v /root/|head -1`
+				l=`find / -name $item|grep -v /tmp|grep bin/|grep -v /mnt|grep -v /home/|grep -v /root/|head -1`
 				if [ -z "$l" ];then
 					die cannot find $item in docker, udev nor in local.
 				else
