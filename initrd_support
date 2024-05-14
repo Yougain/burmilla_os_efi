@@ -66,10 +66,10 @@ before_sysinit(){
 				mkdir -p /opt/etc
 				cp -av /mnt/etc/ssh /opt/etc
 				yq e -i 'del(.runcmd)' /var/lib/rancher/conf/cloud-config.d/user_config.yml
-				yq e -i '.runcmd.[0]|="cp /opt/initrd/etc/localtime /etc"' /var/lib/rancher/conf/cloud-config.d/user_config.yml
-				yq e -i '.runcmd.[1]|="rm -rf /etc/ssh"' /var/lib/rancher/conf/cloud-config.d/user_config.yml
-				yq e -i '.runcmd.[2]|="cp -af /opt/etc/ssh /etc"' /var/lib/rancher/conf/cloud-config.d/user_config.yml
-				yq e -i '.runcmd.[3]|="ps ax | grep sshd | grep -v grep | xargs kill -s SIGHUP"' /var/lib/rancher/conf/cloud-config.d/user_config.yml
+				yq e -i '.runcmd += ["cp /opt/initrd/etc/localtime /etc"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
+				yq e -i '.runcmd += ["rm -rf /etc/ssh"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
+				yq e -i '.runcmd += ["cp -af /opt/etc/ssh /etc"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
+				yq e -i '.runcmd += ["ps ax | grep sshd | grep -v grep | xargs kill -s SIGHUP"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
 			fi
 			umount /mnt
 		elif [ -n "$TZ" ]; then
