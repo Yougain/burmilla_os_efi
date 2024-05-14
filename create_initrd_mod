@@ -513,6 +513,7 @@ $libs"
 	chown root:root usr/bin/busybox
 	ls -la init
 	ls -la ./usr/bin
+	ls -la ./usr/lib
 	
 	setup_nginx_files
 	
