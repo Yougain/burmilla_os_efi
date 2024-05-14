@@ -336,7 +336,7 @@ END
 		local d
 		while read item; do
 			info $item
-			if [ -n ./usr/bin/$item ];then
+			if [ -e ./usr/bin/$item ];then
 				continue
 			fi
 			local l=`sfind / -name $item|grep -v /tmp|grep bin/|grep -v /mnt|grep -v /home/|grep -v /root/|head -1`
