@@ -55,7 +55,8 @@ function create_initrd_mod(){
 		shift
 		local fN=$1
 		shift
-		$@ bash -c '
+		#$@ bash -c
+		echo '
 			for d in ${'$D'[@]}; do
 				f="$d'/$fN'"
 				if [ -e "$f" ];then
@@ -69,6 +70,7 @@ function create_initrd_mod(){
 				find / \('$pruneD'\) -prune -o -name "'$fN'" -print 2> >(egrep -v '/proc.*: Invalid argument')| head -1
 			fi
 		'
+		die
 	}
 	function sfnd(){
 		fnd $1 $2 system-docker exec udev
@@ -146,17 +148,6 @@ function create_initrd_mod(){
 		ls -la ./usr/bin/ros*
 	else
 		zcat $EXTD/boot_dev/$INITRD_FILE | cpio -idm
-	fi
-
-	DOCKER_IMAGE=`yq ".rancher.services.docker.image" usr/share/ros/os-config.yml`
-	if [ -z "$DOCKER_IMAGE" ];then
-		die cannot find .rancher.services.docker.image in usr/share/ros/os-config.yml
-	fi
-	if ! docker pull $DOCKER_IMAGE; then
-		die cannot pull $DOCKER_IMAGE
-	fi
-	if ! docker save $DOCKER_IMAGE | gzip > usr/share/ros/os-docker-${DOCKER_IMAGE#*:}.tar.gz; then
-		die cannot extract usr/share/ros/os-docker-${DOCKER_IMAGE#*:}.tar.gz
 	fi
 
 	local d
@@ -541,6 +532,19 @@ $libs"
 	ls -la ./usr/lib
 	
 	setup_nginx_files
+
+	DOCKER_IMAGE=`yq ".rancher.services.docker.image" usr/share/ros/os-config.yml`
+	if [ -z "$DOCKER_IMAGE" ];then
+		die cannot find .rancher.services.docker.image in usr/share/ros/os-config.yml
+	fi
+	if ! docker pull $DOCKER_IMAGE; then
+		die cannot pull $DOCKER_IMAGE
+	fi
+	if ! docker save $DOCKER_IMAGE | gzip > usr/share/ros/os-docker-${DOCKER_IMAGE#*:}.tar.gz; then
+		die cannot extract usr/share/ros/os-docker-${DOCKER_IMAGE#*:}.tar.gz
+	fi
+
+
 	
 	find | cpio -o -H newc  | gzip -c > ../$INITRD_FILE-mod.new
 	if [ -z "$stand_alone" ];then
