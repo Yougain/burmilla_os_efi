@@ -1,6 +1,6 @@
 diff -Naur '--exclude=.git' os.prev/cmd/control/autologin.go os.new/cmd/control/autologin.go
 --- os.prev/cmd/control/autologin.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/autologin.go	2024-05-14 14:04:35.527314900 +0900
++++ os.new/cmd/control/autologin.go	2024-05-14 20:04:27.397314900 +0900
 @@ -75,9 +75,9 @@
  	os.Setenv("TERM", "linux")
  
@@ -15,7 +15,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/autologin.go os.new/cmd/control/
  	cmd.Stdout = os.Stdout
 diff -Naur '--exclude=.git' os.prev/cmd/control/config.go os.new/cmd/control/config.go
 --- os.prev/cmd/control/config.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/config.go	2024-05-14 14:04:35.527314900 +0900
++++ os.new/cmd/control/config.go	2024-05-14 20:04:27.397314900 +0900
 @@ -143,7 +143,7 @@
  		log.Fatal("Could not read from stdin")
  	}
@@ -27,7 +27,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/config.go os.new/cmd/control/con
  func env2map(env []string) map[string]string {
 diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/control/console_init.go
 --- os.prev/cmd/control/console_init.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/console_init.go	2024-05-14 14:04:35.527314900 +0900
++++ os.new/cmd/control/console_init.go	2024-05-14 20:04:27.397314900 +0900
 @@ -259,6 +259,37 @@
  	if err := cmd.Run(); err != nil {
  		log.Error(err)
@@ -77,7 +77,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/contr
  func generateRespawnConf(cmdline, user string, sshd, recovery bool) string {
 diff -Naur '--exclude=.git' os.prev/cmd/control/docker_init.go os.new/cmd/control/docker_init.go
 --- os.prev/cmd/control/docker_init.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/docker_init.go	2024-05-14 14:04:35.527314900 +0900
++++ os.new/cmd/control/docker_init.go	2024-05-14 20:04:27.397314900 +0900
 @@ -112,5 +112,5 @@
  		log.Error(err)
  	}
@@ -87,7 +87,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/docker_init.go os.new/cmd/contro
  }
 diff -Naur '--exclude=.git' os.prev/cmd/control/entrypoint.go os.new/cmd/control/entrypoint.go
 --- os.prev/cmd/control/entrypoint.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/entrypoint.go	2024-05-14 14:04:35.527314900 +0900
++++ os.new/cmd/control/entrypoint.go	2024-05-14 20:04:27.397314900 +0900
 @@ -55,8 +55,8 @@
  	if err != nil {
  		return err
@@ -101,7 +101,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/entrypoint.go os.new/cmd/control
  func writeFiles(cfg *config.CloudConfig) error {
 diff -Naur '--exclude=.git' os.prev/cmd/control/env.go os.new/cmd/control/env.go
 --- os.prev/cmd/control/env.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/env.go	2024-05-14 14:04:35.537314900 +0900
++++ os.new/cmd/control/env.go	2024-05-14 20:04:27.397314900 +0900
 @@ -2,7 +2,6 @@
  
  import (
@@ -121,7 +121,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/env.go os.new/cmd/control/env.go
  	for k, v := range cfg.Rancher.Environment {
 diff -Naur '--exclude=.git' os.prev/cmd/control/install.go os.new/cmd/control/install.go
 --- os.prev/cmd/control/install.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/install.go	2024-05-14 14:04:35.537314900 +0900
++++ os.new/cmd/control/install.go	2024-05-14 20:04:27.397314900 +0900
 @@ -201,6 +201,11 @@
  func runInstall(image, installType, cloudConfig, device, partition, statedir, kappend string, force, kexec, isoinstallerloaded, debug bool, savedImages []string) error {
  	fmt.Printf("Installing from %s\n", image)
@@ -169,7 +169,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/install.go os.new/cmd/control/in
  				"-t", installType,
 diff -Naur '--exclude=.git' os.prev/cmd/control/recovery_init.go os.new/cmd/control/recovery_init.go
 --- os.prev/cmd/control/recovery_init.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/recovery_init.go	2024-05-14 14:04:35.537314900 +0900
++++ os.new/cmd/control/recovery_init.go	2024-05-14 20:04:27.397314900 +0900
 @@ -1,11 +1,11 @@
  package control
  
@@ -192,7 +192,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/recovery_init.go os.new/cmd/cont
  }
 diff -Naur '--exclude=.git' os.prev/cmd/control/user_docker.go os.new/cmd/control/user_docker.go
 --- os.prev/cmd/control/user_docker.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/user_docker.go	2024-05-14 14:04:35.537314900 +0900
++++ os.new/cmd/control/user_docker.go	2024-05-14 20:04:27.407314900 +0900
 @@ -193,7 +193,7 @@
  	cmd = append(cmd, args...)
  	log.Infof("Running %v", cmd)
@@ -204,7 +204,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/user_docker.go os.new/cmd/contro
  func waitForPid(service string, project *project.Project) (int, error) {
 diff -Naur '--exclude=.git' os.prev/cmd/init/init.go os.new/cmd/init/init.go
 --- os.prev/cmd/init/init.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/init/init.go	2024-05-14 14:04:35.537314900 +0900
++++ os.new/cmd/init/init.go	2024-05-14 20:04:27.407314900 +0900
 @@ -5,7 +5,8 @@
  
  import (
@@ -242,12 +242,11 @@ diff -Naur '--exclude=.git' os.prev/cmd/init/init.go os.new/cmd/init/init.go
  	}
 diff -Naur '--exclude=.git' os.prev/config/config.go os.new/config/config.go
 --- os.prev/config/config.go	2024-03-14 20:29:45.957485300 +0900
-+++ os.new/config/config.go	2024-05-14 14:04:35.537314900 +0900
-@@ -2,13 +2,18 @@
++++ os.new/config/config.go	2024-05-14 20:04:27.407314900 +0900
+@@ -2,13 +2,17 @@
  
  import (
  	"io/ioutil"
-+	"io"
 +	"os"
  	"strings"
  
@@ -262,37 +261,31 @@ diff -Naur '--exclude=.git' os.prev/config/config.go os.new/config/config.go
  const Banner = `
      ____                       _ _ _        ____   _____
     |  _ \\                     (_) | |      / __ \\ / ____|
-@@ -94,3 +99,37 @@
+@@ -94,3 +98,31 @@
  	elem := strings.Split(string(b), " ")
  	return elem[2]
  }
++
 +
 +func Environ() []string {
 +	tz := ""
 +	if os.Getenv("TZ") == "" {
 +		log.Debug("Trying read /proc/cmdline")
-+		file, err := os.Open("/proc/cmdline")
-+		if err == nil { // file exists
-+			byteData, err := io.ReadAll(file)
-+			if err == nil {
-+				cmdline := string(byteData)
-+				log.Debugf("/proc/cmdline = $s", cmdline)
-+				ti := strings.Index(cmdline, " TZ=")
-+				if ti != -1 {
-+					tw := strings.Index(cmdline[ti + 4:], " ")
-+					if tw != -1 {
-+						tz = cmdline[ti + 4:ti + 4 + tw]
-+						log.Debugf("TZ = %s", tz)
-+					}
-+				}else{
-+					log.Debugf("cannot find 'TZ=' in /proc/cmdline")
++		cmdline, err := ReadAll("/proc/cmdline")
++		if err == nil {
++			log.Debugf("/proc/cmdline = $s", cmdline)
++			ti := strings.Index(cmdline, " TZ=")
++			if ti != -1 {
++				tw := strings.Index(cmdline[ti + 4:], " ")
++				if tw != -1 {
++					tz = cmdline[ti + 4:ti + 4 + tw]
++					log.Debugf("TZ = %s", tz)
 +				}
 +			}else{
-+				log.Debugf("cannot read /proc/cmdline")
++				log.Debugf("cannot find 'TZ=' in /proc/cmdline")
 +			}
-+			file.Close()
 +		}else{
-+			log.Debugf("cannot open /proc/cmdline")
++			log.Debugf("cannot read /proc/cmdline")
 +		}
 +		nenv = append(os.Environ(), "TZ=" + tz)
 +	}else{
@@ -302,51 +295,62 @@ diff -Naur '--exclude=.git' os.prev/config/config.go os.new/config/config.go
 +}
 diff -Naur '--exclude=.git' os.prev/config/docker_config.go os.new/config/docker_config.go
 --- os.prev/config/docker_config.go	2024-03-14 20:29:45.957485300 +0900
-+++ os.new/config/docker_config.go	2024-05-14 14:04:35.547314900 +0900
-@@ -2,9 +2,12 @@
++++ os.new/config/docker_config.go	2024-05-14 20:04:27.407314900 +0900
+@@ -2,9 +2,13 @@
  
  import (
  	"fmt"
 +	"io"
  	"os"
 +	"strings"
++	"bytes"
  
  	"github.com/fatih/structs"
 +	"github.com/burmilla/os/pkg/log"
  )
  
  func (d *DockerConfig) FullArgs() []string {
-@@ -23,8 +26,43 @@
+@@ -23,8 +27,53 @@
  	return args
  }
  
++
++func ReadAll(filename string) (string, error) {
++	file, err := os.Open(filename)
++	if err != nil {
++		return "", err
++	}
++	defer file.Close()
++
++	var buffer bytes.Buffer
++	_, err = io.Copy(&buffer, file)
++	if err != nil {
++		return "", err
++	}
++
++	return buffer.String(), nil
++}
++
 +
 +func environ() []string {
 +	tz := ""
 +	if os.Getenv("TZ") == "" {
 +		log.Debug("Trying read /proc/cmdline")
-+		file, err := os.Open("/proc/cmdline")
-+		if err == nil { // file exists
-+			byteData, err := io.ReadAll(file)
-+			if err == nil {
-+				cmdline := string(byteData)
-+				log.Debugf("/proc/cmdline = $s", cmdline)
-+				ti := strings.Index(cmdline, " TZ=")
-+				if ti != -1 {
-+					tw := strings.Index(cmdline[ti + 4:], " ")
-+					if tw != -1 {
-+						tz = cmdline[ti + 4:ti + 4 + tw]
-+						log.Debugf("TZ = %s", tz)
-+					}
-+				}else{
-+					log.Debugf("cannot find 'TZ=' in /proc/cmdline")
++		cmdline, err := ReadAll("/proc/cmdline")
++		if err == nil {
++			log.Debugf("/proc/cmdline = $s", cmdline)
++			ti := strings.Index(cmdline, " TZ=")
++			if ti != -1 {
++				tw := strings.Index(cmdline[ti + 4:], " ")
++				if tw != -1 {
++					tz = cmdline[ti + 4:ti + 4 + tw]
++					log.Debugf("TZ = %s", tz)
 +				}
 +			}else{
-+				log.Debugf("cannot read /proc/cmdline")
++				log.Debugf("cannot find 'TZ=' in /proc/cmdline")
 +			}
-+			file.Close()
 +		}else{
-+			log.Debugf("cannot open /proc/cmdline")
++			log.Debugf("cannot read /proc/cmdline")
 +		}
 +		nenv = append(os.Environ(), "TZ=" + tz)
 +	}else{
@@ -363,7 +367,7 @@ diff -Naur '--exclude=.git' os.prev/config/docker_config.go os.new/config/docker
  func generateEngineOptsSlice(opts EngineOpts) []string {
 diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
 --- os.prev/config/types.go	2024-03-14 20:29:45.957485300 +0900
-+++ os.new/config/types.go	2024-05-14 14:04:35.547314900 +0900
++++ os.new/config/types.go	2024-05-14 20:04:27.407314900 +0900
 @@ -210,6 +210,7 @@
  type StateConfig struct {
  	Directory  string   `yaml:"directory,omitempty"`
@@ -385,7 +389,7 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
  
 diff -Naur '--exclude=.git' os.prev/images/02-console/sshd_config.append.tpl os.new/images/02-console/sshd_config.append.tpl
 --- os.prev/images/02-console/sshd_config.append.tpl	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/images/02-console/sshd_config.append.tpl	2024-05-14 14:18:28.167314900 +0900
++++ os.new/images/02-console/sshd_config.append.tpl	2024-05-14 20:04:27.407314900 +0900
 @@ -22,6 +22,7 @@
  PermitEmptyPasswords no
  AllowTcpForwarding no
@@ -396,13 +400,13 @@ diff -Naur '--exclude=.git' os.prev/images/02-console/sshd_config.append.tpl os.
  KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256
 diff -Naur '--exclude=.git' os.prev/install_burmillaos_on_btrfs os.new/install_burmillaos_on_btrfs
 --- os.prev/install_burmillaos_on_btrfs	1970-01-01 09:00:00.000000000 +0900
-+++ os.new/install_burmillaos_on_btrfs	2024-05-14 14:04:35.547314900 +0900
++++ os.new/install_burmillaos_on_btrfs	2024-05-14 20:04:27.407314900 +0900
 @@ -0,0 +1 @@
 +
 diff -Naur '--exclude=.git' os.prev/main.go os.new/main.go
 --- os.prev/main.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/main.go	2024-05-14 14:04:35.547314900 +0900
-@@ -3,6 +3,10 @@
++++ os.new/main.go	2024-05-14 20:04:27.407314900 +0900
+@@ -3,6 +3,11 @@
  import (
  	"fmt"
  	"os"
@@ -410,12 +414,32 @@ diff -Naur '--exclude=.git' os.prev/main.go os.new/main.go
 +    "time"
 +    "io"
 +	"strings"
++	"bytes"
  
  	"github.com/burmilla/os/cmd/cloudinitexecute"
  	"github.com/burmilla/os/cmd/cloudinitsave"
-@@ -39,6 +43,32 @@
+@@ -38,7 +43,46 @@
+ 	"shutdown": power.Shutdown,
  }
  
++
++func ReadAll(filename string) (string, error) {
++	file, err := os.Open(filename)
++	if err != nil {
++		return "", err
++	}
++	defer file.Close()
++
++	var buffer bytes.Buffer
++	_, err = io.Copy(&buffer, file)
++	if err != nil {
++		return "", err
++	}
++
++	return buffer.String(), nil
++}
++
++
  func main() {
 +	tzs := os.Getenv("TZS")
 +	base := 0
@@ -423,20 +447,15 @@ diff -Naur '--exclude=.git' os.prev/main.go os.new/main.go
 +		base, _ = strconv.Atoi(tzs)
 +	}
 +	if base == 0 {
-+		file, err := os.Open("/proc/cmdline")
-+		if err == nil { // file exists
-+			byteData, err := io.ReadAll(file)
-+			if err == nil {
-+				cmdline := string(byteData)
-+				ti := strings.Index(cmdline, " TZS=")
-+				if ti != -1 {
-+					tw := strings.Index(cmdline[ti + 5:], " ")
-+					if tw != -1 {
-+						base, _ = strconv.Atoi(cmdline[ti + 5:ti + 5 + tw])
-+					}
++		cmdline, err := ReadAll("/proc/cmdline")
++		if err == nil {
++			ti := strings.Index(cmdline, " TZS=")
++			if ti != -1 {
++				tw := strings.Index(cmdline[ti + 5:], " ")
++				if tw != -1 {
++					base, _ = strconv.Atoi(cmdline[ti + 5:ti + 5 + tw])
 +				}
 +			}
-+			file.Close()
 +		}
 +	}
 +	if base != 0 {
@@ -448,7 +467,7 @@ diff -Naur '--exclude=.git' os.prev/main.go os.new/main.go
  		fmt.Fprintf(os.Stderr, "ros main(%s) ppid:%d - print to stdio\n", os.Args[0], os.Getppid())
 diff -Naur '--exclude=.git' os.prev/pkg/dfs/scratch.go os.new/pkg/dfs/scratch.go
 --- os.prev/pkg/dfs/scratch.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/dfs/scratch.go	2024-05-14 14:04:35.547314900 +0900
++++ os.new/pkg/dfs/scratch.go	2024-05-14 20:04:27.407314900 +0900
 @@ -11,6 +11,7 @@
  	"strings"
  	"syscall"
@@ -495,7 +514,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/dfs/scratch.go os.new/pkg/dfs/scratch.go
  		return cmd, err
 diff -Naur '--exclude=.git' os.prev/pkg/init/configfiles/configfiles.go os.new/pkg/init/configfiles/configfiles.go
 --- os.prev/pkg/init/configfiles/configfiles.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/configfiles/configfiles.go	2024-05-14 14:04:35.547314900 +0900
++++ os.new/pkg/init/configfiles/configfiles.go	2024-05-14 20:04:27.407314900 +0900
 @@ -55,6 +55,7 @@
  			ConfigFiles[name] = content
  		}
@@ -506,7 +525,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/configfiles/configfiles.go os.new/p
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2024-05-14 14:17:23.707314900 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2024-05-14 20:04:27.407314900 +0900
 @@ -4,6 +4,8 @@
  	"fmt"
  	"strings"
@@ -614,7 +633,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  func tryMountState(cfg *config.CloudConfig) error {
 diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/prepare/prepare.go
 --- os.prev/pkg/init/prepare/prepare.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/prepare/prepare.go	2024-05-14 14:04:35.557314900 +0900
++++ os.new/pkg/init/prepare/prepare.go	2024-05-14 20:04:27.417314900 +0900
 @@ -3,6 +3,7 @@
  import (
  	"os"
@@ -639,7 +658,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
  }
 diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg/init/switchroot/switchroot.go
 --- os.prev/pkg/init/switchroot/switchroot.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/switchroot/switchroot.go	2024-05-14 19:38:38.767314900 +0900
++++ os.new/pkg/init/switchroot/switchroot.go	2024-05-14 20:04:27.417314900 +0900
 @@ -4,9 +4,10 @@
  	"fmt"
  	"io/ioutil"
@@ -722,7 +741,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-14 14:04:35.567314900 +0900
++++ os.new/pkg/log/log.go	2024-05-14 20:04:27.427314900 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -914,7 +933,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,8 +236,194 @@
+@@ -120,8 +236,203 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -967,6 +986,38 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +}
 +
 +
++func ReadInt(filename string) (int, error) {
++	file, err := os.Open(filename)
++	if err != nil {
++		return 0, err
++	}
++	defer file.Close()
++
++	var buffer bytes.Buffer
++	_, err = io.Copy(&buffer, file)
++	if err != nil {
++		return 0, err
++	}
++	base, _ := strconv.Atoi(buffer.String())
++	return base, nil
++}
++
++func ReadAll(filename string) (string, error) {
++	file, err := os.Open(filename)
++	if err != nil {
++		return "", err
++	}
++	defer file.Close()
++
++	var buffer bytes.Buffer
++	_, err = io.Copy(&buffer, file)
++	if err != nil {
++		return "", err
++	}
++
++	return buffer.String(), nil
++}
++
 +// InitLogger sets up Logging to log to /dev/kmsg and to Syslog
 +func initFormat() {
 +	if !initFormatExecuted {
@@ -996,14 +1047,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +					Errorf("envromental variable, 'TZS=%s', namely, time difference by seconds, is not a numeric.", tzs)
 +				}
 +			} else {
-+				file, err := os.Open(timeDiffFN2)
-+				if err == nil { // file exists
-+					byteData, err := io.ReadAll(file)
-+					if err == nil {
-+						base, _ = strconv.Atoi(string(byteData))
-+					}
-+					file.Close()
-+				}
++				base, _ = ReadInt(timeDiffFN2)
 +			}
 +			nullSymlinked := false
 +			if base == 0 {
@@ -1015,19 +1059,10 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +						nullSymlinked = true // initrd started
 +					}
 +				} else {
-+					file, err := os.Open(timeDiffFN)
++					base, _ = ReadInt(timeDiffFN)
++					str, err := ReadAll(tzFN)
 +					if err == nil { // file exists
-+						byteData, err := io.ReadAll(file)
-+						file.Close()
-+						base, err = strconv.Atoi(string(byteData))
-+						if err == nil {
-+							file, err := os.Open(tzFN)
-+							if err == nil { // file exists
-+								byteData, err = io.ReadAll(file)
-+								file.Close()
-+								tz = strings.TrimSpace(string(byteData))
-+							}
-+						}
++						tz = strings.TrimSpace(str)
 +					}
 +				}
 +				if err != nil || base == 0 {
@@ -1059,11 +1094,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +			}
 +			if base == 0 {
 +				Debug("Trying read /proc/cmdline")
-+				file, err := os.Open("/proc/cmdline")
-+				if err == nil { // file exists
-+					byteData, err := io.ReadAll(file)
++					cmdline, err := ReadAll("/proc/cmdline")
 +					if err == nil {
-+						cmdline := string(byteData)
 +						Debugf("/proc/cmdline = $s", cmdline)
 +						ti := strings.Index(cmdline, " TZS=")
 +						if ti != -1 {
@@ -1078,10 +1110,6 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +					}else{
 +						Debugf("cannot read /proc/cmdline")
 +					}
-+					file.Close()
-+				}else{
-+					Debugf("cannot open /proc/cmdline")
-+				}
 +			}
 +			Debugf("before set: base = %d", base)
 +			if base != 0 {
@@ -1109,7 +1137,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	if logTheseApps() {
  		innerInit(false)
  		FsReady()
-@@ -131,6 +433,8 @@
+@@ -131,6 +442,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1118,7 +1146,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +467,7 @@
+@@ -163,6 +476,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1126,7 +1154,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -249,8 +554,10 @@
+@@ -249,8 +563,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
@@ -1139,7 +1167,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/sysinit/sysinit.go os.new/pkg/sysinit/sysinit.go
 --- os.prev/pkg/sysinit/sysinit.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/sysinit/sysinit.go	2024-05-14 14:04:35.567314900 +0900
++++ os.new/pkg/sysinit/sysinit.go	2024-05-14 20:04:27.427314900 +0900
 @@ -93,6 +93,14 @@
  }
  
@@ -1157,7 +1185,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/sysinit/sysinit.go os.new/pkg/sysinit/sy
  	if err := control.PreloadImages(docker.NewSystemClient, systemImagesPreloadDirectory); err != nil {
 diff -Naur '--exclude=.git' os.prev/scripts/package-installer os.new/scripts/package-installer
 --- os.prev/scripts/package-installer	2024-03-14 20:29:45.977485300 +0900
-+++ os.new/scripts/package-installer	2024-05-14 14:04:35.567314900 +0900
++++ os.new/scripts/package-installer	2024-05-14 20:04:27.427314900 +0900
 @@ -38,13 +38,14 @@
  
  # installer base image - can be included in iso
@@ -1176,7 +1204,7 @@ diff -Naur '--exclude=.git' os.prev/scripts/package-installer os.new/scripts/pac
  cp ${ARTIFACTS}/${INITRD} ./scripts/installer/build/boot
 diff -Naur '--exclude=.git' os.prev/scripts/package-iso os.new/scripts/package-iso
 --- os.prev/scripts/package-iso	2024-03-14 20:29:45.977485300 +0900
-+++ os.new/scripts/package-iso	2024-05-14 14:04:35.567314900 +0900
++++ os.new/scripts/package-iso	2024-05-14 20:04:27.427314900 +0900
 @@ -29,9 +29,9 @@
  cp /usr/lib/syslinux/modules/bios/ldlinux.c32  ${CD}/boot/isolinux/
  cp /usr/lib/syslinux/modules/bios/*.c32        ${CD}/boot/isolinux/
@@ -1191,7 +1219,7 @@ diff -Naur '--exclude=.git' os.prev/scripts/package-iso os.new/scripts/package-i
      -l -J -R -V "${DISTRIB_ID}" \
 diff -Naur '--exclude=.git' os.prev/scripts/version os.new/scripts/version
 --- os.prev/scripts/version	2024-03-14 20:29:45.977485300 +0900
-+++ os.new/scripts/version	2024-05-14 14:04:35.567314900 +0900
++++ os.new/scripts/version	2024-05-14 20:04:27.427314900 +0900
 @@ -1,18 +1,27 @@
  #!/bin/bash
  
