@@ -58,7 +58,20 @@ before_sysinit(){
 		mkdir -p /opt/initrd
 		mount --bind / /opt/initrd
 		mkdir -p /var/lib/rancher/conf/cloud-config.d
-		if [ -n "$TZ" ]; then
+		if [ -n "$ref_boot_uuid" ];then
+			do_mount -v --salvage-btrfs 7 /mnt
+			if [ -e /mnt/var/lib/rancher/conf/cloud-config.yml ];then
+				cp /mnt/var/lib/rancher/conf/cloud-config.yml /var/lib/rancher/conf
+				cp /mnt/var/lib/rancher/conf/cloud-config.d/user_config.yml /var/lib/rancher/conf/cloud-config.d
+				mkdir -p /opt/etc
+				cp -a /mnt/etc/ssh /opt/etc
+				umount /mnt
+				yq e -i 'del(.runcmd)' /var/lib/rancher/conf/cloud-config.d/user_config.yml
+				yq e -i '.runcmd.[0]|="cp /opt/initrd/etc/localtime /etc"' /var/lib/rancher/conf/cloud-config.d/user_config.yml
+				yq e -i '.runcmd.[0]|="cp -a /opt/etc/ssh /etc"' /var/lib/rancher/conf/cloud-config.d/user_config.yml
+				yq e -i '.runcmd.[0]|="ps ax | grep sshd | grep -v grep | xargs kill -s SIGHUP"' /var/lib/rancher/conf/cloud-config.d/user_config.yml
+			fi
+		elif [ -n "$TZ" ]; then
 			cat - > /var/lib/rancher/conf/cloud-config.d/user_config.yml <<END
 rancher:
   services:
@@ -91,38 +104,6 @@ rancher:
 runcmd:
 - cp /opt/initrd/etc/localtime /etc
 END
-		fi
-		if [ -n "$ref_boot_uuid" ];then
-			do_mount -v --salvage-btrfs 5 /mnt
-			if [ -L /mnt/var/lib/rancher/conf ]; then
-				umount /mnt
-				do_mount -v --salvage-btrfs 7 /mnt
-			fi
-			if [ ! -e /mnt/var/lib/rancher/conf/cloud-config.yml ];then
-				drvs=(`blkid | grep $ref_boot_uuid | awk '{print $1}'`)
-				for drv in ${drvs[@]}; do
-					drv=${drv%??}
-					if mount -o degraded,ro $drv"5" /mnt; then
-						break
-					fi
-				done
-				if [ -L /mnt/var/lib/rancher/conf ]; then
-					umount /mnt
-					for drv in ${drvs[@]}; do
-						drv=${drv%??}
-						if mount -o degraded,ro $drv"7" /mnt; then
-							break
-						fi
-					done
-				fi
-			fi
-			if [ -e /mnt/var/lib/rancher/conf/cloud-config.yml ];then
-				cp /mnt/var/lib/rancher/conf/cloud-config.yml /var/lib/rancher/conf
-				cp /mnt/var/lib/rancher/conf/cloud-config.d/user_config.yml /var/lib/rancher/conf/cloud-config.d
-				umount /mnt
-				yq e -i 'del(.runcmd)' /var/lib/rancher/conf/cloud-config.d/user_config.yml
-				yq e -i '.runcmd.[0]|="cp /opt/initrd/etc/localtime /etc"' /var/lib/rancher/conf/cloud-config.d/user_config.yml
-			fi
 		fi
 	else
 		yFile=/usr/share/ros/os-config.yml
