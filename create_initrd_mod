@@ -461,7 +461,7 @@ $libs"
 	END
 	mkdir -p ./idev # for logger
 	mknod ./idev/null c 1 3
-	for f in date chown rm readlink mount mkdir ls grep egrep;do
+	for f in bash date chown rm readlink umount mount mkdir ls grep egrep;do
 		rm -fv ./usr/bin/$f
 		cp -av /bin/$f ./usr/bin
 		if [ -d "$for_state" ];then
@@ -512,6 +512,7 @@ $libs"
 	fi
 	chown root:root usr/bin/busybox
 	ls -la init
+	ls -la ./usr/bin
 	
 	setup_nginx_files
 	
