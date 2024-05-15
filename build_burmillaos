@@ -82,7 +82,12 @@ fi
 PVER=`cat ~/burmilla_os_efi/version`
 PVER=`echo $PVER|awk '{print $1}'`
 sed "s/__PVER__/$PVER/" ~/burmilla_os_efi/mountOpt.patch > ~/burmilla_os_efi/mountOpt.patch.$PVER
-patch -p1 < ~/burmilla_os_efi/mountOpt.patch.$PVER
+if ! patch -p1 < ~/burmilla_os_efi/mountOpt.patch.$PVER;then
+	die "patch failed."
+fi
+echo >> ~/os/images/02-console/sshd_config.append.tpl
+echo "PasswordAuthentication no" >> ~/os/images/02-console/sshd_config.append.tpl
+
 if [ -n "$NoSetReportCaller" ];then
 	sed -i '/SetReportCaller/d' ~/os/pkg/log/log.go
 fi

@@ -387,17 +387,6 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
  	BootDev    string   `yaml:"boot_dev,omitempty"`
  }
  
-diff -Naur '--exclude=.git' os.prev/images/02-console/sshd_config.append.tpl os.new/images/02-console/sshd_config.append.tpl
---- os.prev/images/02-console/sshd_config.append.tpl	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/images/02-console/sshd_config.append.tpl	2024-05-14 20:04:27.407314900 +0900
-@@ -22,6 +22,7 @@
- PermitEmptyPasswords no
- AllowTcpForwarding no
- DebianBanner no
-+PasswordAuthentication no
- 
- # Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com hardening guide.
- KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256
 diff -Naur '--exclude=.git' os.prev/install_burmillaos_on_btrfs os.new/install_burmillaos_on_btrfs
 --- os.prev/install_burmillaos_on_btrfs	1970-01-01 09:00:00.000000000 +0900
 +++ os.new/install_burmillaos_on_btrfs	2024-05-14 20:04:27.407314900 +0900
