@@ -59,20 +59,15 @@ function create_initrd_mod(){
 		pruneD="$pruneD -o -path $i "
 	done
 	function fnd(){
-		echo fnd $@ >&2
 		local D=$1
 		shift
 		local fN=$1
 		shift
 		D="`eval 'echo ${'$D'[@]}'`"
-		echo $D >&2
 		$@ bash -c '
 			for d in '"$D"'; do
 				f="$d'/$fN'"
-				echo ls -la "$f"  >&2
-				ls -la "$f"  >&2
 				if [ -e "$f" ];then
-					echo "$f" >&2
 					echo "$f"
 					break
 				else
