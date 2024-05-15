@@ -257,11 +257,10 @@ function do_mount(){
 					fi
 				fi
 				if [ "`id -u`" = 0 ];then
-					#if [ -x /usr/bin/btrfs -o -x /bin/btrfs ];then
-						btrfs device scan > /dev/null 2>/dev/null
-					#else
-					#	warn "'btrfs', not found"
-					#fi
+					btrfs device scan > /dev/null 2>/dev/null
+					if [ $? = 127 ];then
+						warn "do_mount: 'btrfs', not found"
+					fi
 				fi
 				local devices
 				devices=("`blkid2 --get-siblings $src`")

@@ -677,13 +677,13 @@ _rm_all(){
 
 rm_all(){
 	if [ ! -d /dev/block ];then
-#		err "directory, '/dev/block' is missing"
+		err "rm_all: directory, '/dev/block' is missing"
 		return 1
 	fi
-	#if [ ! -r /proc/mounts ];then
-	#	err "cannot read /proc/mounts"
-	#	return 1
-	#fi
+	if ! cat /proc/mounts >/dev/null 2>&1;then
+		err "rm_all: cannot read /proc/mounts"
+		return 1
+	fi
 	local f
 	for f in $@;do
 		_rm_all "$f"
