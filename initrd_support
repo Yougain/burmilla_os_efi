@@ -65,6 +65,19 @@ before_sysinit(){
 				cp -av /mnt/var/lib/rancher/conf/cloud-config.d /var/lib/rancher/conf
 				mkdir -p /opt/etc
 				cp -av /mnt/etc/ssh /opt/etc
+				if [ "${BURMILLAOS_VER%%.*}"="v1" ];then
+					info $BURMILLAOS_VER v1
+					if [ ! -e /mnt/etc/ssh/sshd_config-1 ];then
+						info /etc/ssh/sshd_config-1 not found on oem drive
+						sed -e '/^HostKeyAlgorithms/s/^/# /' /mnt/etc/ssh/sshd_config > /opt/etc/ssh/sshd_config
+						sed -ei '/^Include \/etc\/ssh\/sshd_config.d/s/^/# /' /opt/etc/ssh/sshd_config
+					else
+						info /etc/ssh/sshd_config-1 found on oem drive
+						cp /mnt/etc/ssh/sshd_config-1 /opt/etc/ssh/sshd_config
+					fi
+				else
+					info $BURMILLAOS_VER not v1
+				fi
 				yq e -i 'del(.runcmd)' /var/lib/rancher/conf/cloud-config.d/user_config.yml
 				yq e -i '.runcmd += ["cp /opt/initrd/etc/localtime /etc"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
 				yq e -i '.runcmd += ["rm -rf /etc/ssh"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
@@ -145,6 +158,13 @@ END
 		do_mount 7 -o subvol=/ /oem_top_lvl
 		do_mount 2 /boot/efi
 		do_mount 3
+		if [ "${BURMILLAOS_VER%%.*}"="v1" ];then
+			if [ ! -e /usr/share/ros/oem/etc/ssh/sshd_config-1 ];then
+				sed -e '/^HostKeyAlgorithms/s/^/# /' /usr/share/ros/oem/etc/ssh/sshd_config > /usr/share/ros/oem/etc/ssh/sshd_config-1
+				sed -ei '/^Include \/etc\/ssh\/sshd_config.d/s/^/# /' /usr/share/ros/oem/etc/ssh/sshd_config-1
+			fi
+			yq -i e '(.rancher.services.console.volumes += ["/etc/ssh/sshd_config:/usr/share/ros/oem/etc/ssh/sshd_config-1"])' $yFile
+		fi
 		btrfs quota enable /state_top_lvl
 		btrfs quota enable /state_top_lvl/state_root
 		btrfs quota enable /oem_top_lvl

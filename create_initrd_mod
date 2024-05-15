@@ -162,7 +162,7 @@ function create_initrd_mod(){
 			echo "done"
 			popd
 		fi
-		cp -av $VTMPD/$INITRD_FILE/* ./
+		cp -a $VTMPD/$INITRD_FILE/* ./
 	fi
 
 	local d
