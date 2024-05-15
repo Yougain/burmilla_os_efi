@@ -30,9 +30,11 @@ function check_cmd {
 
 PATH=/sbin:$PATH
 
-if [ -x "/usr/bin/apt-get" ];then
-	sudo apt-get -q install -y gdisk genisoimage dosfstools mount parted xorriso
-fi
+for e in fallocate gdisk losetup mkfs.fat mkisofs xorriso ; do
+	if [ -z "`sudo which $e`" ];then
+		sudo apt-get -q install -y gdisk genisoimage dosfstools mount parted xorriso
+	fi
+done
 
 check_cmd fallocate gdisk losetup mkfs.fat mkisofs xorriso #partprobe
 if [ -n "$NO_CMD" ];then
