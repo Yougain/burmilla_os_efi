@@ -2,8 +2,14 @@
 
 
 function create_initrd_mod(){
-	apt-get -y update
-	apt-get -y install cpio btrfs-progs strace nginx git binutils
+	local e
+	for e in install cpio btrfs strace nginx strings; do
+		if [ -z "`which $e`" ];then
+			apt-get -y update
+			apt-get -y install cpio btrfs-progs strace nginx git binutils
+			break
+		fi
+	done
 	if [ ! -x /usr/bin/yq ]; then
 		if [ -n "`uname -a|grep armv7`" ]; then
 			sudo wget "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_arm" -q -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
