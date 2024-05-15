@@ -550,13 +550,18 @@ $libs"
 	if [ -z "$DOCKER_IMAGE" ];then
 		die cannot find .rancher.services.docker.image in usr/share/ros/os-config.yml
 	fi
-	if ! docker pull $DOCKER_IMAGE; then
-		die cannot pull $DOCKER_IMAGE
+	if [ ! -e /usr/share/ros/os-docker-${DOCKER_IMAGE#*:}.tar.gz ];then
+		if [ "`docker image ls $DOCKER_IMAGE | tail -1 | awk '{print$1}'`" = "REPOSITORY" ];then
+			if ! docker pull $DOCKER_IMAGE; then
+				die cannot pull $DOCKER_IMAGE
+			fi
+		fi
+		
+		if ! docker save $DOCKER_IMAGE | gzip > /usr/share/ros/os-docker-${DOCKER_IMAGE#*:}.tar.gz; then
+			die cannot extract /usr/share/ros/os-docker-${DOCKER_IMAGE#*:}.tar.gz
+		fi
 	fi
-	if ! docker save $DOCKER_IMAGE | gzip > usr/share/ros/os-docker-${DOCKER_IMAGE#*:}.tar.gz; then
-		die cannot extract usr/share/ros/os-docker-${DOCKER_IMAGE#*:}.tar.gz
-	fi
-
+	cp /usr/share/ros/os-docker-${DOCKER_IMAGE#*:}.tar.gz usr/share/ros
 
 	
 	find | cpio -o -H newc  | gzip -c > ../$INITRD_FILE-mod.new
