@@ -680,10 +680,10 @@ rm_all(){
 #		err "directory, '/dev/block' is missing"
 		return 1
 	fi
-	if [ ! -r /proc/mounts ];then
-		err "cannot read /proc/mounts"
-		return 1
-	fi
+	#if [ ! -r /proc/mounts ];then
+	#	err "cannot read /proc/mounts"
+	#	return 1
+	#fi
 	local f
 	for f in $@;do
 		_rm_all "$f"
