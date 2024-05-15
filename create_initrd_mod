@@ -73,9 +73,9 @@ function create_initrd_mod(){
 				if [ -e "$f" ];then
 					echo "$f" >&2
 					echo "$f"
+					break
 				else
 					f=
-					break
 				fi
 			done
 			if [ -z "'$@'" -a -z "$f" ];then
