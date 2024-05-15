@@ -155,12 +155,14 @@ function create_initrd_mod(){
 		ls -la ./usr/bin/ros*
 	else
 		if [ ! -d "$VTMPD/$INITRD_FILE" ];then
+			echo "extracting $INITRD_FILE ..."
 			mkdir -p $VTMPD/$INITRD_FILE
 			pushd $VTMPD/$INITRD_FILE
 			zcat $EXTD/boot_dev/$INITRD_FILE | cpio -idm
+			echo "done"
 			popd
 		fi
-		cp -a $VTMPD/$INITRD_FILE/* ./
+		cp -av $VTMPD/$INITRD_FILE/* ./
 	fi
 
 	local d
@@ -553,7 +555,9 @@ $libs"
 	if [ ! -e /usr/share/ros/os-docker-${DOCKER_IMAGE#*:}.tar.gz ];then
 		if [ "`docker image ls $DOCKER_IMAGE | tail -1 | awk '{print$1}'`" = "REPOSITORY" ];then
 			if ! docker pull $DOCKER_IMAGE; then
+				echo "pulling $DOCKER_IMAGE ..."
 				die cannot pull $DOCKER_IMAGE
+				echo "done"
 			fi
 		fi
 		
@@ -563,8 +567,9 @@ $libs"
 	fi
 	cp /usr/share/ros/os-docker-${DOCKER_IMAGE#*:}.tar.gz usr/share/ros
 
-	
+	echo "creating initrd image ..."
 	find | cpio -o -H newc  | gzip -c > ../$INITRD_FILE-mod.new
+	echo "done"
 	if [ -z "$stand_alone" ];then
 		chain_bak -d ../$INITRD_FILE-mod.new $EXTD/boot_dev/$INITRD_FILE-mod
 	else
