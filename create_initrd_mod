@@ -74,9 +74,9 @@ function create_initrd_mod(){
 					f=
 				fi
 			done
-			#if [ -z "'$@'" -a -z "$f" ];then
-			#	:#find / \('"$pruneD"'\) -prune -o -name "'$fN'" -print| head -1
-			#fi
+			if [ -z "'$1'" -a -z "$f" ];then
+				:#find / \('"$pruneD"'\) -prune -o -name "'$fN'" -print| head -1
+			fi
 		'
 	}
 	function sfnd(){
