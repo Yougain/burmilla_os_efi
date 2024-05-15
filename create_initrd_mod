@@ -51,7 +51,7 @@ function create_initrd_mod(){
 	fi
 
 	local B=("/bin" "/usr/bin" "/sbin" "/usr/sbin")
-	local L=("/lib" "/usr/lib" "/lib64" "/usr/lib64")
+	local L=("/lib/x86_64-linux-gnu" "/lib" "/usr/lib" "/lib64" "/usr/lib64")
 	local ExD=("/tmp" "/mnt" "/home" "/root" "/dev" "/sys" "/proc" "/usr/share/ros/oem")
 	local pruneD=" -path ${ExD[0]} "
 	local i
