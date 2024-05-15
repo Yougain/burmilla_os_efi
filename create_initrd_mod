@@ -75,7 +75,6 @@ function create_initrd_mod(){
 				fi
 			done
 			if [ -z "'$@'" -a -z "$f" ];then
-				echo  find / \\\('"$pruneD"'\\\) -prune -o -name "'$fN'" -print >&2
 				find / \('"$pruneD"'\) -prune -o -name "'$fN'" -print| head -1
 			fi
 		'
