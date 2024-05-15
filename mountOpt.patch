@@ -514,7 +514,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/configfiles/configfiles.go os.new/p
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2024-05-14 20:04:27.407314900 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2024-05-15 21:24:45.380032900 +0900
 @@ -4,6 +4,8 @@
  	"fmt"
  	"strings"
@@ -578,7 +578,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 -	if err != nil {
 -		return err
 +	if _, err := os.Stat("/usr/bin/do_mount"); err == nil {
-+		cmd := exec.Command("/usr/bin/do_mount", "--verbose", "-o", option, dname, target)
++		cmd := exec.Command("/usr/bin/do_mount", dname, target, "--verbose", "-o", option)
 +		cmd.Stderr = os.Stderr
 +		errb := cmd.Run()
 +		if errb != nil {
