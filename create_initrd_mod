@@ -68,6 +68,8 @@ function create_initrd_mod(){
 		$@ bash -c '
 			for d in '"$D"'; do
 				f="$d'/$fN'"
+				echo ls -la "$f"  >&2
+				ls -la "$f"  >&2
 				if [ -e "$f" ];then
 					echo "$f" >&2
 					echo "$f"
