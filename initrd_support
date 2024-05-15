@@ -70,7 +70,7 @@ before_sysinit(){
 					if [ ! -e /mnt/etc/ssh/sshd_config-1 ];then
 						info /etc/ssh/sshd_config-1 not found on oem drive
 						sed -e '/^HostKeyAlgorithms/s/^/# /' /mnt/etc/ssh/sshd_config > /opt/etc/ssh/sshd_config
-						sed -ei '/^Include \/etc\/ssh\/sshd_config.d/s/^/# /' /opt/etc/ssh/sshd_config
+						sed -ie '/^Include \/etc\/ssh\/sshd_config.d/s/^/# /' /opt/etc/ssh/sshd_config
 					else
 						info /etc/ssh/sshd_config-1 found on oem drive
 						cp /mnt/etc/ssh/sshd_config-1 /opt/etc/ssh/sshd_config
@@ -161,7 +161,7 @@ END
 		if [ "${BURMILLAOS_VER%%.*}"="v1" ];then
 			if [ ! -e /usr/share/ros/oem/etc/ssh/sshd_config-1 ];then
 				sed -e '/^HostKeyAlgorithms/s/^/# /' /usr/share/ros/oem/etc/ssh/sshd_config > /usr/share/ros/oem/etc/ssh/sshd_config-1
-				sed -ei '/^Include \/etc\/ssh\/sshd_config.d/s/^/# /' /usr/share/ros/oem/etc/ssh/sshd_config-1
+				sed -ie '/^Include \/etc\/ssh\/sshd_config.d/s/^/# /' /usr/share/ros/oem/etc/ssh/sshd_config-1
 			fi
 			yq -i e '(.rancher.services.console.volumes += ["/etc/ssh/sshd_config:/usr/share/ros/oem/etc/ssh/sshd_config-1"])' $yFile
 		fi
