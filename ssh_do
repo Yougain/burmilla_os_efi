@@ -269,8 +269,13 @@ function ssh_do(){
 			write_env_file << '			__INNER'
 				__DO_CONTENT
 				REQUIRE_INVALID=1
+				__ret(){
+					return $__RET
+				}
 				source $SCRIPT_TMP_DIR/$SSH_ID/do_content
+				__SSH_DO_RET=$?
 				unset REQUIRE_INVALID
+				__ret
 			__INNER
 		) > $SCRIPT_TMP_DIR/$SSH_ID/main
 		dbv ${CMD[@]}
@@ -278,8 +283,8 @@ function ssh_do(){
 		local resPrefLen1=${#resPref}
 		((++resPrefLen1))
 		local res
-		cat $SCRIPT_TMP_DIR/$SSH_ID/main | "${CMD[@]}" bash -c '"mkdir -p '$SCRIPT_TMP_DIR/$SSH_ID';tee '$SCRIPT_TMP_DIR/$SSH_ID'/main >/dev/null; chmod +x '$SCRIPT_TMP_DIR/$SSH_ID'/main ;if ! bash -c '$SCRIPT_TMP_DIR/$SSH_ID'/main; then echo result'$SSH_ID':$?; fi"'  | while read -r ln; do
-			if [ "${ln:0:$resPrefLen1}" = "result$SSH_ID:" ];then
+		cat $SCRIPT_TMP_DIR/$SSH_ID/main | "${CMD[@]}" bash -c '"mkdir -p '$SCRIPT_TMP_DIR/$SSH_ID';tee '$SCRIPT_TMP_DIR/$SSH_ID'/main >/dev/null; chmod +x '$SCRIPT_TMP_DIR/$SSH_ID'/main ;if ! bash -c '$SCRIPT_TMP_DIR/$SSH_ID'/main; then echo result'$SSH_ID'=$?; fi"'  | while read -r ln; do
+			if [ "${ln:0:$resPrefLen1}" = "result$SSH_ID=" ];then
 				res="${ln:$resPrefLen1}"
 			fi
 			if [ -z "$trans_started" ]; then
@@ -298,6 +303,7 @@ function ssh_do(){
 			dbv "-----------------"
 		fi
 		. $SCRIPT_TMP_DIR/$SSH_ID/remote_env.diff
+		res=$__SSH_DO_RET
 		dbv $res
 		SSH_ID=
 		return $res

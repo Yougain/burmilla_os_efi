@@ -215,7 +215,9 @@ if [ ! -e "$BURMILLA_ISO" ];then
 fi
 if [ ! -e "$UBUNTU_ISO" -o ! -s "$UBUNTU_ISO"  ];then
 	sudo rm -f "$UBUNTU_ISO"
+	info Downloading ubuntu-$LATEST_UV$beta-live-server-amd64.iso ...
 	WG --no-check-certificate $UB_RELEASE_URL/$UDIR"ubuntu-$LATEST_UV$beta-live-server-amd64.iso" -O $UBUNTU_ISO
+	info done
 fi
 
 

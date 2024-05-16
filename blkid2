@@ -18,7 +18,7 @@ function _reg_b_device(){
 				return
 			fi
 		else
-			dbv $1
+			#dbv $1
 			rl="$1"
 		fi
 		local dev_id=`stat -c "%T:%t" "$rl"`
@@ -30,9 +30,9 @@ function _reg_b_device(){
 				dev_path[$dev_id]="$1"
 			fi
 		fi
-		dbv $dev_id
-		dbv $1
-		dbv ${dev_path[$dev_id]}
+		#dbv $dev_id
+		#dbv $1
+		#dbv ${dev_path[$dev_id]}
 	fi
 }
 
@@ -88,33 +88,33 @@ function blkid2(){
 	split blkids_arr "$CACHE" "
 "
 
-	dbv
+	#dbv
 	local_fun add_blist <<'	}'
-		dbv
+		#dbv
 		local dev=${1%:*}
-		dbv
+		#dbv
 		local tmp="$@"
-		dbv $tmp
+		#dbv $tmp
 		blkids[$dev]="$tmp "
-		dbv
+		#dbv
 	}
-	dbv
+	#dbv
 	local i
 	for i in "${blkids_arr[@]}"; do
-		dbv $i
+		#dbv $i
 		local_call add_blist $i
 	done
 
 
 	if [ -n "$recreate" ];then
-		dbv
+		#dbv
 		declare -A dev_path
 		
 		recursive_path _reg_b_device /dev
 		local key
 		local devs
 
-		dbv blkid2 $@
+		#dbv blkid2 $@
 		__readlink(){
 			for i in "$@"; do
 				readlink -f $i
@@ -149,11 +149,11 @@ function blkid2(){
 		for key in ${!dev_path[@]};do
 			devs+=("${dev_path[$key]}")
 		done
-		dbv ${devs[@]}
+		#dbv ${devs[@]}
 		local label
 		
 		__contain_entry(){
-			dbv $2 $3
+			#dbv $2 $3
 			if [ $1 = *" $2=$3 "* ];then
 				return 0
 			elif [ $1 = *" $2=\"$3\" "* ];then
@@ -166,38 +166,32 @@ function blkid2(){
 		
 		local bc
 
-		dbv
+		#dbv
 		local_fun by_lsblk << '		}'
 			local AttName
 			local val
-			dbv $1 $2
+			#dbv $1 $2
 			if [ -n "$2" ];then
 				AttName="$2"
 			else
 				AttName="$1"
 			fi
-			for dev in ${devs[@]}; do
+			for dev in ${!blkids[@]}; do
 				val="$(lsblk -o $1 $dev | sed -n 2p)"
 				if [ -n "$val" ]; then
-					dbv $AttName "$val"
+					#dbv $AttName "$val"
 					bc=${blkids[$dev]}
 					if ! __contain_entry bc $AttName "$val"; then
 						if [ -z "$bc" ];then
 							bc="$dev:"
 						fi
 						blkids[$dev]="$bc $AttName=\"$(echo "$val"|xargs)\""
-						dbv ${blkids[$dev]}
+						#dbv ${blkids[$dev]}
 					fi
 				fi
 			done
 		}
-		dbv
-		local_call by_lsblk TYPE DEV_TYPE # DEV_TYPE=disk or partition
-		local item
-		for item in NAME KNAME PKNAME VENDOR MODEL SERIAL WWN REV; do
-			local_call by_lsblk $item
-		done
-
+		#dbv
 		if [ -n "$IDnDEVs_n" ];then
 			for ((i = 0; i < $IDnDEVs_n ; i++)); do
 				dev=${IDnDEVs_dev[$i]}
@@ -220,6 +214,11 @@ function blkid2(){
 				done
 			fi
 		fi
+		local_call by_lsblk TYPE DEV_TYPE # DEV_TYPE=disk or partition
+		local item
+		for item in NAME KNAME PKNAME VENDOR MODEL SERIAL WWN REV; do
+			local_call by_lsblk $item
+		done
 		
 		mkdir -m 0777 -p "$SCRIPT_VAR_DIR/cache"
 		echo "$BLKID_CACHE" > "$SCRIPT_VAR_DIR/cache/blkid"
@@ -232,12 +231,12 @@ function blkid2(){
 	declare -A local dev2VarNameSibs
 	local varNameSibs # use transformed uuid (tr - _) as variable name for array of siblings
 	for dev in "${!blkids[@]}"; do
-		dbv $dev
-		dbv ${blkids[$dev]}
+		#dbv $dev
+		#dbv ${blkids[$dev]}
 		if [[ "${blkids[$dev]}" =~ \ UUID=\"([0-9a-fA-F]+(-[0-9a-fA-F]+)*)\"\  ]]; then
 			varNameSibs=UUID_$(echo ${BASH_REMATCH[1]}|tr - _|tr '[:upper:]' '[:lower:]')
-			dbv $varNameSibs
-			dbv ${!uuid_list[@]}
+			#dbv $varNameSibs
+			#dbv ${!uuid_list[@]}
 			if [ -z "${uuid_list[$varNameSibs]}" ];then
 				uuid_list[$varNameSibs]=1
 			fi
@@ -253,17 +252,17 @@ function blkid2(){
 		done | sort
 		return 0
 	else
-		dbv ${args[@]}
+		#dbv ${args[@]}
 		local matched=()
 		local_fun detectSymbol <<'		}'
-			dbv "$@"
+			#dbv "$@"
 			local _arg="$1"
-			dbv $_arg
+			#dbv $_arg
 			shift
 			local _dev=${1%:*}
 			shift
-			dbv "$_dev"
-			dbv "$@"
+			#dbv "$_dev"
+			#dbv "$@"
 			if [ "$_dev" = "$_arg" ];then
 				matched+=($_dev)
 				return 0
@@ -276,26 +275,26 @@ function blkid2(){
 			local a
 			local q
 			local a_key
-			dbv $_arg_key
-			dbv $_arg_val
+			#dbv $_arg_key
+			#dbv $_arg_val
 			if [ -n "$_arg_key" ];then
-				dbv "$@"
+				#dbv "$@"
 				for a in "$@";do
-					dbv $a
+					#dbv $a
 					for q in "" "'" "\"";do
-						dbv $a = $_arg_key="$q$_arg_val$q"
+						#dbv $a = $_arg_key="$q$_arg_val$q"
 						if [ "$a" = $_arg_key="$q$_arg_val$q" ];then
 							matched+=($_dev)
 							return 0
 						fi
 					done
 				done
-				dbv
+				#dbv
 			else
 				for a in "$@";do
 					a_key=${a%%=*}
 					for q in "" "'" "\"";do
-						dbv $a = $a_key="$q$_arg_val$q"
+						#dbv $a = $a_key="$q$_arg_val$q"
 						if [ "$a" = $a_key="$q$_arg_val$q" ];then
 							matched+=($_dev)
 							return 0
@@ -305,10 +304,10 @@ function blkid2(){
 			fi
 			return 1
 		}
-		dbv "${args[0]}"
+		#dbv "${args[0]}"
 		for bc in "${blkids[@]}";do
 			eval "bc=($bc)"
-			dbv ${bc[@]}
+			#dbv ${bc[@]}
 			local_call detectSymbol "${args[0]}" "${bc[@]}"
 		done
 		if [ "${#matched}" = 0 ];then
@@ -318,7 +317,7 @@ function blkid2(){
 		if [ -n "$get_sibling" ];then
 			local varNameSibs1
 			for mdev in "${matched[@]}"; do
-				dbv $mdev
+				#dbv $mdev
 				if [ -z "$varNameSibs1" ]; then
 					varNameSibs1=${dev2VarNameSibs[$mdev]}
 					if [ -z "$varNameSibs1" ];then
@@ -332,7 +331,7 @@ function blkid2(){
 			done
 			eval echo '${'$varNameSibs1'[@]}'
 		else
-			dbv ${!blkids[@]}
+			#dbv ${!blkids[@]}
 			for mdev in "${matched[@]}"; do
 				if [ "$mdev" == "${args[0]}" ];then
 					echo ${blkids[$mdev]}
@@ -340,7 +339,7 @@ function blkid2(){
 					echo $mdev
 				fi
 			done
-			dbv
+			#dbv
 		fi
 	fi
 	return 0

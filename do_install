@@ -54,7 +54,7 @@ function do_install(){
 			$sudo ln -sf ../share/$SUPPORT_LIB_NAME/$SUPPORT_LIB_NAME $d/usr/bin/$SUPPORT_LIB_NAME
 		fi
 		dbv `ls -la $sLib`
-		dbv `ls -la $d/usr/bin/bashlib_y`
+		dbv `ls -la $d/usr/bin/bashlib_y 2>/dev/null`
 		local from
 		local usrBinCreated
 		if [ "${to_inst:0:1}" = "/" ];then

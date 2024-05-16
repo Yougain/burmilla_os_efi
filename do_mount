@@ -5,7 +5,7 @@ require args
 
 
 function do_mount(){
-	echo do_mount $@
+	info do_mount $@
 	dbv $@
 	rm -f $SCRIPT_VAR_DIR/degraded
 	. args
@@ -198,8 +198,27 @@ function do_mount(){
 				_info "found disk, '$srcs[0]' for $(pqlist src_attrs)."
 				;;
 			*)
-				dbv ${#srcs[@]}
-				_die "Multiple disks, $(pqlist srcs) detected for $(pqlist src_attrs)"
+				local d
+				local u
+				local dp
+				local cu
+				local b2
+				for d in ${srcs[@]}; do
+					b2="`blkid2 $d`"
+					if [[ $b2 =~ \ UUID=\"([^\"]+) ]]; then
+						cu="${BASH_REMATCH[2]}"
+					else
+						err "Multiple disks, $(pqlist srcs) detected for $(pqlist src_attrs)."
+						_die "UUID of '$d' is missing."
+					fi
+					if [ -z "$u" ];then
+						u="$cu"
+						dp="$d"
+					elif [ "$u" != "$cu" ];then
+						err "Multiple disks, $(pqlist srcs) detected for $(pqlist src_attrs)."
+						_die "UUIDs of '$dp' ($u) and '$d' ($cu) is different."
+					fi
+				done
 				;;
 		esac
 	elif [ ! -b "$src" -a ! -d "$src" ];then
@@ -336,6 +355,7 @@ function do_mount(){
 			fi
 		fi
 	done
+	return 1
 }
 
 

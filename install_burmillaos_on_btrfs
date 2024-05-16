@@ -5,6 +5,23 @@ source $(dirname "$(realpath -s "$0")")/bashlib_y
 require create_initrd_mod ssh_do write_script
 require -s blkid2 do_mount initrd_support do_install chain_bak partNum2Dev args parse_func
 
+apt_check(){
+	local sudo
+	if [ "`id -u`" != 0 ];then
+		sudo=sudo
+	fi
+	if [ -z "`ls -A /var/lib/apt/lists`" ];then
+		$sudo apt update
+	fi
+	local lst
+	while (( "$#" )); do
+		if ! dpkg -L $1 >/dev/null 2>&1;then
+			lst+=($1)
+		fi
+		shift
+	done
+	$sudo apt-get install -y ${lst[@]}
+}
 
 # argument analysis
 while (( "$#" )); do
@@ -280,8 +297,7 @@ fi
 # check installer disk is same version for installer booted machine
 ssh_sudo <<'END'
 	dbv ${!SCRIPT_FILES[@]}
-	apt-get update
-	apt-get install fdisk
+	apt_check fdisk
 	version="`egrep -o '\s+VERSION:\s+[^ \]+' /var/log/boot/init.log | awk '{print $2}'`"
 	dbv $version
 	mkdir -p /installing/installer
@@ -391,31 +407,28 @@ function extract_uc_params(){
 END
 }
 
+part2Drv(){
+	if [[ ${!1} =~ ^(.+)[0-9]+$ ]]; then
+		eval "$1=${BASH_REMATCH[1]}"
+	fi
+}
+
 
 ssh_sudo <<'END'
-	apt update
-	apt -y install btrfs-progs
-	part2Drv(){
-		if [[ ${!1} =~ ^(.+)[0-9]+$ ]]; then
-			eval "$1=${BASH_REMATCH[1]}"
-		fi
-	}
+	apt_check btrfs-progs
 	CMDLINE=`cat /proc/cmdline`
 	if [[ $CMDLINE =~ \ ref_boot_uuid=([^\ ]+) ]];then
-		DRV=`do_mount --salvage-btrfs --echo-mounted UUID=${BASH_REMATCH[1]} /installing/ref_boot`
-		if [ -n "$DRV" ];then
-			umount /installing/ref_boot
-			part2Drv DRV
-			dbv $DRV
-		fi
+		BDRVs=(`blkid2 UUID=${BASH_REMATCH[1]}`)
 	fi
-	dbv $DRV
+	dbv ${BDRVs[@]}
 	if [[ $CMDLINE =~ \ root=([^\ ]+) ]];then
 		INST_DRIVE=`blkid2 ${BASH_REMATCH[1]}`
 		part2Drv INST_DRIVE
 	fi
-	disks=("`blkid2 DEV_TYPE=\"disk\"`")
-	installers=("`blkid2 LABEL=\"RANCHEROS\"`")
+	disks=(`blkid2 DEV_TYPE=disk`)
+	dbv ${disks[@]}
+	installers=(`blkid2 LABEL=RANCHEROS`)
+	dbv ${installers[@]}
 	j=0
 	for i in ${installers[@]}; do
 		if [[ $i =~ ^(.*[^0-9])[0-9]+$ ]];then
@@ -423,7 +436,7 @@ ssh_sudo <<'END'
 		fi
 		((++j))
 	done
-	for d in $disks; do
+	for d in ${disks[@]}; do
 		if ! detect installers $d; then
 			A_DISKS+=($d)
 		fi
@@ -445,7 +458,7 @@ ssh_sudo <<'END'
 	fi
 	if [ -n "$TARGET_DEV" ];then
 		if ! detect A_DISKS "$TARGET_DEV"; then
-			TARGET_DEV_ERRMSG="$TARGET_DEV is not installeble."
+			TARGET_DEV_ERRMSG="$TARGET_DEV is not installable."
 		fi
 	fi
 	ADISK_MSG=
@@ -465,20 +478,25 @@ if [ -n "$TARGET_DEV_ERRMSG" ];then
 	exit 1
 fi
 dbv
-if [ -n "$DRV" ];then
-	dbv
-	ssh_sudo<<"END"
-		do_mount --salvage-btrfs $DRV"7" /installing/oem_part
+if [ -n "$BDRVs" ];then
+	for tDRV in ${BDRVs[@]}; do
+		part2Drv tDRV
+		ssh_sudo<<"END"
+			do_mount --salvage-btrfs $tDRV"7" /installing/oem_part
 END
-	dbv
-	if [ $? = 0 ];then
-		PARAMS="`extract_uc_params`"
-		eval "$PARAMS"
-		ssh_sudo sudo umount /installing/oem_part
-		if [ -n "$USER_CONFIG" ]; then
-			info "user_config.yml found in '$DRV"7"'"
+		dbv $? $__SSH_DO_RET
+		if [ $__SSH_DO_RET = 0 ];then
+			REF_OEM_DRV=$DRV"7"
+			PARAMS="`extract_uc_params`"
+			eval "$PARAMS"
+			ssh_sudo sudo umount /installing/oem_part
+			if [ -n "$USER_CONFIG" ]; then
+				info "user_config.yml found in '$DRV"7"'"
+			fi
+			DRV=$tDRV
+			break
 		fi
-	fi
+	done
 fi
 
 if [ -n "$TARGET_DEV" ];then
@@ -495,6 +513,7 @@ if [ -n "$DRV" ];then
 	if [ -n "$TARGET_DEV" ];then
 		if [ "$DRV" != "$TARGET_DEV" ];then
 			whiteBgRed "'$TARGET_DEV' is not the reference disk, '$DRV' for getting parameters (IP, hostname, etc) for installation."
+			echo
 			whiteBgRed_n "Still installing on '$TARGET_DEV' ? "
 			yellowBgRed_n  "[y/n]: "
 			echo -n " "
@@ -879,19 +898,14 @@ if [ -z "$USER_CONFIG" ]; then
 	info Cannot find /var/lib/rancher/conf/cloud-config.d/user_config.yml on oem partition.
 fi
 
+ssh_sudo <<FIN
+	apt_check apt-utils util-linux
+FIN
 
-ssh_do sudo apt-get -qq -y update
-ssh_do sudo apt-get -qq install -y apt-utils
-if ! ssh_do sudo apt-get -qq -y install fdisk util-linux; then
-	die cannot install fdisk, util-linux
-fi
-
-dbv first apt-get checked.
 
 
 function install_vim(){
-	sudo apt-get -y update
-	sudo apt-get install -y vim
+	apt_check vim
 	echo 'set t_Co=256
 set fileencoding=japan
 set fileencodings=utf-8
@@ -1005,7 +1019,7 @@ sleep 5
 ssh_sudo <<'FINAL'
 	dbv ${!SCRIPT_FILES[@]}
 
-	apt-get -qq update; apt-get -qq install -y gdisk lvm2 dosfstools btrfs-progs parted util-linux cpio gzip fdisk strace
+	apt_check gdisk lvm2 dosfstools btrfs-progs parted util-linux cpio gzip fdisk strace
 	dd if=/dev/zero of=$TARGET_DEV bs=1G count=1
 	partprobe
 	gdisk $TARGET_DEV <<EOF
@@ -1069,6 +1083,52 @@ ssh_sudo <<'FINAL'
 	y
 	END
 
+	do_mount $TARGET_DEV7 /installing/oem_top
+FINAL
+if [ "$__SSH_DO_RET" = 1 ];then
+	dbv
+	whiteBgRed "Cannot mount OEM partition, '$TARGET_DEV7'."
+	whiteBgRed_n "Format it?"
+	yellowBgRed_n  "[y/n]: "
+	if ! ask_yes_no; then
+		die "User terminated. Cannot coninue installation."
+	fi
+	ssh_sudo <<'FINAL'
+		mkfs.btrfs -L RANCHER_OEM_SIBLING -f $TARGET_DEV7
+		partprobe
+		if [ -n "$REF_OEM_DRV" -a "$REF_OEM_DRV" != "$TARGET_DEV7" ];then
+			info "copying $REF_OEM_DRV to $TARGET_DEV7 ..."
+			do_mount --salvage-btrfs $REF_OEM_DRV /installing/oem_ref
+			cp -av /installing/oem_ref/* /installing/oem_top
+			umount /installing/oem_ref
+			info "done"
+		fi
+		umount /installing/oem_top
+FINAL
+else
+	ssh_sudo umount /installing/oem_top
+fi
+dbv
+ssh_sudo <<'FINAL'
+	# initial cloud-config.yml
+	write_env_file cloud-config.yml <<'END'
+		environment:
+		  ROS_BTRFS_WRAPPER: 1
+ 		rancher:
+		  network:
+		    dns:
+		      nameservers:
+		$DNS_SETTINGS
+		    interfaces:
+		      eth*:
+		        dhcp: false
+		      $NET_DEV:
+		        address: $INST_IP/$NETMASK
+		        gateway: $GATEWAY
+		ssh_authorized_keys:
+		- $KEY
+	END
+
 	# install on $TARGET_DEV4 (initial state drive, no boot, no state, no oem drive) first
 	# preload fullinstaller.tar.gz, or "ros install" fails
 	system-docker load -i /installing/installer/rancheros/fullinstaller.tar.gz
@@ -1122,6 +1182,9 @@ ssh_sudo <<'FINAL'
 	dbv `ls -la /usr/bin/do_mount`
 	dbv `ls -la /usr/share/bashlib_y`
 	# initialize oem drive if it does not exists, or remain contact
+	if ! do_mount $TARGET_DEV7 /installing/oem_top; then
+		mkfs.btrfs -L RANCHER_OEM_SIBLING -f $TARGET_DEV7
+	fi
 	if [ ! -e /dev/disk/by-label/RANCHER_OEM_SIBLING -o -n "$INITIALIZE_OEM" ]; then
 		mkfs.btrfs -L RANCHER_OEM_SIBLING -f $TARGET_DEV7
 		partprobe
@@ -1217,7 +1280,7 @@ ssh_sudo <<'FINAL'
 	echo VERSION="$VERSION"
 	store_env -s /installing/efipart/LINUX-$VERSION
 	store_env -s /installing/efipart/LINUX_DEBUG-$VERSION
-	store_env -s /installing/efipart/INITRD-$VERSION-mod
+	store_env -s /installing/efipart/INITRD-$VERSION
 	store_env -s /installing/efipart/VERSION
 	
 FINAL
@@ -1256,8 +1319,7 @@ ssh_sudo <<'FINAL'
 	cp -a /var/log/* /installing/oempart/var/log/burmilla_installation/1
 	umount /installing/oempart
 
-	apt-get -y update
-	apt-get -y install btrfs-progs binutils
+	apt_check btrfs-progs binutils
 	
 	if [ -x /usr/bin/btrfs -o -x /bin/btrfs ];then
 		:
@@ -1385,8 +1447,7 @@ ssh_sudo <<'FINAL'
 	#local time
 	#etc_localtime=`find /installing/state -name "localtime"| awk '{print $1}'`
 
-	apt-get -qq update
-	apt-get -qq -y install binutils
+	apt_check binutils
 
 	echo PORT=$PORT
 	echo TZ=$TZ
@@ -1434,7 +1495,7 @@ ssh_sudo <<'FINAL'
 		done
 	START_UP
 	if [ "`cat /installing/oem_part/opt/rancher/bin/start.sh.0`" != "`cat /installing/oem_part/opt/rancher/bin/start.sh`" ];then
-		chain_bak -10 /installing/oem_part/opt/rancher/bin/start.sh.0 /installing/oem_part/opt/rancher/bin/start.sh
+		chain_bak -10 --compare /installing/oem_part/opt/rancher/bin/start.sh.0 /installing/oem_part/opt/rancher/bin/start.sh
 	fi
 	deb wc start.sh=`wc /installing/oem_part/opt/rancher/bin/start.sh`
 	deb wc start.sh\(awk 1\)=`wc /installing/oem_part/opt/rancher/bin/start.sh|awk '{print $1}'`
@@ -1447,14 +1508,14 @@ ssh_sudo <<'FINAL'
 	mkdir -p /installing/oem_part/opt/rancher/conf/grub
 	if [ "$USER_SETTINGS_FOR_GRUB_SOURCE" != "`cat /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS 2> /dev/null`" ]; then
 		if [ -e /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS ];then
-			chain_bak -10 /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS
+			chain_bak -10 --compare /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS
 		fi
 		echo -n "$USER_SETTINGS_FOR_GRUB_SOURCE" > /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS
 		chmod +x /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS
 	fi
 
 	mkdir -p /installing/efipart
-	/usr/bin/do_mount 2  /installing/efipart
+	do_mount 2  /installing/efipart
 	INITRD=$INITRD_FILE-mod
 	rm -f /installing/efipart/TOPIC
 	umount /installing/efipart
