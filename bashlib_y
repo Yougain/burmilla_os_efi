@@ -987,19 +987,26 @@ trap cleanup EXIT
 trap trap_int INT
 
 function ask_yes_no {
+	local tty
+	if [ -t 2 ];then
+		tty="`readlink -f /proc/self/fd/2`"
+	else
+		return 1
+	fi
 	case "$ASK__YES_NO" in
 		[Yy]*)
-			echo $ASK__YES_NO
+			echo $ASK__YES_NO >&2
 			return 0
 			;;
 		[Nn]*)
-			echo $ASK__YES_NO
+			echo $ASK__YES_NO >&2
 			return 1
 			;;
 	esac
 	local ANS
+	
 	while true; do
-		read ANS
+		read ANS < $tty
 		case $ANS in
 			[Yy]*)
 				return 0
