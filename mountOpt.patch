@@ -27,7 +27,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/config.go os.new/cmd/control/con
  func env2map(env []string) map[string]string {
 diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/control/console_init.go
 --- os.prev/cmd/control/console_init.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/console_init.go	2024-05-16 07:06:55.975428200 +0900
++++ os.new/cmd/control/console_init.go	2024-05-16 11:52:12.690000000 +0900
 @@ -11,6 +11,7 @@
  	"strings"
  	"syscall"
@@ -66,10 +66,10 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/contr
 +						log.Error(err)
 +						continue
 +					}
-+					if strings.Prefix(i.Name, "docker") {
++					if strings.HasPrefix(i.Name, "docker") {
 +						continue
 +					}
-+					if iName == "lo" {
++					if i.Name == "lo" {
 +						continue
 +					}
 +
