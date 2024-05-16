@@ -167,7 +167,7 @@ function WG(){
 	esac
 	
 	if [ -n "$go" ]; then
-		rm $outFile
+		sudo rm $outFile
 		if ! wget $outOpt2 -q $nc $@;then
 			die "wget $@ failed. Exiting." >&2
 		fi
