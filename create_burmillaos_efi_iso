@@ -13,7 +13,7 @@ require write_script vercmp
 
 UB_CERT_URL=https://letsencrypt.org/certs/lets-encrypt-r3.pem
 BM_RELEASE_URL=https://github.com/burmilla/os/releases
-UB_RELEASE_URL=https://releases.ubuntu.com
+UB_RELEASE_URL=https://releases.ubuntu.com/jammy
 
 PATH="$(realpath .):$PATH"
 
@@ -196,15 +196,15 @@ BURMILLAOS_VER=${BURMILLAOS_VER%$'\n'*}
 info BurmillaOS Version: $BURMILLAOS_VER
 BURMILLA_ISO="$ISO_DIR"/burmillaos-$BURMILLAOS_VER.iso
 
-#LATEST_U=`WG --no-check-certificate -O - $UB_RELEASE_URL/ 2>/dev/null|awk '/Ubuntu [0-9]+(\.[0-9]+)+ LTS/{print $0}'|head -1|awk '{match($0, /Ubuntu [0-9]+(\.[0-9]+)+ LTS \([^)]+\)( Beta&|&)/); print substr($0, RSTART, RLENGTH - 1)}'`
-#LATEST_UV=`echo $LATEST_U | awk '{print $2}'`
-#if [ "${LATEST_U##*)}" = " Beta" ];then
-#	beta="-beta"
-#fi
-#LATEST_UV=`echo $LATEST_U | awk '{print $2}'`
+LATEST_U=`WG --no-check-certificate -O - $UB_RELEASE_URL/ 2>/dev/null|awk '/Ubuntu [0-9]+(\.[0-9]+)+ LTS/{print $0}'|head -1|awk '{match($0, /Ubuntu [0-9]+(\.[0-9]+)+ LTS \([^)]+\)( Beta|)/); print substr($0, RSTART, RLENGTH - 1)}'`
+LATEST_UV=`echo $LATEST_U | awk '{print $2}'`
+if [ "${LATEST_U##*)}" = " Beta" ];then
+	beta="-beta"
+fi
+LATEST_UV=`echo $LATEST_U | awk '{print $2}'`
 #UDIR=`WG --no-check-certificate -O - $UB_RELEASE_URL/ 2>/dev/null|grep "$LATEST_U"|grep href| head -1|awk '{match($0,/href="[^"]+"/);print substr($0,RSTART+6,RLENGTH-7)}'`
 
-LATEST_UV=22.04.3
+#LATEST_UV=22.04.4
 UDIR=jammy/
 
 UBUNTU_ISO="$ISO_DIR"/ubuntu-$LATEST_UV$beta-live-server-amd64.iso
