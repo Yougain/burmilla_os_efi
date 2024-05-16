@@ -27,7 +27,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/config.go os.new/cmd/control/con
  func env2map(env []string) map[string]string {
 diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/control/console_init.go
 --- os.prev/cmd/control/console_init.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/console_init.go	2024-05-16 11:52:12.690000000 +0900
++++ os.new/cmd/control/console_init.go	2024-05-16 12:28:23.740000000 +0900
 @@ -11,6 +11,7 @@
  	"strings"
  	"syscall"
@@ -57,7 +57,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/contr
 +				interfaces, err := net.Interfaces()
 +				if err != nil {
 +					log.Error(err)
-+					return
++					return err
 +				}
 +
 +				for _, i := range interfaces {

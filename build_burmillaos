@@ -21,7 +21,6 @@ if ! /usr/lib/docker/cli-plugins/docker-buildx 2> /dev/null; then
 	make install
 	sudo mv -f $HOME/.docker/cli-plugins/docker-buildx /usr/lib/docker/cli-plugins/
 	cd ~
-	docker buildx install
 fi
 
 
