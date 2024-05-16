@@ -136,7 +136,7 @@ END
             done
         }
         set_oem_volume(){
-            prefix="/usr/share/ros/oem"
+            prefix="/oem_top_lvl/oem_root"
             _set_volume $@
         }
         set_volume(){
@@ -179,6 +179,9 @@ END
 	else
 		info Using $USER_DOCKER_IMAGE_TO_LOAD on `which_dev_on $USER_DOCKER_IMAGE_TO_LOAD`.
 		system-docker load -i $USER_DOCKER_IMAGE_TO_LOAD
+	fi
+	if [ -e /boot/initrd-ext_source ];then
+		. /boot/initrd-ext_source
 	fi
 }
 
