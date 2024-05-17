@@ -32,28 +32,30 @@ before_sysinit(){
 	info /opt is on $(stat -f -c '%T' /opt)
 	info / is on $(stat -f -c '%T' /)
 	local found
-	for f in `find /usr/share/zoneinfo`; do
-		for t in `strings $f`; do
-			if [ "$t" = "$TZ" ] ; then
-				found=$f
-				info $TZ found in $f
+	if [ -n "$TZ" ];then
+		for f in `find /usr/share/zoneinfo`; do
+			for t in `strings $f`; do
+				if [ "$t" = "$TZ" ] ; then
+					found=$f
+					info $TZ found in $f
+					break
+				fi
+			done
+			if [ -n "$found" ];then
+				if [ -e /etc/localtime ];then
+					if ! diff /etc/localtime $found; then
+						cp -f $found /etc/localtime/localtime.0
+						chain_bak /etc/localtime.0 /etc/localtime
+						info cp $found /etc/localtime
+					fi
+				else
+					cp -f $found /etc/localtime
+					info cp $found /etc/localtime
+				fi
 				break
 			fi
 		done
-		if [ -n "$found" ];then
-			if [ -e /etc/localtime ];then
-				if ! diff /etc/localtime $found; then
-					cp -f $found /etc/localtime/localtime.0
-					chain_bak /etc/localtime.0 /etc/localtime
-					info cp $found /etc/localtime
-				fi
-			else
-				cp -f $found /etc/localtime
-				info cp $found /etc/localtime
-			fi
-			break
-		fi
-	done
+	fi
 	if [ "$(stat -f -c '%T' /)" = "ramfs" ];then
 		mkdir -p /opt/initrd
 		mount --bind / /opt/initrd
@@ -80,7 +82,9 @@ before_sysinit(){
 				fi
 				yq e -i 'del(.runcmd)' /var/lib/rancher/conf/cloud-config.d/user_config.yml
 				yq e -i '.runcmd += ["logger started runcmd"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
-				yq e -i '.runcmd += ["cp /opt/initrd/etc/localtime /etc"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
+				if [ -e /etc/localtime ];then
+					yq e -i '.runcmd += ["cp /opt/initrd/etc/localtime /etc"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
+				fi
 				yq e -i '.runcmd += ["rm -rf /etc/ssh"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
 				yq e -i '.runcmd += ["cp -afv /opt/etc/ssh /etc 2>&1|tee /tmp/ssh_copied"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
 				yq e -i '.runcmd += ["ps ax | grep sshd | grep -v grep | awk '"'"'{print $1}'"'"'|xargs kill -s SIGHUP"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
