@@ -65,7 +65,7 @@ before_sysinit(){
 				cp -av /mnt/var/lib/rancher/conf/cloud-config.d /var/lib/rancher/conf
 				mkdir -p /opt/etc
 				cp -av /mnt/etc/ssh /opt/etc
-				if [ "${BURMILLAOS_VER%%.*}"="v1" ];then
+				if [ "${BURMILLAOS_VER%%.*}" = "v1" ];then
 					info $BURMILLAOS_VER v1
 					if [ ! -e /mnt/etc/ssh/sshd_config-1 ];then
 						info /etc/ssh/sshd_config-1 not found on oem drive
@@ -82,7 +82,7 @@ before_sysinit(){
 				yq e -i '.runcmd += ["cp /opt/initrd/etc/localtime /etc"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
 				yq e -i '.runcmd += ["rm -rf /etc/ssh"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
 				yq e -i '.runcmd += ["cp -af /opt/etc/ssh /etc"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
-				yq e -i '.runcmd += ["ps ax | grep sshd | grep -v grep | xargs kill -s SIGHUP"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
+				yq e -i '.runcmd += ["ps ax | grep sshd | grep -v grep | awk '"'"'{print $1}'"'"'|xargs kill -s SIGHUP"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
 			fi
 			umount /mnt
 		elif [ -n "$TZ" ]; then
