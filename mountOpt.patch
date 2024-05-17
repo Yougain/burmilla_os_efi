@@ -664,7 +664,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  func tryMountState(cfg *config.CloudConfig) error {
 diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/prepare/prepare.go
 --- os.prev/pkg/init/prepare/prepare.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/prepare/prepare.go	2024-05-17 17:47:22.346544900 +0900
++++ os.new/pkg/init/prepare/prepare.go	2024-05-17 22:10:55.186544900 +0900
 @@ -3,10 +3,13 @@
  import (
  	"os"
@@ -716,10 +716,10 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
 +	cmd := exec.Command("do_mount", "4", "/mnt")
 +	cmd.Stderr = os.Stderr
 +	errb := cmd.Run()
-+	if errb != nil {
++	if errb == nil {
 +		defer mount.Unmount("/mnt")
 +		_, errb = os.Stat("/mnt/initrd_support")
-+		if errb != nil {
++		if errb == nil {
 +			errb = CopyFile("/mnt/initrd_support", "/usr/share/bashlib_y")
 +			if errb != nil {
 +				log.Infof("'initrd_support' on efi partition is copied on initrd")
@@ -738,7 +738,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
 +		}else{
 +			defer mount.Unmount("/mnt")
 +			_, errb = os.Stat("/mnt/boot/initrd_support")
-+			if errb != nil {
++			if errb == nil {
 +				errb = CopyFile("/mnt/boot/initrd_support", "/usr/share/bashlib_y")
 +				if errb != nil {
 +					log.Infof("The file, 'initrd_support' on boot partition is copied on initrd")
@@ -843,7 +843,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-14 20:04:27.427314900 +0900
++++ os.new/pkg/log/log.go	2024-05-17 22:20:45.316544900 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -859,10 +859,14 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	"path/filepath"
  	"strings"
  
-@@ -14,10 +19,29 @@
- 	lsyslog "github.com/sirupsen/logrus/hooks/syslog"
- )
+@@ -12,12 +17,33 @@
  
+ 	"github.com/sirupsen/logrus"
+ 	lsyslog "github.com/sirupsen/logrus/hooks/syslog"
++	"github.com/docker/docker/pkg/mount"
++
++)
++
 +const (
 +	tmpfsMagic int64 = 0x01021994
 +	ramfsMagic int64 = 0x858458f6
@@ -873,8 +877,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +	initrdInfoDir = "/opt/rancher/initrd"
 +	timeDiffFN2 = initrdInfoDir + "/time_diff_seconds"
 +	tzFN = oemVarDirInitrd + "/TZ"
-+)
-+
+ )
+ 
  var logFile *os.File
  var userHook *ShowuserlogHook
  var defaultLogLevel logrus.Level
@@ -889,7 +893,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  
  type Fields logrus.Fields
  type Level logrus.Level
-@@ -63,53 +87,145 @@
+@@ -63,53 +89,145 @@
  	return Level(logrus.GetLevel())
  }
  
@@ -1035,7 +1039,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,8 +236,203 @@
+@@ -120,8 +238,216 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -1169,6 +1173,19 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +				}
 +				if err != nil || base == 0 {
 +					tz = os.Getenv("TZ")
++					if tz == "" && isInitrd() {
++						out, errb := exec.Command("do_mount", "7", "--salvage-btrfs", "/mnt").Output()
++						if errb == nil {
++							defer mount.Unmount("/mnt")
++							_, errb = os.Stat("var/lib/rancher/conf/cloud-config.d/user_config.yml")
++							if errb == nil {
++								out, errb = exec.Command("yq", "e", ".rancher.services.console.environment.TZ", "/var/lib/rancher/conf/cloud-config.d/user_config.yml").Output()
++								if errb == nil {
++									tz = string(out)
++								}
++							}
++						}
++					}
 +					if tz != "" {
 +						out, errb := exec.Command("date", "+%z").Output()
 +						if errb != nil {
@@ -1239,7 +1256,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	if logTheseApps() {
  		innerInit(false)
  		FsReady()
-@@ -131,6 +442,8 @@
+@@ -131,6 +457,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1248,7 +1265,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +476,7 @@
+@@ -163,6 +491,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1256,7 +1273,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -249,8 +563,10 @@
+@@ -249,8 +578,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
