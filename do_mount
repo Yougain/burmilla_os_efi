@@ -195,7 +195,7 @@ function do_mount(){
 				;;
 			1)
 				dbv
-				_info "found disk, '$srcs[0]' for $(pqlist src_attrs)."
+				_info "found disk, '${srcs[0]}' for $(pqlist src_attrs)."
 				;;
 			*)
 				local d

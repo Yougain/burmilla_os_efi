@@ -664,21 +664,92 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  func tryMountState(cfg *config.CloudConfig) error {
 diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/prepare/prepare.go
 --- os.prev/pkg/init/prepare/prepare.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/prepare/prepare.go	2024-05-14 20:04:27.417314900 +0900
-@@ -3,6 +3,7 @@
++++ os.new/pkg/init/prepare/prepare.go	2024-05-17 16:17:46.266544900 +0900
+@@ -3,10 +3,13 @@
  import (
  	"os"
  	"strings"
 +	"os/exec"
++	"io"
  
  	"github.com/burmilla/os/config"
  	"github.com/burmilla/os/pkg/dfs"
-@@ -37,5 +38,13 @@
+ 	"github.com/burmilla/os/pkg/log"
++	"github.com/docker/docker/pkg/mount"
+ )
+ 
+ var (
+@@ -24,6 +27,27 @@
+ 	return c, dfs.PrepareFs(&mountConfig)
+ }
+ 
++func CopyFile(srcPath, dstPath string) error {
++    srcFile, err := os.Open(srcPath)
++    if err != nil {
++        return err
++    }
++    defer srcFile.Close()
++
++    dstFile, err := os.Create(dstPath)
++    if err != nil {
++        return err
++    }
++    defer dstFile.Close()
++
++    _, err = io.Copy(dstFile, srcFile)
++    if err != nil {
++        return err
++    }
++
++    return nil
++}
++
+ func SaveCmdline(c *config.CloudConfig) (*config.CloudConfig, error) {
+ 	// the Kernel Patch added for BurmillaOS passes `--` (only) elided kernel boot params to the init process
+ 	cmdLineArgs := strings.Join(os.Args, " ")
+@@ -37,5 +61,50 @@
  		log.SetLevel(log.InfoLevel)
  	}
  
++	copied := false
++	os.Mkdir("/mnt", 0755)
++	cmd = exec.Command("do_mount", "4", "/mnt")
++	cmd.Stderr = os.Stderr
++	errb := cmd.Run()
++	if errb != nil {
++		defer mount.Unmount("/mnt")
++		_, errb = os.Stat("/mnt/initrd_support")
++		if errb != nil {
++			errb = CopyFile("/mnt/initrd_support", "/usr/share/bashlib_y")
++			if errb != nil {
++				log.Infof("'initrd_support' on efi partition is copied on initrd")
++				copied = true
++			}
++		}
++	}else{
++		log.Infof("do_mount 4 /mnt, failed.")
++	}
++	if ! copied {
++		cmd = exec.Command("do_mount", "2", "/mnt")
++		cmd.Stderr = os.Stderr
++		errb := cmd.Run()
++		if errb != nil {
++			log.Infof("do_mount 2 /mnt, failed.")
++		}else{
++			defer mount.Unmount("/mnt")
++			_, errb = os.Stat("/mnt/boot/initrd_support")
++			if errb != nil {
++				errb = CopyFile("/mnt/boot/initrd_support", "/usr/share/bashlib_y")
++				if errb != nil {
++					log.Infof("The file, 'initrd_support' on boot partition is copied on initrd")
++					copied = true
++				}
++			}
++		}
++	}
++	
 +	log.Infof("executing /sbin/after_save_cmd_line")
-+	cmd := exec.Command("/sbin/after_save_cmd_line")
++	cmd = exec.Command("/sbin/after_save_cmd_line")
 +	cmd.Stderr = os.Stderr
 +	_, errb := cmd.Output()
 +	if errb != nil {

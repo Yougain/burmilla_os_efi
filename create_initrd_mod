@@ -460,6 +460,7 @@ $libs"
 		sleep
 		udevadm
 		umount
+		swapon
 		chmod
 		btrfs
 		btrfsck

@@ -1182,10 +1182,16 @@ ssh_sudo <<'FINAL'
 	dbv `ls -la /usr/bin/do_mount`
 	dbv `ls -la /usr/share/bashlib_y`
 	# initialize oem drive if it does not exists, or remain contact
-	if ! do_mount $TARGET_DEV7 /installing/oem_top; then
-		mkfs.btrfs -L RANCHER_OEM_SIBLING -f $TARGET_DEV7
+	mkdir -p /installing/oem_top
+	if ! do_mount $TARGET_DEV7 -o subvol=/ /installing/oem_top; then
+		initOEM=1
 	fi
-	if [ ! -e /dev/disk/by-label/RANCHER_OEM_SIBLING -o -n "$INITIALIZE_OEM" ]; then
+	if [ ! -e /dev/disk/by-label/RANCHER_OEM_SIBLING ];then
+		initOEM=1
+	fi
+	if [ -n "$INITIALIZE_OEM" ]; then
+		initOEM=1
+	if [ -n "$initOEM" ];then
 		mkfs.btrfs -L RANCHER_OEM_SIBLING -f $TARGET_DEV7
 		partprobe
 		OEM_UUID_SUB=`/sbin/blkid $TARGET_DEV7| awk '{print $4}'`
@@ -1193,7 +1199,6 @@ ssh_sudo <<'FINAL'
 			die cannot detect uuid of state device, $TARGET_DEV7.
 		fi
 		OEM_UUID_SUB="`echo $OEM_UUID_SUB`"
-		mkdir -p /installing/oem_top
 		mount $TARGET_DEV7 /installing/oem_top
 		btrfs subvolume create /installing/oem_top/oem_root
 		echo btrfs subvolume set-default `btrfs subvolume list /installing/oem_top|grep oem_root|awk '{print $2}'` /installing/oem_top
@@ -1216,8 +1221,6 @@ ssh_sudo <<'FINAL'
 		rm_all /installing/state_top/state_root/{root,opt,home,var/log}
 		rm_all /installing/state_top/state_root/var/lib/rancher/conf
 		rm_all /installing/state_top/state_root/var/lib/{,m-}user-docker
-
-
 		umount /installing/oem_top
 	else
 		OEM_UUID_SUB=`/sbin/blkid $TARGET_DEV7| awk '{print $4}'`
