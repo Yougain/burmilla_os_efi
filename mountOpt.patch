@@ -843,7 +843,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-17 22:56:26.256544900 +0900
++++ os.new/pkg/log/log.go	2024-05-17 22:58:56.176544900 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -1181,8 +1181,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +							defer mount.Unmount("/mnt")
 +							_, errb = os.Stat("/mnt/var/lib/rancher/conf/cloud-config.d/user_config.yml")
 +							if errb == nil {
-+								out, errb = exec.Command("yq", "e", ".rancher.services.console.environment.TZ", "/mnt/var/lib/rancher/conf/cloud-config.d/user_config.yml").Output()
-+								if errb == nil {
++								out, errc := exec.Command("yq", "e", ".rancher.services.console.environment.TZ", "/mnt/var/lib/rancher/conf/cloud-config.d/user_config.yml").Output()
++								if errc == nil {
 +									tz = string(out)
 +								}
 +							}
