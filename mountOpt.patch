@@ -843,7 +843,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-17 22:45:45.126544900 +0900
++++ os.new/pkg/log/log.go	2024-05-17 22:56:26.256544900 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -1174,7 +1174,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +				if err != nil || base == 0 {
 +					tz = os.Getenv("TZ")
 +					if tz == "" && isInitrd() {
-+						cmd := exec.Command("do_mount", "7", "--salvage-btrfs", "/mnt").Output()
++						cmd := exec.Command("do_mount", "7", "--salvage-btrfs", "/mnt")
 +						cmd.Stderr = os.Stderr
 +						errb := cmd.Run()
 +						if errb == nil {
