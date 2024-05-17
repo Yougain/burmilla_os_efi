@@ -79,10 +79,12 @@ before_sysinit(){
 					info $BURMILLAOS_VER not v1
 				fi
 				yq e -i 'del(.runcmd)' /var/lib/rancher/conf/cloud-config.d/user_config.yml
+				yq e -i '.runcmd += ["logger started runcmd"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
 				yq e -i '.runcmd += ["cp /opt/initrd/etc/localtime /etc"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
 				yq e -i '.runcmd += ["rm -rf /etc/ssh"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
-				yq e -i '.runcmd += ["cp -af /opt/etc/ssh /etc"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
+				yq e -i '.runcmd += ["cp -afv /opt/etc/ssh /etc 2>&1|tee /tmp/ssh_copied"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
 				yq e -i '.runcmd += ["ps ax | grep sshd | grep -v grep | awk '"'"'{print $1}'"'"'|xargs kill -s SIGHUP"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
+				yq e -i '.runcmd += ["logger finished runcmd"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
 			fi
 			umount /mnt
 		elif [ -n "$TZ" ]; then

@@ -1285,6 +1285,25 @@ diff -Naur '--exclude=.git' os.prev/pkg/sysinit/sysinit.go os.new/pkg/sysinit/sy
  	cfg := config.LoadConfig()
  
  	if err := control.PreloadImages(docker.NewSystemClient, systemImagesPreloadDirectory); err != nil {
+diff -Naur '--exclude=.git' os.prev/pkg/util/util.go os.new/pkg/util/util.go
+--- os.prev/pkg/util/util.go	2024-03-14 20:29:45.977485300 +0900
++++ os.new/pkg/util/util.go	2024-05-17 19:02:10.986544900 +0900
+@@ -11,6 +11,7 @@
+ 	"os/exec"
+ 	"path"
+ 	"strings"
++	"log"
+ 
+ 	osYaml "github.com/burmilla/os/config/yaml"
+ 
+@@ -290,6 +291,7 @@
+ 		}
+ 		cmd.Stdout = os.Stdout
+ 		cmd.Stderr = os.Stderr
++		
+ 		if err := cmd.Run(); err != nil {
+ 			return fmt.Errorf("Failed to run %s: %v", command, err)
+ 		}
 diff -Naur '--exclude=.git' os.prev/scripts/package-installer os.new/scripts/package-installer
 --- os.prev/scripts/package-installer	2024-03-14 20:29:45.977485300 +0900
 +++ os.new/scripts/package-installer	2024-05-14 20:04:27.427314900 +0900
