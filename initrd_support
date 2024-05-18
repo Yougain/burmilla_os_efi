@@ -29,7 +29,11 @@ before_sysinit(){
 	killall udevd
 	info killall udevd: result = $?
 	info udev stopped
-	info /opt is on $(stat -f -c '%T' /opt)
+	if [ -e /opt ];then
+		info /opt is on $(stat -f -c '%T' /opt)
+	else
+		info /opt is missing
+	fi
 	info / is on $(stat -f -c '%T' /)
 	local found
 	if [ -n "$TZ" ];then
@@ -162,10 +166,10 @@ END
 			mkdir -p /opt/initrd
 			mount --bind / /opt/initrd
 		fi
-		do_mount 5 -o subvol=/ /state_top_lvl
-		do_mount 7 -o subvol=/ /oem_top_lvl
-		do_mount 2 /boot/efi
-		do_mount 3
+		#do_mount 5 -o subvol=/ /state_top_lvl
+		#do_mount 7 -o subvol=/ /oem_top_lvl
+		#do_mount 2 /boot/efi
+		#do_mount 3
 		if [ "${BURMILLAOS_VER%%.*}"="v1" ];then
 			if [ ! -e /usr/share/ros/oem/etc/ssh/sshd_config-1 ];then
 				sed -e '/^HostKeyAlgorithms/s/^/# /' /usr/share/ros/oem/etc/ssh/sshd_config > /usr/share/ros/oem/etc/ssh/sshd_config-1
@@ -173,10 +177,10 @@ END
 			fi
 			yq -i e '(.rancher.services.console.volumes += ["/etc/ssh/sshd_config:/usr/share/ros/oem/etc/ssh/sshd_config-1"])' $yFile
 		fi
-		btrfs quota enable /state_top_lvl
-		btrfs quota enable /state_top_lvl/state_root
-		btrfs quota enable /oem_top_lvl
-		btrfs quota enable /oem_top_lvl/oem_root
+		#btrfs quota enable /state_top_lvl
+		#btrfs quota enable /state_top_lvl/state_root
+		#btrfs quota enable /oem_top_lvl
+		#btrfs quota enable /oem_top_lvl/oem_root
 	fi
 	info Using /usr/share/ros/os-config.yml on `which_dev_on /usr/share/ros/os-config.yml`.
 	USER_DOCKER_IMAGE=`yq ".rancher.services.docker.image" /usr/share/ros/os-config.yml`
