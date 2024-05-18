@@ -664,7 +664,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  func tryMountState(cfg *config.CloudConfig) error {
 diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/prepare/prepare.go
 --- os.prev/pkg/init/prepare/prepare.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/prepare/prepare.go	2024-05-18 17:12:43.418551000 +0900
++++ os.new/pkg/init/prepare/prepare.go	2024-05-18 17:20:33.808551000 +0900
 @@ -3,10 +3,13 @@
  import (
  	"os"
@@ -711,9 +711,9 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
  
  	cfg := config.LoadConfig()
 +
-+	cmd = exec.Command("/sbin/after_save_cmd_line")
++	cmd := exec.Command("/sbin/after_save_cmd_line")
 +	cmd.Stderr = os.Stderr
-+	_, errb = cmd.Output()
++	_, errb := cmd.Output()
 +	if errb != nil {
 +		log.Infof("exec /sbin/after_save_cmd_line failed.")
 +	}else{
@@ -729,9 +729,9 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
  
 +	copied := false
 +	os.Mkdir("/mnt", 0755)
-+	cmd := exec.Command("do_mount", "--salvage-btrfs", "4", "/mnt")
++	cmd = exec.Command("do_mount", "--salvage-btrfs", "4", "/mnt")
 +	cmd.Stderr = os.Stderr
-+	errb := cmd.Run()
++	errb = cmd.Run()
 +	if errb == nil {
 +		defer mount.Unmount("/mnt")
 +		_, errb = os.Stat("/mnt/initrd_support")
