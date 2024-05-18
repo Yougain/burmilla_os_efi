@@ -1191,6 +1191,7 @@ ssh_sudo <<'FINAL'
 	fi
 	if [ -n "$INITIALIZE_OEM" ]; then
 		initOEM=1
+	fi
 	if [ -n "$initOEM" ];then
 		mkfs.btrfs -L RANCHER_OEM_SIBLING -f $TARGET_DEV7
 		partprobe
