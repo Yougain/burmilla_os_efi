@@ -156,8 +156,8 @@ END
         #    container-data-volumes:/var/lib/{,m-}user-docker                        \
         #    user-volumes:{/home,/opt,/var/lib/kubelet,/root}                        \
         #    console:/etc/ssh
-        set_volume                                                                  \
-            console:{/boot,/state_top_lvl,/oem_top_lvl,/usr/bin/bashlib_y,/usr/bin/blkid2,/usr/bin/do_mount,/usr/share/bashlib_y}
+        #set_volume                                                                  \
+        #    console:{/boot,/state_top_lvl,/oem_top_lvl,/usr/bin/bashlib_y,/usr/bin/blkid2,/usr/bin/do_mount,/usr/share/bashlib_y}
 		if [ -n "$INITRD_MOUNT" -a "$(stat -f -c '%T' /opt)" = "ramfs" ];then
 			mkdir -p /opt/initrd
 			mount --bind / /opt/initrd
