@@ -664,7 +664,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  func tryMountState(cfg *config.CloudConfig) error {
 diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/prepare/prepare.go
 --- os.prev/pkg/init/prepare/prepare.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/prepare/prepare.go	2024-05-17 22:42:42.736544900 +0900
++++ os.new/pkg/init/prepare/prepare.go	2024-05-18 17:12:43.418551000 +0900
 @@ -3,10 +3,13 @@
  import (
  	"os"
@@ -679,7 +679,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
  )
  
  var (
-@@ -24,6 +27,27 @@
+@@ -24,12 +27,43 @@
  	return c, dfs.PrepareFs(&mountConfig)
  }
  
@@ -707,7 +707,23 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
  func SaveCmdline(c *config.CloudConfig) (*config.CloudConfig, error) {
  	// the Kernel Patch added for BurmillaOS passes `--` (only) elided kernel boot params to the init process
  	cmdLineArgs := strings.Join(os.Args, " ")
-@@ -37,5 +61,50 @@
+ 	config.SaveInitCmdline(cmdLineArgs)
+ 
+ 	cfg := config.LoadConfig()
++
++	cmd = exec.Command("/sbin/after_save_cmd_line")
++	cmd.Stderr = os.Stderr
++	_, errb = cmd.Output()
++	if errb != nil {
++		log.Infof("exec /sbin/after_save_cmd_line failed.")
++	}else{
++		log.Infof("executed /sbin/after_save_cmd_line")
++	}
++
+ 	log.Debugf("Cmdline debug = %t", cfg.Rancher.Debug)
+ 	if cfg.Rancher.Debug {
+ 		log.SetLevel(log.DebugLevel)
+@@ -37,5 +71,42 @@
  		log.SetLevel(log.InfoLevel)
  	}
  
@@ -748,14 +764,6 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
 +		}
 +	}
 +	
-+	log.Infof("executing /sbin/after_save_cmd_line")
-+	cmd = exec.Command("/sbin/after_save_cmd_line")
-+	cmd.Stderr = os.Stderr
-+	_, errb = cmd.Output()
-+	if errb != nil {
-+		log.Infof("exec /sbin/after_save_cmd_line failed.")
-+	}
-+
  	return cfg, nil
  }
 diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg/init/switchroot/switchroot.go
