@@ -63,7 +63,9 @@ before_sysinit(){
 		if [ -n "$ref_boot_uuid" ];then
 			do_mount -v --salvage-btrfs 7 /mnt
 			if [ -e /mnt/var/lib/rancher/conf ];then
-				cp -av /mnt/var/lib/rancher/conf/cloud-config.yml /var/lib/rancher/conf
+				if [ -e /mnt/var/lib/rancher/conf/cloud-config.yml ];then
+					cp -av /mnt/var/lib/rancher/conf/cloud-config.yml /var/lib/rancher/conf
+				fi
 				cp -av /mnt/var/lib/rancher/conf/cloud-config.d /var/lib/rancher/conf
 				mkdir -p /opt/etc
 				cp -av /mnt/etc/ssh /opt/etc
