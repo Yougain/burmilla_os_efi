@@ -18,6 +18,7 @@ after_save_cmd_line(){
 		udevadm trigger --action=change --type=devices
 		udevadm settle
 		mkdir -p /run/dev
+		mkdir -p /run/udev
 		#touch /run/dev/queue
 		info udev started
 		sleep 5
@@ -155,32 +156,32 @@ END
             prefix=""
             _set_volume $@
         }
-        #set_oem_volume                                                              \
-        #    system-volumes:{/var/lib/rancher/conf,/var/log,/etc/localtime}          \
-        #    container-data-volumes:/var/lib/{,m-}user-docker                        \
-        #    user-volumes:{/home,/opt,/var/lib/kubelet,/root}                        \
-        #    console:/etc/ssh
-        #set_volume                                                                  \
-        #    console:{/boot,/state_top_lvl,/oem_top_lvl,/usr/bin/bashlib_y,/usr/bin/blkid2,/usr/bin/do_mount,/usr/share/bashlib_y}
+        set_oem_volume                                                              \
+            system-volumes:{/var/lib/rancher/conf,/var/log,/etc/localtime}          \
+            container-data-volumes:/var/lib/{,m-}user-docker                        \
+            user-volumes:{/home,/opt,/var/lib/kubelet,/root}                        \
+            console:/etc/ssh
+        set_volume                                                                  \
+            console:{/boot,/state_top_lvl,/oem_top_lvl,/usr/bin/bashlib_y,/usr/bin/blkid2,/usr/bin/do_mount,/usr/share/bashlib_y}
 		if [ -n "$INITRD_MOUNT" -a "$(stat -f -c '%T' /opt)" = "ramfs" ];then
 			mkdir -p /opt/initrd
 			mount --bind / /opt/initrd
 		fi
-		#do_mount 5 -o subvol=/ /state_top_lvl
-		#do_mount 7 -o subvol=/ /oem_top_lvl
-		#do_mount 2 /boot/efi
-		#do_mount 3
-		if [ "${BURMILLAOS_VER%%.*}"="v1" ];then
+		do_mount 5 -o subvol=/ /state_top_lvl
+		do_mount 7 -o subvol=/ /oem_top_lvl
+		do_mount 2 /boot/efi
+		do_mount 3
+		if [ "${BURMILLAOS_VER%%.*}" = "v1" ];then
 			if [ ! -e /usr/share/ros/oem/etc/ssh/sshd_config-1 ];then
 				sed -e '/^HostKeyAlgorithms/s/^/# /' /usr/share/ros/oem/etc/ssh/sshd_config > /usr/share/ros/oem/etc/ssh/sshd_config-1
 				sed -ie '/^Include \/etc\/ssh\/sshd_config.d/s/^/# /' /usr/share/ros/oem/etc/ssh/sshd_config-1
 			fi
-			yq -i e '(.rancher.services.console.volumes += ["/etc/ssh/sshd_config:/usr/share/ros/oem/etc/ssh/sshd_config-1"])' $yFile
+			yq -i e '(.rancher.services.console.volumes += ["/usr/share/ros/oem/etc/ssh/sshd_config-1:/etc/ssh/sshd_config"])' $yFile
 		fi
-		#btrfs quota enable /state_top_lvl
-		#btrfs quota enable /state_top_lvl/state_root
-		#btrfs quota enable /oem_top_lvl
-		#btrfs quota enable /oem_top_lvl/oem_root
+		btrfs quota enable /state_top_lvl
+		btrfs quota enable /state_top_lvl/state_root
+		btrfs quota enable /oem_top_lvl
+		btrfs quota enable /oem_top_lvl/oem_root
 	fi
 	info Using /usr/share/ros/os-config.yml on `which_dev_on /usr/share/ros/os-config.yml`.
 	USER_DOCKER_IMAGE=`yq ".rancher.services.docker.image" /usr/share/ros/os-config.yml`
