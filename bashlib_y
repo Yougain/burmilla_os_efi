@@ -592,6 +592,7 @@ dbv(){
 	fi
 }
 
+dbv loaded $(__FILE__)
 
 _get_block_devs(){
 	local f
