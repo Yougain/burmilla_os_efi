@@ -851,7 +851,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-20 12:34:07.178735300 +0900
++++ os.new/pkg/log/log.go	2024-05-20 13:10:28.988735300 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -867,11 +867,10 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	"path/filepath"
  	"strings"
  
-@@ -12,12 +17,33 @@
+@@ -12,12 +17,32 @@
  
  	"github.com/sirupsen/logrus"
  	lsyslog "github.com/sirupsen/logrus/hooks/syslog"
-+	"github.com/docker/docker/pkg/mount"
 +
 +)
 +
@@ -901,7 +900,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  
  type Fields logrus.Fields
  type Level logrus.Level
-@@ -63,53 +89,145 @@
+@@ -63,53 +88,145 @@
  	return Level(logrus.GetLevel())
  }
  
@@ -1047,7 +1046,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,8 +238,209 @@
+@@ -120,8 +237,209 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -1184,7 +1183,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +					if tz == "" && isInitrd() {
 +						targetPath, err := os.Readlink("/etc/localtime")
 +						if err == nil {
-+							tz = strings.TrimPrefix(tragetPath, "/usr/share/zoneinfo/")
++							tz = strings.TrimPrefix(targetPath, "/usr/share/zoneinfo/")
 +						}
 +					}
 +					if tz != "" {
@@ -1257,7 +1256,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	if logTheseApps() {
  		innerInit(false)
  		FsReady()
-@@ -131,6 +450,8 @@
+@@ -131,6 +449,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1266,7 +1265,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +484,7 @@
+@@ -163,6 +483,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1274,7 +1273,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -249,8 +571,10 @@
+@@ -249,8 +570,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
