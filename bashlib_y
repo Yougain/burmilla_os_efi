@@ -1,8 +1,11 @@
 #!/bin/bash
 
+if [ -z "$___CMD_PATH___" ];then
+	___CMD_PATH___="`realpath $0`"
+fi
 
 __CMD_PATH__(){
-	realpath $0
+	echo "$___CMD_PATH___" 
 }
 
 
