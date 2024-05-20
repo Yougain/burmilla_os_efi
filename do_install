@@ -1,6 +1,7 @@
 # bash source
 
 function do_install(){
+	info DO_INSTALL_PWD=$DO_INSTALL_PWD
 	dbv $@
 	local to_inst=$1
 	if [ -z "$to_inst" ];then

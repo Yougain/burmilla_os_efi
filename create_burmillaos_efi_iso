@@ -3,7 +3,7 @@ export DO_INSTALL_PWD=`pwd`
 SCRIPT_PATH=$(dirname "$(realpath -s "$0")")
 . $SCRIPT_PATH/bashlib_y
 
-
+info $SCRIPT_PATH
 
 
 if [ "`id -u`" != 0 -o -z "$SUDO_USER" ];then
