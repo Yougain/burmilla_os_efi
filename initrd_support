@@ -84,7 +84,7 @@ before_sysinit(){
 			fi
 			if [ -z "$TZ" -a -L $OR/etc/localtime ];then
 				TZ=`readlink $OR/etc/localtime`
-				TZ=${TZ#/usr/share/zoneinfo}
+				TZ=${TZ#/usr/share/zoneinfo/}
 			fi
 			if [ -e $OR/var/lib/rancher/conf ];then
 				if [ -e $OR/var/lib/rancher/conf/cloud-config.yml ];then
@@ -107,7 +107,7 @@ before_sysinit(){
 		do_mount 7 -o subvol=/ /usr/share/ros/oem_top_lvl
 		if [ -z "$TZ" -a -L $OR/etc/localtime ];then
 			TZ=`readlink $OR/etc/localtime`
-			TZ=${TZ#/usr/share/zoneinfo}
+			TZ=${TZ#/usr/share/zoneinfo/}
 		fi
         set_oem_volume                                                              \
             system-volumes:{/var/lib/rancher/conf,/var/log}                         \

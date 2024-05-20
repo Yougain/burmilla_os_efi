@@ -1241,7 +1241,7 @@ ssh_sudo <<'FINAL'
 		cp -a /etc/ssh /installing/oem_top/oem_root/etc
 		if [ -n "$TZ" ];then
 			if [ -e /usr/share/zoneinfo/$TZ ];then
-				ln -sf /usr/share/zoneinfo/$TZ /etc/localtime
+				ln -sf /usr/share/zoneinfo/$TZ /installing/oem_top/oem_root/etc/localtime
 			else
 				for f in `find /usr/share/zoneinfo`; do
 					for t in `strings $f`; do
@@ -1254,11 +1254,11 @@ ssh_sudo <<'FINAL'
 					if [ -n "$found" ];then
 						if [ -e /etc/localtime ];then
 							if ! diff /etc/localtime $found; then
-								rm -f  /etc/localtime
-								ln -s $found /etc/localtime
+								rm -f  /installing/oem_top/oem_root/etc/localtime
+								ln -s $found /installing/oem_top/oem_root/etc/localtime
 							fi
 						else
-							ln -s $found /etc/localtime
+							ln -s $found /installing/oem_top/oem_root/etc/localtime
 						fi
 						break
 					fi

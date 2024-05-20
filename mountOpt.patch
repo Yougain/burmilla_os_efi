@@ -851,7 +851,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-20 13:10:28.988735300 +0900
++++ os.new/pkg/log/log.go	2024-05-20 15:36:25.728735300 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -1187,11 +1187,11 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +						}
 +					}
 +					if tz != "" {
-+						out, errb := exec.Command("date", "+%z").Output()
++						out, errb := exec.Command("bash", "-c", "TZ=" + tz + " date +%z").Output()
 +						if errb != nil {
-+							out, errb = exec.Command("/usr/bin/date", "+%z").Output()
++							out, errb = exec.Command("bash", "-c", "TZ=" + tz + " /usr/bin/date +%z").Output()
 +							if errb != nil {
-+								out, errb = exec.Command("/bin/date", "+%z").Output()
++								out, errb = exec.Command("bash", "-c", "TZ=" + tz + " /bin/date +%z").Output()
 +							}
 +						}
 +						if errb == nil {
