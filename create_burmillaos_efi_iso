@@ -3,13 +3,12 @@ export DO_INSTALL_PWD=`pwd`
 SCRIPT_PATH=$(dirname "$(realpath -s "$0")")
 . $SCRIPT_PATH/bashlib_y
 
-dbv DEBUG=$DEBUG
-info DEBUG=$DEBUG
 
 
 
 if [ "`id -u`" != 0 -o -z "$SUDO_USER" ];then
-	exec sudo $0 "$@"
+	cmd="DEBUG=$DEBUG $0 $@"
+	exec sudo bash -c "$cmd"
 fi
 
 require write_script vercmp
