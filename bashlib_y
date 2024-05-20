@@ -891,6 +891,7 @@ require(){
 				fi
 				to_load="$(readlink -f "$to_load")"
 				if [ -n "$requireSource" ];then
+					dbv $PATH
 					dbv loading source "$to_load"
 					emerge_file_content "$to_load"
 				fi
