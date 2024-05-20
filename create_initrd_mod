@@ -2,7 +2,6 @@
 
 
 function create_initrd_mod(){
-	info DEBUG=$DEBUG
 	local e
 	for e in install cpio btrfs strace nginx strings; do
 		if [ -z "`which $e`" ];then
@@ -492,6 +491,8 @@ $libs"
 		less
 		hostname
 	END
+	dbv $DEBUG=1
+	info DEBUG=$DEBUG
 	mkdir -p ./idev # for logger
 	mknod ./idev/null c 1 3
 	for f in bash date chown rm readlink umount mount mkdir ls grep egrep;do
