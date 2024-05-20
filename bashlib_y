@@ -864,6 +864,7 @@ require(){
 	local requireFunc
 	local requireSource
 	local LOAD_PATH="$(__CMD_DIR__):/usr/share/bashlib_y"
+	dbv $(__CMD_PATH__)
 	dbv $LOAD_PATH
 	local to_load
 	local ret=255
