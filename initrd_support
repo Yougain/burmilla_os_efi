@@ -57,7 +57,7 @@ before_sysinit(){
         prefix=""
         _set_volume $@
     }
-    _set_volume(){
+    _set_volume_p(){
         prefix="$1"
         shift
         _set_volume $@
@@ -131,7 +131,7 @@ before_sysinit(){
 			sed -e '/^HostKeyAlgorithms/s/^/# /' $d_ssh/etc/ssh/sshd_config > $d_ssh/etc/ssh/sshd_config-1
 			sed -ie '/^Include \/etc\/ssh\/sshd_config.d/s/^/# /' $d_ssh/etc/ssh/sshd_config-1
 		fi
-		_set_volume "$d_ssh" -1 console:/etc/ssh/sshd_config
+		set_volume_p "$d_ssh" -1 console:/etc/ssh/sshd_config
 	fi
 	if [ -n "$umount7" ];then
 		umount $OR
