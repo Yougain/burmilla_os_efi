@@ -1,18 +1,18 @@
 #!/bin/bash
-dbv DEBUG=$DEBUG
-info DEBUG=$DEBUG
-
 export DO_INSTALL_PWD=`pwd`
 SCRIPT_PATH=$(dirname "$(realpath -s "$0")")
 . $SCRIPT_PATH/bashlib_y
+
+dbv DEBUG=$DEBUG
+info DEBUG=$DEBUG
+
+
 
 if [ "`id -u`" != 0 -o -z "$SUDO_USER" ];then
 	exec sudo $0 "$@"
 fi
 
 require write_script vercmp
-dbv DEBUG=$DEBUG
-info DEBUG=$DEBUG
 
 
 UB_CERT_URL=https://letsencrypt.org/certs/lets-encrypt-r3.pem
@@ -30,8 +30,6 @@ function check_cmd {
 		shift
 	done
 }
-dbv DEBUG=$DEBUG
-info DEBUG=$DEBUG
 
 PATH=/sbin:$PATH
 
