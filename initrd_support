@@ -144,13 +144,15 @@ before_sysinit(){
 			ln -sf /usr/share/zoneinfo/$TZ /etc/localtime
 		else
 			for f in `find /usr/share/zoneinfo`; do
-				for t in `strings $f`; do
-					if [ "$t" = "$TZ" ] ; then
-						found=$f
-						info $TZ found in $f
-						break
-					fi
-				done
+				if [ -f "$f" ];then
+					for t in `strings $f`; do
+						if [ "$t" = "$TZ" ] ; then
+							found=$f
+							info $TZ found in $f
+							break
+						fi
+					done
+				fi
 				if [ -n "$found" ];then
 					if [ -e /etc/localtime ];then
 						if ! diff /etc/localtime $found; then
