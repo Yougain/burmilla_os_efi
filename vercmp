@@ -92,25 +92,25 @@ dict_cmp(){
 
 
 vercmp_word(){
-	dbv $1 $2
+	#dbv $1 $2
 	local a
 	local b
 	word_class "$1"
 	a=$?
 	word_class "$2"
 	b=$?
-	dbv $1 is class $a
-	dbv $2 is class $b
+	#dbv $1 is class $a
+	#dbv $2 is class $b
 	if [ $a -gt $b ]; then
-		dbv
+	#	dbv
 		return 0
 	elif [ $a -lt $b ]; then
-		dbv
+	#	dbv
 		return 1
 	else
 		case $a in
 		3)
-			dbv
+	#		dbv
 			dict_cmp $1 $2
 			return $?
 			;;
