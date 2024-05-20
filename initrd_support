@@ -172,7 +172,7 @@ before_sysinit(){
             if [ `yq e '(.rancher.services.$i__.environment[]|select(. == "TZ=*")) != null' $yFile` = "true" ]; then
             	yq e '(.rancher.services.$i__.environment[]|select(. == "TZ=*")) = "TZ='$TZ'"' $yFile
             else
-				yq e -i ".rancher.services.$i__.environment += ["\"$TZ\"]" $yFile
+				yq e -i ".rancher.services.$i__.environment += [\""$TZ"\"]" $yFile
 			fi
 		done
 	fi
