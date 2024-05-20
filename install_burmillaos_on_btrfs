@@ -1497,9 +1497,6 @@ ssh_sudo <<'FINAL'
 			echo export LC_CTYPE=$LC_CTYPE >> /etc/profile.d/lang.sh
 			echo export LC_ALL=$LC_ALL >> /etc/profile.d/lang.sh
 		fi
-		if [ ! -e /etc/profile.d/timezone.sh ]; then
-			echo export TZ=$TZL > /etc/profile.d/timezone.sh
-		fi
 		mkdir -p /mnt_efi_test
 		# clear booting flags on all sibling drives
 		/sbin/blkid | grep LABEL=\"EFI\" | awk '{print substr($1, 1, length($1) - 1)}' | while read efi; do
