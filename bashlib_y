@@ -1,6 +1,27 @@
 #!/bin/bash
 
 
+__CMD_PATH__(){
+	realpath $0
+}
+
+
+__CMD_NAME__(){
+	echo "${0##*/}"
+}
+
+
+__CMD_DIR__(){
+	local tmp=$(__CMD_PATH__)
+	echo "${tmp%/*}"
+}
+
+
+if [ $(__CMD_DIR__)/bashlib_y != $__CMD_PATH__ -a -e $(__CMD_DIR__)/bashlib_y ];then
+	source $(__CMD_DIR__)/bashlib_y
+else
+
+
 function env_var(){
 	local ln
 	local tmp
@@ -103,16 +124,6 @@ case $(__SOURCE_NAME__) in
 		echo -e "$error"Cannot use source name, "'"$(__SOURCE_NAME__)"'". Exiting.$normal >&2
 		return
 esac
-
-
-__CMD_PATH__(){
-	realpath $0
-}
-
-
-__CMD_NAME__(){
-	echo "${0##*/}"
-}
 
 
 __DIR__() {
@@ -851,7 +862,7 @@ require(){
 	fi
 	local requireFunc
 	local requireSource
-	local PATH="./:/usr/share/bashlib_y:$PATH"
+	local LOAD_PATH="$(__CMD_DIR__):/usr/share/bashlib_y"
 	local to_load
 	local ret=255
 	while (( "$#" )); do
@@ -872,7 +883,7 @@ require(){
 				fi
 				if [ "${1:0:1}" != "/" ];then
 					local parr
-					split parr "$PATH" :
+					split parr "$LOAD_PATH" :
 					local p
 					if detect_if parr p '[ -e "$p/'$1'" ]';then
 						to_load="$p/$1"
@@ -880,7 +891,7 @@ require(){
 						dbv $1
 						dbv ${SOURCES_LOADED[@]}
 						if ! detect_if SOURCES_LOADED s '[ "${s##*/}" = '$1' ]';then
-							die "'$1' not found in PATH"
+							die "'$1' not found in LOAD_PATH"
 						else
 							shift
 							continue
@@ -944,7 +955,7 @@ require(){
 				done
 				if [ -n "$requireFunc" ];then
 					if ! declare -F "${1#**/}" > /dev/null ;then
-						die "function '$1', not found in any files of (\$PATH)/$1."
+						die "function '$1', not found in any files of (\$LOAD_PATH)/$1."
 					fi
 				fi
 				;;
@@ -1131,3 +1142,4 @@ if [ "`readlink -f ${BASH_SOURCE[-1]}`" = "$(__FILE_PATH__)" ];then
 fi
 
 
+fi

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source $(dirname "$(realpath -s "$0")")/bashlib_y
+source bashlib_y
 
 require create_initrd_mod ssh_do write_script
 require -s blkid2 do_mount initrd_support do_install chain_bak partNum2Dev args parse_func
