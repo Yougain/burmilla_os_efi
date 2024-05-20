@@ -170,7 +170,7 @@ before_sysinit(){
 		echo "export TZ=$TZ" > /etc/profile.d/timezone.sh
 		for i__ in console syslog udev system-cron acpid ntp docker network; do
             if [ `yq e '(.rancher.services.$i__.environment[]|select(. == "TZ=*")) != null' $yFile` = "true" ]; then
-            	yq e '(.rancher.services.$i__.environment[]|select(. == "TZ=*")) = "TZ='$Z'"' $yFile
+            	yq e '(.rancher.services.$i__.environment[]|select(. == "TZ=*")) = "TZ='$TZ'"' $yFile
             else
 				yq e -i ".rancher.services.$i__.environment += ["\"$TZ\"]" $yFile
 			fi
