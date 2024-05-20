@@ -79,7 +79,7 @@ before_sysinit(){
 		mount --bind / /opt/initrd
 		mkdir -p /var/lib/rancher/conf/cloud-config.d
 		if [ -n "$ref_boot_uuid" ];then # referencing boot drive
-			if do_mount -v --salvage-btrfs 7 $OR
+			if do_mount -v --salvage-btrfs 7 $OR; then
 				umount7=1
 			fi
 			if [ -z "$TZ" -a -L $OR/etc/localtime ];then
@@ -105,7 +105,7 @@ before_sysinit(){
 		do_mount 5 -o subvol=/ /usr/share/ros/state_top_lvl
 		do_mount 7 -o subvol=/ /usr/share/ros/oem_top_lvl
 		if [ -z "$TZ" -a -L $OR/etc/localtime ];then
-			TZ=`readlink $OR/etc/localtime
+			TZ=`readlink $OR/etc/localtime`
 		fi
         set_oem_volume                                                              \
             system-volumes:{/var/lib/rancher/conf,/var/log}                         \
