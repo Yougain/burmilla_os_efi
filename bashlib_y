@@ -17,7 +17,28 @@ __CMD_DIR__(){
 }
 
 
-if [ $(__CMD_DIR__)/bashlib_y != $__CMD_PATH__ -a -e $(__CMD_DIR__)/bashlib_y ];then
+__FILE__() {
+	local sn
+	if [ -n "$1" ];then
+		sn=$((1 + $1))
+	else
+		sn=1
+	fi
+	local f="`readlink -f "${BASH_SOURCE[$sn]}"`"
+	if [[ "${f##*/}" =~ [^\-\./A-Za-z0-9_] ]]; then
+		echo -e "$error"Cannot use path name, $f"$normal". >&2
+		echo -e "$info"Alphabitical/numeric characters and '/', '.', '⧵' are usable for path name when using bashlib_y"$normal" >&2
+		return
+	fi
+	echo "$f"
+}
+
+__FILE_PATH__() {
+	__FILE__
+}
+
+
+if [ $(__CMD_DIR__)/bashlib_y != $(__FILE__) -a -e $(__CMD_DIR__)/bashlib_y ];then
 	source $(__CMD_DIR__)/bashlib_y
 else
 
@@ -45,27 +66,6 @@ info="\033[46m\033[34mINFO     :\033[m \033[36m"
 debug="\033[42m\033[34mDEBUG     :\033[m \033[32m"
 plain="\033[m"
 normal="\033[m"
-
-
-__FILE__() {
-	local sn
-	if [ -n "$1" ];then
-		sn=$((1 + $1))
-	else
-		sn=1
-	fi
-	local f="`readlink -f "${BASH_SOURCE[$sn]}"`"
-	if [[ "${f##*/}" =~ [^\-\./A-Za-z0-9_] ]]; then
-		echo -e "$error"Cannot use path name, $f"$normal". >&2
-		echo -e "$info"Alphabitical/numeric characters and '/', '.', '⧵' are usable for path name when using bashlib_y"$normal" >&2
-		return
-	fi
-	echo "$f"
-}
-
-__FILE_PATH__() {
-	__FILE__
-}
 
 
 __FILE_NAME__(){
