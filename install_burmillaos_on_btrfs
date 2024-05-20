@@ -1239,7 +1239,32 @@ ssh_sudo <<'FINAL'
 		chmod +x /installing/oem_top/oem_root/opt/rancher/conf/grub/USER_SETTINGS
 		mkdir -p /installing/oem_top/oem_root/etc
 		cp -a /etc/ssh /installing/oem_top/oem_root/etc
-		cp -a /etc/localtime /installing/oem_top/oem_root/etc
+		if [ -n "$TZ" ];then
+			if [ -e /usr/share/zoneinfo/$TZ ];then
+				ln -sf /usr/share/zoneinfo/$TZ /etc/localtime
+			else
+				for f in `find /usr/share/zoneinfo`; do
+					for t in `strings $f`; do
+						if [ "$t" = "$TZ" ] ; then
+							found=$f
+							info $TZ found in $f
+							break
+						fi
+					done
+					if [ -n "$found" ];then
+						if [ -e /etc/localtime ];then
+							if ! diff /etc/localtime $found; then
+								rm -f  /etc/localtime
+								ln -s $found /etc/localtime
+							fi
+						else
+							ln -s $found /etc/localtime
+						fi
+						break
+					fi
+				done
+			fi
+		fi
 		cp -a /var/lib/{,m-}user-docker /installing/oem_top/oem_root/var/lib
 		rm_all /installing/state_top/state_root/{root,opt,home,var/log}
 		rm_all /installing/state_top/state_root/var/lib/rancher/conf
