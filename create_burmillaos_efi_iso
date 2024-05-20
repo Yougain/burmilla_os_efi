@@ -253,6 +253,7 @@ fi
 
 dbv DEBUG=$DEBUG
 info DEBUG=$DEBUG
+dbv $0
 create_initrd_mod
 popd
 INITRD_FILE_MOD="`ls -d \"$T\"/initrd-*`"

@@ -2,6 +2,7 @@
 
 
 function create_initrd_mod(){
+	dbv $0
 	local e
 	for e in install cpio btrfs strace nginx strings; do
 		if [ -z "`which $e`" ];then
