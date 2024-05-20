@@ -845,6 +845,7 @@ declare -A FUNC_SOURCE
 
 require(){
 	dbv $@
+	dbv ${BASH_SOURCES[@]}
 	if [ -n "$REQUIRE_INVALID" ];then
 		return 0
 	fi
