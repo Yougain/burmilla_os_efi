@@ -1020,69 +1020,88 @@ ssh_sudo <<'FINAL'
 	dbv ${!SCRIPT_FILES[@]}
 
 	apt_check gdisk lvm2 dosfstools btrfs-progs parted util-linux cpio gzip fdisk strace
-	dd if=/dev/zero of=$TARGET_DEV bs=1G count=1
-	partprobe
-	gdisk $TARGET_DEV <<EOF
-	2
-	x
-	l
-	1
-	m
-	n
-	1
+	for l in RANCHER_BOOT_SIBLING RANCHER_OEM_SIBLING RANCHER_STATE_SIBLING RANCHER_SWAP; do
+		b2res="`blkid2 LABEL=$l`"
+		if [[ $b2res =~ (^|\ )$TARGET_DEV($|\ )  ]]; then
+			warn Partition, LABEL=$l, not found.
+			part_not_found=1
+		fi
+	done
+	if [ -n $part_not_found ];then
+		whiteBgRed_n "Do you create new partition table on $TARGET_DEV?"
+		yellowBgRed_n  "[y/n]: "
+		if ! ask_yes_no;then
+			die "User terminated."
+		fi
+		whiteBgRed_n "All data on $TARGET_DEV, will be lost."
+		whiteBgRed_n "Still create new?"
+		yellowBgRed_n  "[y/n]: "
+		if ! ask_yes_no;then
+			die "User terminated."
+		fi
+		dd if=/dev/zero of=$TARGET_DEV bs=1G count=1
+		partprobe
+		gdisk $TARGET_DEV <<"	EOF"
+		2
+		x
+		l
+		1
+		m
+		n
+		1
 
-	2047
-	ef02
-	x
-	l
-	2048
-	m
-	n
-	2
+		2047
+		ef02
+		x
+		l
+		2048
+		m
+		n
+		2
 
-	+256M
-	ef00
-	n
-	3
+		+256M
+		ef00
+		n
+		3
 
-	$SWAP_PART_SIZE
-	8200
-	n
-	4
+		$SWAP_PART_SIZE
+		8200
+		n
+		4
 
-	$BOOT_PART_SIZE
-	8300
-	n
-	5
+		$BOOT_PART_SIZE
+		8300
+		n
+		5
 
-	$STATE_PART_SIZE
-	8300
-	n
-	6
+		$STATE_PART_SIZE
+		8300
+		n
+		6
 
-	$RESERVED_PART_SIZE
-	8300
-	n
-	7
+		$RESERVED_PART_SIZE
+		8300
+		n
+		7
 
 
-	8300
-	p
-	w
-	y
-	EOF
-	partprobe
-	gdisk -l $TARGET_DEV
-	sleep 1
-	partprobe
-	sleep 1
-	mkswap -L RANCHER_SWAP $TARGET_DEV3 <<END
-	y
-	END
-	mkfs.vfat -F32 -n EFI $TARGET_DEV2 <<END
-	y
-	END
-
+		8300
+		p
+		w
+		y
+		EOF
+		partprobe
+		gdisk -l $TARGET_DEV
+		sleep 1
+		partprobe
+		sleep 1
+		mkswap -L RANCHER_SWAP $TARGET_DEV3 <<END
+		y
+		END
+		mkfs.vfat -F32 -n EFI $TARGET_DEV2 <<END
+		y
+		END
+	fi
 	do_mount $TARGET_DEV7 /installing/oem_top
 FINAL
 if [ "$__SSH_DO_RET" = 1 ];then
@@ -1161,7 +1180,6 @@ ssh_sudo <<'FINAL'
 	btrfs subvolume create /installing/state_top/state_root
 	echo btrfs subvolume set-default `btrfs subvolume list /installing/state_top|grep state_root|awk '{print $2}'`
 	btrfs subvolume set-default `btrfs subvolume list /installing/state_top|grep state_root|awk '{print $2}'` /installing/state_top
-	mkdir /installing/state_top/state_root/state_top_lvl
 	cp -a /installing/boot_dev/* /installing/state_top/state_root
 	umount /installing/boot_dev
 	# reformat to create boot drive
@@ -1219,6 +1237,10 @@ ssh_sudo <<'FINAL'
 		mkdir -p /installing/oem_top/oem_root/opt/rancher/conf/grub
 		echo -n "USER_SETTINGS='TZ="$TZL" TZS=$TZS rancher.network.interfaces.$NET_DEV.address=$IP/$NETMASK rancher.network.interfaces.$NET_DEV.gateway=$GATEWAY rancher.network.dns.nameservers=$DNS_SETTINGS_YQ'" > /installing/oem_top/oem_root/opt/rancher/conf/grub/USER_SETTINGS
 		chmod +x /installing/oem_top/oem_root/opt/rancher/conf/grub/USER_SETTINGS
+		mkdir -p /installing/oem_top/oem_root/etc
+		cp -a /etc/ssh /installing/oem_top/oem_root/etc
+		cp -a /etc/localtime /installing/oem_top/oem_root/etc
+		cp -a /var/lib/{,m-}user-docker /installing/oem_top/oem_root/var/lib
 		rm_all /installing/state_top/state_root/{root,opt,home,var/log}
 		rm_all /installing/state_top/state_root/var/lib/rancher/conf
 		rm_all /installing/state_top/state_root/var/lib/{,m-}user-docker

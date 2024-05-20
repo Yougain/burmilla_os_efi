@@ -511,6 +511,33 @@ $libs"
 	done
 	cp -a /usr/lib/locale ./usr/lib
 	cp -a /usr/share/zoneinfo ./usr/share
+	if [ -n "$TZ" ];then
+		TZ=Etc/UTC
+	fi
+	if [ -e usr/share/zoneinfo/$TZ ];then
+		ln -sf /usr/share/zoneinfo/$TZ etc/localtime
+	else
+		for f in `find usr/share/zoneinfo`; do
+			for t in `strings $f`; do
+				if [ "$t" = "$TZ" ] ; then
+					found=$f
+					info $TZ found in $f
+					break
+				fi
+			done
+			if [ -n "$found" ];then
+				if [ -e etc/localtime ];then
+					if ! diff etc/localtime $found; then
+						rm -f  etc/localtime
+						ln -s $found etc/localtime
+					fi
+				else
+					ln -s $found etc/localtime
+				fi
+				break
+			fi
+		done
+	fi
 	if [ -d "$for_state" ];then
 		cp -a /usr/lib/locale $for_state/usr/lib
 		cp -a /usr/share/zoneinfo $for_state/usr/share

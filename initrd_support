@@ -27,6 +27,42 @@ after_save_cmd_line(){
 
 
 before_sysinit(){
+	yFile=/usr/share/ros/os-config.yml
+    _set_volume(){
+    	# TODO: heck file is existing, directory or not.
+    	suffix=
+        while (($#));do
+        	if ! [[ $1 =~ : ]];then
+        		suffix=$1
+        		shift
+        		continue
+        	fi
+            vpath=${1%:*}
+            target=${1#*:}
+            if [ `yq e '(.rancher.services.'$vpath'.volumes[]|select(. == "*:'$target'")) != null' $yFile` = "true" ]; then
+                echo non-null $vpath:$target
+                yq -i e '(.rancher.services.'$vpath'.volumes[]|select(. == "*:'$target'")) = "'$prefix$target$suffix:$target'" ' $yFile
+            else
+                echo $vpath:$target
+                yq -i e '(.rancher.services.'$vpath'.volumes += ["'$prefix$target$suffix:$target'"] )' $yFile
+            fi
+            shift
+        done
+    }
+    set_oem_volume(){
+        prefix=$OR
+        _set_volume $@
+    }
+    set_volume(){
+        prefix=""
+        _set_volume $@
+    }
+    _set_volume(){
+        prefix="$1"
+        shift
+        _set_volume $@
+    }
+
 	killall udevd
 	info killall udevd: result = $?
 	info udev stopped
@@ -36,152 +72,107 @@ before_sysinit(){
 		info /opt is missing
 	fi
 	info / is on $(stat -f -c '%T' /)
-	local found
-	if [ -n "$TZ" ];then
-		for f in `find /usr/share/zoneinfo`; do
-			for t in `strings $f`; do
-				if [ "$t" = "$TZ" ] ; then
-					found=$f
-					info $TZ found in $f
-					break
-				fi
-			done
-			if [ -n "$found" ];then
-				if [ -e /etc/localtime ];then
-					if ! diff /etc/localtime $found; then
-						cp -f $found /etc/localtime/localtime.0
-						chain_bak /etc/localtime.0 /etc/localtime
-						info cp $found /etc/localtime
-					fi
-				else
-					cp -f $found /etc/localtime
-					info cp $found /etc/localtime
-				fi
-				break
-			fi
-		done
-	fi
-	if [ "$(stat -f -c '%T' /)" = "ramfs" ];then
+	UF=/var/lib/rancher/conf/cloud-config.d/user_config.yml
+	OR=/usr/share/ros/oem_top_lvl/oem_root
+	if [ "$(stat -f -c '%T' /)" = "ramfs" ];then # boot from installer
 		mkdir -p /opt/initrd
 		mount --bind / /opt/initrd
 		mkdir -p /var/lib/rancher/conf/cloud-config.d
-		if [ -n "$ref_boot_uuid" ];then
-			do_mount -v --salvage-btrfs 7 /mnt
-			if [ -e /mnt/var/lib/rancher/conf ];then
-				if [ -e /mnt/var/lib/rancher/conf/cloud-config.yml ];then
-					cp -av /mnt/var/lib/rancher/conf/cloud-config.yml /var/lib/rancher/conf
-				fi
-				cp -av /mnt/var/lib/rancher/conf/cloud-config.d /var/lib/rancher/conf
-				mkdir -p /opt/etc
-				cp -av /mnt/etc/ssh /opt/etc
-				if [ "${BURMILLAOS_VER%%.*}" = "v1" ];then
-					info $BURMILLAOS_VER v1
-					if [ ! -e /mnt/etc/ssh/sshd_config-1 ];then
-						info /etc/ssh/sshd_config-1 not found on oem drive
-						sed -e '/^HostKeyAlgorithms/s/^/# /' /mnt/etc/ssh/sshd_config > /opt/etc/ssh/sshd_config
-						sed -ie '/^Include \/etc\/ssh\/sshd_config.d/s/^/# /' /opt/etc/ssh/sshd_config
-					else
-						info /etc/ssh/sshd_config-1 found on oem drive
-						cp /mnt/etc/ssh/sshd_config-1 /opt/etc/ssh/sshd_config
-					fi
-				else
-					info $BURMILLAOS_VER not v1
-				fi
-				yq e -i 'del(.runcmd)' /var/lib/rancher/conf/cloud-config.d/user_config.yml
-				yq e -i '.runcmd += ["logger started runcmd"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
-				if [ -e /etc/localtime ];then
-					yq e -i '.runcmd += ["cp /opt/initrd/etc/localtime /etc"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
-				fi
-				yq e -i '.runcmd += ["rm -rf /etc/ssh"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
-				yq e -i '.runcmd += ["cp -afv /opt/etc/ssh /etc 2>&1|tee /tmp/ssh_copied"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
-				yq e -i '.runcmd += ["ps ax | grep sshd | grep -v grep | awk '"'"'{print $1}'"'"'|xargs kill -s SIGHUP"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
-				yq e -i '.runcmd += ["logger finished runcmd"]' /var/lib/rancher/conf/cloud-config.d/user_config.yml
+		if [ -n "$ref_boot_uuid" ];then # referencing boot drive
+			if do_mount -v --salvage-btrfs 7 $OR
+				umount7=1
 			fi
-			umount /mnt
-		elif [ -n "$TZ" ]; then
-			cat - > /var/lib/rancher/conf/cloud-config.d/user_config.yml <<END
-rancher:
-  services:
-    console:
-      volumes:
-      - /etc/localtime:/opt/initrd/etc/localtime
-      environment:
-        TZ: $TZ
-    syslog:
-      environment:
-        TZ: $TZ
-    udev:
-      environment:
-        TZ: $TZ
-    system-cron:
-      environment:
-        TZ: $TZ
-    acpid:
-      environment:
-        TZ: $TZ
-    ntp:
-      environment:
-        TZ: $TZ
-    docker:
-      environment:
-        TZ: $TZ
-    network:
-      environment:
-        TZ: $TZ
-runcmd:
-- cp /opt/initrd/etc/localtime /etc
-END
+			if [ -z "$TZ" -a -L $OR/etc/localtime ];then
+				TZ=`readlink $OR/etc/localtime`
+			fi
+			if [ -e $OR/var/lib/rancher/conf ];then
+				if [ -e $OR/var/lib/rancher/conf/cloud-config.yml ];then
+					cp -av $OR/var/lib/rancher/conf/cloud-config.yml /var/lib/rancher/conf
+				fi
+				cp -av $OR/var/lib/rancher/conf/cloud-config.d /var/lib/rancher/conf
+				mkdir -p /etc
+				cp -a $OR/etc/ssh /etc
+				yq e -i 'del(.runcmd)' $UF
+			fi
 		fi
-	else
-		yFile=/usr/share/ros/os-config.yml
-        _set_volume(){
-            while (($#));do
-                vpath=${1%:*}
-                target=${1#*:}
-                if [ `yq e '(.rancher.services.'$vpath'.volumes[]|select(. == "*:'$target'")) != null' $yFile` = "true" ]; then
-                    echo non-null $vpath:$target
-                    yq -i e '(.rancher.services.'$vpath'.volumes[]|select(. == "*:'$target'")) = "'$prefix$target:$target'" ' $yFile
-                else
-                    echo $vpath:$target
-                    yq -i e '(.rancher.services.'$vpath'.volumes += ["'$prefix$target:$target'"] )' $yFile
-                fi
-                shift
-            done
-        }
-        set_oem_volume(){
-            prefix="/oem_top_lvl/oem_root"
-            _set_volume $@
-        }
-        set_volume(){
-            prefix=""
-            _set_volume $@
-        }
+		set_volume console:/etc/{ssh,localtime,profile.d/timezone.sh}
+		d_ssh=
+	else # normal boot
+		if [ -n "$INITRD_MOUNT" ];then
+			mkdir -p /opt/initrd
+			mount --bind / /opt/initrd
+		fi
+		do_mount 5 -o subvol=/ /usr/share/ros/state_top_lvl
+		do_mount 7 -o subvol=/ /usr/share/ros/oem_top_lvl
+		if [ -z "$TZ" -a -L $OR/etc/localtime ];then
+			TZ=`readlink $OR/etc/localtime
+		fi
         set_oem_volume                                                              \
-            system-volumes:{/var/lib/rancher/conf,/var/log,/etc/localtime}          \
+            system-volumes:{/var/lib/rancher/conf,/var/log}                         \
             container-data-volumes:/var/lib/{,m-}user-docker                        \
             user-volumes:{/home,/opt,/var/lib/kubelet,/root}                        \
             console:/etc/ssh
         set_volume                                                                  \
-            console:{/boot,/state_top_lvl,/oem_top_lvl,/usr/bin/bashlib_y,/usr/bin/blkid2,/usr/bin/do_mount,/usr/share/bashlib_y}
-		if [ -n "$INITRD_MOUNT" -a "$(stat -f -c '%T' /opt)" = "ramfs" ];then
-			mkdir -p /opt/initrd
-			mount --bind / /opt/initrd
+            console:{/boot,/usr/bin/bashlib_y,/usr/bin/blkid2,/usr/bin/do_mount,/usr/share/bashlib_y,/etc/localtime,/etc/profile.d/timezone.sh}
+		if [ ! -e $OR/etc/localtime -o -d $OR/etc/localtime ];then
+			rm -rf $OR/etc/localtime
+			ln -s /usr/share/zoneinfo/Etc/UTC /etc/localtime
 		fi
-		do_mount 5 -o subvol=/ /state_top_lvl
-		do_mount 7 -o subvol=/ /oem_top_lvl
 		do_mount 2 /boot/efi
 		do_mount 3
-		if [ "${BURMILLAOS_VER%%.*}" = "v1" ];then
-			if [ ! -e /usr/share/ros/oem/etc/ssh/sshd_config-1 ];then
-				sed -e '/^HostKeyAlgorithms/s/^/# /' /usr/share/ros/oem/etc/ssh/sshd_config > /usr/share/ros/oem/etc/ssh/sshd_config-1
-				sed -ie '/^Include \/etc\/ssh\/sshd_config.d/s/^/# /' /usr/share/ros/oem/etc/ssh/sshd_config-1
-			fi
-			yq -i e '(.rancher.services.console.volumes += ["/usr/share/ros/oem/etc/ssh/sshd_config-1:/etc/ssh/sshd_config"])' $yFile
-		fi
 		btrfs quota enable /state_top_lvl
 		btrfs quota enable /state_top_lvl/state_root
 		btrfs quota enable /oem_top_lvl
 		btrfs quota enable /oem_top_lvl/oem_root
+		d_ssh=$OR
+	fi
+	if [ "${BURMILLAOS_VER%%.*}" = "v1" ];then
+		if [ ! -e $d_ssh/etc/ssh/sshd_config-1 ];then
+			sed -e '/^HostKeyAlgorithms/s/^/# /' $d_ssh/etc/ssh/sshd_config > $d_ssh/etc/ssh/sshd_config-1
+			sed -ie '/^Include \/etc\/ssh\/sshd_config.d/s/^/# /' $d_ssh/etc/ssh/sshd_config-1
+		fi
+		_set_volume "$d_ssh" -1 console:/etc/ssh/sshd_config
+	fi
+	if [ -n "$umount7" ];then
+		umount $OR
+	fi
+	local found
+	if [ -n "$TZ" ];then
+		if [ -e /usr/share/zoneinfo/$TZ ];then
+			ln -sf /usr/share/zoneinfo/$TZ /etc/localtime
+		else
+			for f in `find /usr/share/zoneinfo`; do
+				for t in `strings $f`; do
+					if [ "$t" = "$TZ" ] ; then
+						found=$f
+						info $TZ found in $f
+						break
+					fi
+				done
+				if [ -n "$found" ];then
+					if [ -e /etc/localtime ];then
+						if ! diff /etc/localtime $found; then
+							rm -f  /etc/localtime
+							ln -s $found /etc/localtime
+						fi
+					else
+						ln -s $found /etc/localtime
+					fi
+					break
+				fi
+			done
+		fi
+		mkdir -p /etc/profile.d
+		echo "export TZ=$TZ" > /etc/profile.d/timezone.sh
+		for i__ in console syslog udev system-cron acpid ntp docker network; do
+			yq e -i ".rancher.services.$i__.environment.TZ|=\"$TZ\"" $yFile
+		done
+	fi
+	if [ ! -e etc/localtime ];then
+		mkdir -p etc
+		ln -sf /usr/share/zoneinfo/Etc/UTC etc/localtime
+		mkdir -p etc/profile.d
+		echo "export TZ=" > etc/profile.d/timezone.sh
 	fi
 	info Using /usr/share/ros/os-config.yml on `which_dev_on /usr/share/ros/os-config.yml`.
 	USER_DOCKER_IMAGE=`yq ".rancher.services.docker.image" /usr/share/ros/os-config.yml`

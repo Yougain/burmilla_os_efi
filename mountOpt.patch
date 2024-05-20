@@ -768,7 +768,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
  }
 diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg/init/switchroot/switchroot.go
 --- os.prev/pkg/init/switchroot/switchroot.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/switchroot/switchroot.go	2024-05-14 20:04:27.417314900 +0900
++++ os.new/pkg/init/switchroot/switchroot.go	2024-05-19 07:33:18.680455000 +0900
 @@ -4,9 +4,10 @@
  	"fmt"
  	"io/ioutil"
@@ -787,7 +787,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  
 +func createSymLink(src string, target string) {
 +	if err := os.Remove(target); err != nil {
-+		log.Infof("$s does not exist", target)
++		log.Infof("%s does not exist", target)
 +	}
 +
 +	if err := os.Symlink(src, target); err != nil{
@@ -851,7 +851,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-17 22:58:56.176544900 +0900
++++ os.new/pkg/log/log.go	2024-05-20 12:34:07.178735300 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -1047,7 +1047,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,8 +238,218 @@
+@@ -120,8 +238,209 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -1182,18 +1182,9 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +				if err != nil || base == 0 {
 +					tz = os.Getenv("TZ")
 +					if tz == "" && isInitrd() {
-+						cmd := exec.Command("do_mount", "7", "--salvage-btrfs", "/mnt")
-+						cmd.Stderr = os.Stderr
-+						errb := cmd.Run()
-+						if errb == nil {
-+							defer mount.Unmount("/mnt")
-+							_, errb = os.Stat("/mnt/var/lib/rancher/conf/cloud-config.d/user_config.yml")
-+							if errb == nil {
-+								out, errc := exec.Command("yq", "e", ".rancher.services.console.environment.TZ", "/mnt/var/lib/rancher/conf/cloud-config.d/user_config.yml").Output()
-+								if errc == nil {
-+									tz = string(out)
-+								}
-+							}
++						targetPath, err := os.Readlink("/etc/localtime")
++						if err == nil {
++							tz = strings.TrimPrefix(tragetPath, "/usr/share/zoneinfo/")
 +						}
 +					}
 +					if tz != "" {
@@ -1266,7 +1257,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	if logTheseApps() {
  		innerInit(false)
  		FsReady()
-@@ -131,6 +459,8 @@
+@@ -131,6 +450,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1275,7 +1266,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +493,7 @@
+@@ -163,6 +484,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1283,7 +1274,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -249,8 +580,10 @@
+@@ -249,8 +571,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
