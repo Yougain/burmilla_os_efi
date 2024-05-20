@@ -2,10 +2,10 @@
 
 
 versplit(){ # v2.0.0-rc1-btrfs-1.2 => (v2.0.0-rc1 btrfs 1.2)
-	dbv "$@"
+	##dbv "$@"
 	local tmpa
 	split tmpa "$2" -
-	dbv "${tmpa[@]}"
+	#dbv "${tmpa[@]}"
 	local i
 	eval "$1=()"
 	for i in "${tmpa[@]}"; do
@@ -22,10 +22,10 @@ versplit_non_digit(){ # v2.0.0 => (v 2.0.0)
 	local last
 	local ver
 	local vers
-	dbv $2
+	#dbv $2
 	while true; do
 		if [[ $left =~ (^|.*[^0])(([1-9][0-9]*|0)(\.[1-9][0-9]*|0)*)(.*)$ ]];then
-			dbv ${#BASH_REMATCH}
+			#dbv ${#BASH_REMATCH}
 			if [ ${#BASH_REMATCH} -ge 6 ];then
 				last=${BASH_REMATCH[${#BASH_REMATCH}]}
 			else
@@ -38,9 +38,9 @@ versplit_non_digit(){ # v2.0.0 => (v 2.0.0)
 			else
 				vers=($ver $vers)
 			fi
-			dbv $last
-			dbv $ver
-			dbv $left
+			#dbv $last
+			#dbv $ver
+			#dbv $left
 		else
 			break
 		fi
@@ -92,25 +92,25 @@ dict_cmp(){
 
 
 vercmp_word(){
-	#dbv $1 $2
+	##dbv $1 $2
 	local a
 	local b
 	word_class "$1"
 	a=$?
 	word_class "$2"
 	b=$?
-	#dbv $1 is class $a
-	#dbv $2 is class $b
+	##dbv $1 is class $a
+	##dbv $2 is class $b
 	if [ $a -gt $b ]; then
-	#	dbv
+	#	#dbv
 		return 0
 	elif [ $a -lt $b ]; then
-	#	dbv
+	#	#dbv
 		return 1
 	else
 		case $a in
 		3)
-	#		dbv
+	#		#dbv
 			dict_cmp $1 $2
 			return $?
 			;;
@@ -135,18 +135,18 @@ vercmp_word(){
 vercmp_atom(){
 	local a
 	local b
-	dbv $1 $2
+	#dbv $1 $2
 	split a "$1" . # 2.3 -> (2 3)
 	split b "$2" .
-	dbv $1 "${a[@]}"
-	dbv $2 "${b[@]}"
+	#dbv $1 "${a[@]}"
+	#dbv $2 "${b[@]}"
 	local i=0
 	for e in ${a[@]}; do
-		dbv $e
+		#dbv $e
 		vercmp_word $e ${b[$i]}
 		local tmp=$?
 		if [ $tmp != 2 ]; then
-			dbv $tmp
+			#dbv $tmp
 			return $tmp
 		fi
 		i=$((i + 1))
@@ -160,21 +160,21 @@ vercmp_unit(){
 	local b
 	versplit_non_digit a "$1" # v2.3 -> (v 2.3)
 	versplit_non_digit b "$2"
-	dbv $1 ${a[@]}
-	dbv $2 ${b[@]}
+	#dbv $1 ${a[@]}
+	#dbv $2 ${b[@]}
 	local i=0
 	for e in ${a[@]}; do
-		dbv $e
-		dbv ${b[$i]}
+		#dbv $e
+		#dbv ${b[$i]}
 		vercmp_atom $e ${b[$i]}
 		local tmp=$?
 		if [ $tmp != 2 ]; then
-			dbv $tmp
+			#dbv $tmp
 			return $tmp
 		fi
 		i=$((i + 1))
 	done
-	dbv
+	#dbv
 	vercmp_atom "" ${b[$i]}
 }
 
@@ -198,11 +198,11 @@ vercmp(){
 	local b
 	versplit a "$1"
 	versplit b "$2"
-	dbv ${a[@]}
-	dbv ${b[@]}
+	#dbv ${a[@]}
+	#dbv ${b[@]}
 	local i=0
 	for e in ${a[@]}; do
-		dbv $e
+		#dbv $e
 		vercmp_elem $e ${b[$i]}
 		local tmp=$?
 		if [ $tmp != 2 ]; then
