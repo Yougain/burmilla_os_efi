@@ -28,6 +28,7 @@ after_save_cmd_line(){
 
 before_sysinit(){
 	yFile=/usr/share/ros/os-config.yml
+	UF=/var/lib/rancher/conf/cloud-config.d/user_config.yml
     _set_volume(){
     	# TODO: heck file is existing, directory or not.
     	suffix=
@@ -72,7 +73,6 @@ before_sysinit(){
 		info /opt is missing
 	fi
 	info / is on $(stat -f -c '%T' /)
-	UF=/var/lib/rancher/conf/cloud-config.d/user_config.yml
 	OR=/usr/share/ros/oem_top_lvl/oem_root
 	if [ "$(stat -f -c '%T' /)" = "ramfs" ];then # boot from installer
 		mkdir -p /opt/initrd
@@ -122,10 +122,10 @@ before_sysinit(){
 		fi
 		do_mount 2 /boot/efi
 		do_mount 3
-		btrfs quota enable /state_top_lvl
-		btrfs quota enable /state_top_lvl/state_root
-		btrfs quota enable /oem_top_lvl
-		btrfs quota enable /oem_top_lvl/oem_root
+		btrfs quota enable /usr/share/ros/state_top_lvl
+		btrfs quota enable /usr/share/ros/state_top_lvl/state_root
+		btrfs quota enable /usr/share/ros/oem_top_lvl
+		btrfs quota enable /usr/share/ros/oem_top_lvl/oem_root
 		d_ssh=$OR
 	fi
 	if [ "${BURMILLAOS_VER%%.*}" = "v1" ];then
@@ -169,11 +169,7 @@ before_sysinit(){
 		mkdir -p /etc/profile.d
 		echo "export TZ=$TZ" > /etc/profile.d/timezone.sh
 		for i__ in console syslog udev system-cron acpid ntp docker network; do
-            if [ `yq e '(.rancher.services.$i__.environment[]|select(. == "TZ=*")) != null' $yFile` = "true" ]; then
-            	yq e '(.rancher.services.$i__.environment[]|select(. == "TZ=*")) = "TZ='$TZ'"' $yFile
-            else
-				yq e -i ".rancher.services.$i__.environment += [\""$TZ"\"]" $yFile
-			fi
+			yq e -i ".rancher.services.$i__.environment.TZ|=\"$TZ\"" $UF
 		done
 	fi
 	if [ ! -e etc/localtime ];then
