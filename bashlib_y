@@ -866,7 +866,11 @@ require(){
 	fi
 	local requireFunc
 	local requireSource
-	local LOAD_PATH="$(__CMD_DIR__):/usr/share/bashlib_y"
+	if [ -n $LOAD_PATH ];then
+		local LOAD_PATH="$LOAD_PATH:$(__CMD_DIR__):/usr/share/bashlib_y"
+	else
+		local LOAD_PATH="$(__CMD_DIR__):/usr/share/bashlib_y"
+	fi
 	dbv $0
 	dbv $(__CMD_PATH__)
 	dbv $LOAD_PATH
@@ -1136,6 +1140,8 @@ if [ "`readlink -f ${BASH_SOURCE[-1]}`" = "$(__FILE_PATH__)" ];then
 			"$@"
 		else
 			if ! declare -F "$1" >/dev/null; then
+				LOAD_PATH="./:$LOAD_PATH"
+				dbv $LOAD_PATH
 				require "$1"
 			fi
 			"$@"

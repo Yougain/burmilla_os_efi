@@ -1,0 +1,90 @@
+# bash source
+
+getTZ(){
+	f="$1"
+	tmp="`readlink -f \"$f\"`"
+	tzfound=
+	if ! [[ $tmp =~ ^/usr/share/zoneinfo/ ]];then
+		f=
+		for _f in `find /usr/share/zoneinfo/ -type f 2> /dev/null`; do
+			if diff "$1" "$_f" 2>&1 > /dev/null;then #same
+				f="$_f"
+				break
+			fi
+		done
+	fi
+
+	if [ -n "$f" ];then
+		loc=${f%/usr/share/zoneinfo/}
+	fi
+	f="$1"
+
+	if [ -n "$loc" ];then
+		lDiff=`TZ=$loc date +%z`
+	fi
+	tzf=
+	for _tz in `strings $f |  egrep '^([0-9A-Z,\.:/]|-)+$' | uniq`;do
+		split tza "$_tz" ,
+		for tz in ${tza[@]}; do
+			if ! [[ $tz =~ ^[A-Z]+T$ ]];then
+				continue
+			fi
+			if [ -z "$tzf" ];then
+				tzf="$tz"
+			fi
+			zDiff=`TZ=$tz date +%z`
+			if [ -n "$loc" ];then
+				if [ "$zDiff" = "$lDiff" ];then
+					tzx=$tz
+					if [[ $tzx =~ (.*)[0-9]+$ ]];then
+						tzx=${BASH_REMATCH[1]}
+					fi
+					if [[ $tzx =~ (.*)\-$ ]];then
+						tzx=${BASH_REMATCH[1]}
+					fi
+					zxDiff=`TZ=$tzx date +%z`
+					if [ "$zxDiff" = "$lDiff" ];then
+						echo $tzx
+					else
+						echo $tz
+					fi
+					tzfound=1
+					break
+				fi
+			else
+				if [ "$lDiff" != "+0000" ];then
+					tzx=$tz
+					if [[ $tzx =~ (.*)[0-9]+$ ]];then
+						tzx=${BASH_REMATCH[1]}
+					fi
+					if [[ $tzx =~ (.*)\-$ ]];then
+						tzx=${BASH_REMATCH[1]}
+					fi
+					zxDiff=`TZ=$tzx date +%z`
+					if [ "$zxDiff" = "$zDiff" ];then
+						echo $tzx
+					else
+						echo $tz
+					fi
+					tzfound=1
+				fi
+			fi
+		done
+	done
+	if [ -n "$loc" -a ! -n "$tzfound" ];then
+		s=${lDiff:0:1}
+		if [ "$s" = "+" ];then
+			s="-"
+		else
+			s="+"
+		fi
+		h=${lDiff:1:2}
+		m=${lDiff:3:2}
+		if [ -z "$tzf" ];then
+			tzf=UTC
+		fi
+		echo $tzf$s$h:$m
+	fi
+}
+
+

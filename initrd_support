@@ -141,7 +141,7 @@ before_sysinit(){
 	local found
 	if [ -n "$TZ" ];then
 		if [ -e /usr/share/zoneinfo/$TZ ];then
-			ln -sf /usr/share/zoneinfo/$TZ /etc/localtime
+			TZ=`getTZ /usr/share/zoneinfo/$TZ`
 		else
 			for f in `find /usr/share/zoneinfo`; do
 				if [ -f "$f" ];then
@@ -166,6 +166,8 @@ before_sysinit(){
 				fi
 			done
 		fi
+	fi
+	if [ -n "$TZ" ];then
 		mkdir -p /etc/profile.d
 		echo "export TZ=$TZ" > /etc/profile.d/timezone.sh
 		for i__ in console syslog udev system-cron acpid ntp docker network; do
