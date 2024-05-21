@@ -164,6 +164,9 @@ ${to_inst##*/} \$@
 		if [ -n "$do" ];then
 			dbv $from
 			$sudo cp -av "$from" "$sCmd"
+			if [ "${from##*/}" != "$SUPPORT_LIB_NAME" ];then
+				chmod -x "$sCmd"
+			fi
 			if [ -z "$usrBinCreated" ];then
 				dbv $sudo ln -sf "../share/$SUPPORT_LIB_NAME/$SUPPORT_LIB_NAME" "$d/usr/bin/${to_inst##*/}"
 				$sudo ln -sf "../share/$SUPPORT_LIB_NAME/$SUPPORT_LIB_NAME" "$d/usr/bin/${to_inst##*/}"
