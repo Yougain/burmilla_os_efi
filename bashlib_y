@@ -892,7 +892,7 @@ require(){
 					local parr
 					split parr "$LOAD_PATH" :
 					local p
-					if detect_if parr p '[ -e "$p/'$1'" ]';then
+					if detect_if parr p '[ -e "$p/'$1'" ] && ! [[ `readlink -f "$p/'$1'"` =~ /bashlib_y$ ]]';then
 						to_load="$p/$1"
 					else
 						dbv $1
