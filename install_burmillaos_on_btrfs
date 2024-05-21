@@ -394,7 +394,7 @@ function extract_uc_params(){
 			if [ ! -x /usr/bin/yq ];then
 				echo "ERROR:Cannot download /usr/bin/yq" >&2
 			fi
-			UC_PORT=`sudo yq '.write_files | select(.[].path == "/opt/rancher/bin/start.sh") | .[0].content' $F|egrep  -o '/Port\s+[0-9]+' | awk '{print  $2}'`
+			UC_PORT=`sudo yq .rancher.ssh.port $F`
 			UC_HNAME_FULL=`sudo yq .hostname $F`
 			UC_IPS=`sudo yq .rancher.network.interfaces $F| egrep -o "address:\s+[0-9.:]+" | awk '{print $2}'`
 			if [ -n "`sudo grep state_root $F`" ]; then
@@ -1413,88 +1413,39 @@ ssh_sudo <<'FINAL'
 		info $UF found
 	fi
 	info USER_CONFIG=$USER_CONFIG
-	if [ -z "$USER_CONFIG" -o ! -e "$UF" ]; then
-		info writing $UF
-		DATE=`TZ=$TZL date`
-		mkdir -p /installing/oem_part/var/lib/rancher/conf/cloud-config.d
-		write_env_file $UF << '	FEND'
-			hostname: $HNAME_FULL
-			rancher:
-			  ssh:
-			    port: $PORT
-			  network:
-			    dns:
-			      nameservers:
-			$DNS_SETTINGS
-			    interfaces:
-			      eth*:
-			        dhcp: false
-			      $NET_DEV:
-			        address: $IP/$NETMASK
-			        gateway: $GATEWAY
-			  services:
-			    console:
-			      environment:
-			        TZ: $TZL
-			    syslog:
-			      environment:
-			        TZ: $TZL
-			    udev:
-			      environment:
-			        TZ: $TZL
-			    system-cron:
-			      environment:
-			        TZ: $TZL
-			    acpid:
-			      environment:
-			        TZ: $TZL
-			    ntp:
-			      environment:
-			        TZ: $TZL
-			    docker:
-			      environment:
-			        TZ: $TZL
-			    network:
-			      environment:
-			        TZ: $TZL
-			runcmd:
-			#cloud-config
-			ssh_authorized_keys:
-			- $KEY
-		FEND
-		cat $UF
-		unset found_
-	else
-		yq e -i ".hostname|=\"$HNAME_FULL\"" $UF
-		yq e -i ".rancher.ssh.port|=\"$PORT\"" $UF
-		yq e -i ".rancher.network.dns.nameservers|=$DNS_SETTINGS_YQ" $UF
-		yq e -i ".rancher.network.interfaces.$NET_DEV.address|=\"$IP/$NETMASK\"" $UF
-		yq e -i ".rancher.network.interfaces.$NET_DEV.gateway|=\"$GATEWAY\"" $UF
-		for i__ in console syslog udev system-cron acpid ntp docker network; do
-			yq e -i ".rancher.services.$i__.environment.TZ|=\"$TZL\"" $UF
-		done
-		unset __i
-		i=0
-		while [ 1 ]; do
-			k="`yq e '.ssh_authorized_keys.['$i']' $UF`"
-			case "$k" in
-				"$KEY" )
-					break
-					;;
-				"null" )
-					echo null
-					yq e -i '.ssh_authorized_keys.['$i']|="'"$KEY"'"' $UF
-					break
-					;;
-			esac
-			i=$(( i + 1 ))
-			if [ "$i" == "1000" ];then
+	DATE=`TZ=$TZL date`
+	mkdir -p /installing/oem_part/var/lib/rancher/conf/cloud-config.d
+	touch $UF
+	yq e -i ".hostname=\"$HNAME_FULL\"" $UF
+	yq e -i ".rancher.ssh.port=\"$PORT\"" $UF
+	yq e -i ".rancher.network.dns.nameservers=$DNS_SETTINGS_YQ" $UF
+	yq e -i ".rancher.network.interfaces.$NET_DEV.address=\"$IP/$NETMASK\"" $UF
+	yq e -i ".rancher.network.interfaces.$NET_DEV.gateway=\"$GATEWAY\"" $UF
+	yq e -i ".rancher.network.interfaces.eth*.dhcp=false" $UF
+	for i__ in console syslog udev system-cron acpid ntp docker network; do
+		yq e -i ".rancher.services.$i__.environment.TZ|=\"$TZL\"" $UF
+	done
+	unset __i
+	i=0
+	while [ 1 ]; do
+		k="`yq e '.ssh_authorized_keys.['$i']' $UF`"
+		case "$k" in
+			"$KEY" )
 				break
-			fi
-		done
-		if [ "`cat $UFL`" != "`cat $UF`" ];then
-			chain_bak -10 $UF $UFL
+				;;
+			"null" )
+				echo null
+				yq e -i '.ssh_authorized_keys.['$i']|="'"$KEY"'"' $UF
+				break
+				;;
+		esac
+		i=$(( i + 1 ))
+		if [ "$i" == "1000" ];then
+			break
 		fi
+	done
+	if [ "`cat $UFL`" != "`cat $UF`" ];then
+		chain_bak -10 $UF $UFL
 	fi
 
 	#local time

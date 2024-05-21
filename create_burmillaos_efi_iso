@@ -107,8 +107,6 @@ while (( "$#" )); do
 	esac
 	shift
 done
-dbv DEBUG=$DEBUG
-info DEBUG=$DEBUG
 
 
 if [ -z "$BURMILLAOS_VER" ]; then
@@ -123,8 +121,6 @@ NON_EFI_BTRFS_VERSIONS=(`ls /home/$SUDO_USER/burmilla_os_iso | grep -v efi | gre
 if ! detect NON_EFI_BTRFS_VERSIONS $BURMILLAOS_VER; then
 	die "cannot build $BURMILLAOS_VER"
 fi
-dbv DEBUG=$DEBUG
-info DEBUG=$DEBUG
 
 
 
@@ -242,8 +238,6 @@ if [ -z "$SKIP_RECREATE" ];then
 #	die initrd file, not detected
 #fi
 #INITRD_SIZE=$(stat -c%s $INITRD_FILE-mod)
-dbv DEBUG=$DEBUG
-info DEBUG=$DEBUG
 
 require create_initrd_mod
 pushd "$T"
@@ -251,9 +245,6 @@ if [ -n "$DEBUG" ];then
 	export DEBUG
 fi
 
-dbv DEBUG=$DEBUG
-info DEBUG=$DEBUG
-dbv $0
 create_initrd_mod
 popd
 INITRD_FILE_MOD="`ls -d \"$T\"/initrd-*`"
