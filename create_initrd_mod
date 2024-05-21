@@ -527,15 +527,16 @@ $libs"
 				if [ -e etc/localtime ];then
 					if ! diff etc/localtime $found; then
 						rm -f  etc/localtime
-						ln -s $found etc/localtime
+						ln -s /$found etc/localtime
 					fi
 				else
-					ln -s $found etc/localtime
+					ln -s /$found etc/localtime
 				fi
 				break
 			fi
 		done
 	fi
+	mkdir -p etc/profile.d
 	echo "export TZ=$TZ" > etc/profile.d/timezone.sh
 	if [ -d "$for_state" ];then
 		cp -a /usr/lib/locale $for_state/usr/lib
