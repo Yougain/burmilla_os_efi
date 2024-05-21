@@ -851,7 +851,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-20 15:36:25.728735300 +0900
++++ os.new/pkg/log/log.go	2024-05-21 11:31:14.726788300 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -1046,7 +1046,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,8 +237,209 @@
+@@ -120,8 +237,207 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -1139,113 +1139,111 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		formatter.TimestampFormat = DefaultTimeFormat
 +		logrus.SetFormatter(&formatter)
 +		tl := time.Local
-+		Debugf("Current time location: %s", tl.String())
-+		if tl.String() == "UTC" {
-+			tzs := os.Getenv("TZS")
-+			if tzs != "" {
-+				base, err := strconv.Atoi(tzs)
-+				if base != 0 {
-+					loc := time.FixedZone("LOCAL", base)
-+					time.Local = loc
-+					if isInitrd() {
-+						os.Mkdir(initrdInfoDir, 0755)
-+						file, err := os.Create(timeDiffFN2)
-+						if err == nil {
-+							file.WriteString(fmt.Sprintf("%d", base))
-+							file.Close()
-+						}
++		tzs := os.Getenv("TZS")
++		if tzs != "" {
++			base, err := strconv.Atoi(tzs)
++			if base != 0 {
++				loc := time.FixedZone("LOCAL", base)
++				time.Local = loc
++				if isInitrd() {
++					os.Mkdir(initrdInfoDir, 0755)
++					file, err := os.Create(timeDiffFN2)
++					if err == nil {
++						file.WriteString(fmt.Sprintf("%d", base))
++						file.Close()
 +					}
 +				}
-+				if err != nil {
-+					Errorf("envromental variable, 'TZS=%s', namely, time difference by seconds, is not a numeric.", tzs)
++			}
++			if err != nil {
++				Errorf("envromental variable, 'TZS=%s', namely, time difference by seconds, is not a numeric.", tzs)
++			}
++		} else {
++			base, _ = ReadInt(timeDiffFN2)
++		}
++		nullSymlinked := false
++		if base == 0 {
++			_, err := os.Stat("/dev/null")
++			if err != nil { // file missing
++				_, err := os.Stat("/idev/null")
++				if err == nil {
++					os.Symlink("/idev/null", "/dev/null")
++					nullSymlinked = true // initrd started
 +				}
 +			} else {
-+				base, _ = ReadInt(timeDiffFN2)
++				base, _ = ReadInt(timeDiffFN)
++				str, err := ReadAll(tzFN)
++				if err == nil { // file exists
++					tz = strings.TrimSpace(str)
++				}
 +			}
-+			nullSymlinked := false
-+			if base == 0 {
-+				_, err := os.Stat("/dev/null")
-+				if err != nil { // file missing
-+					_, err := os.Stat("/idev/null")
++			if err != nil || base == 0 {
++				tz = os.Getenv("TZ")
++				if tz == "" && isInitrd() {
++					targetPath, err := os.Readlink("/etc/localtime")
 +					if err == nil {
-+						os.Symlink("/idev/null", "/dev/null")
-+						nullSymlinked = true // initrd started
-+					}
-+				} else {
-+					base, _ = ReadInt(timeDiffFN)
-+					str, err := ReadAll(tzFN)
-+					if err == nil { // file exists
-+						tz = strings.TrimSpace(str)
++						tz = strings.TrimPrefix(targetPath, "/usr/share/zoneinfo/")
 +					}
 +				}
-+				if err != nil || base == 0 {
-+					tz = os.Getenv("TZ")
-+					if tz == "" && isInitrd() {
-+						targetPath, err := os.Readlink("/etc/localtime")
-+						if err == nil {
-+							tz = strings.TrimPrefix(targetPath, "/usr/share/zoneinfo/")
-+						}
-+					}
-+					if tz != "" {
-+						out, errb := exec.Command("bash", "-c", "TZ=" + tz + " date +%z").Output()
++				if tz != "" {
++					out, errb := exec.Command("bash", "-c", "TZ=" + tz + " date +%z").Output()
++					if errb != nil {
++						out, errb = exec.Command("bash", "-c", "TZ=" + tz + " /usr/bin/date +%z").Output()
 +						if errb != nil {
-+							out, errb = exec.Command("bash", "-c", "TZ=" + tz + " /usr/bin/date +%z").Output()
-+							if errb != nil {
-+								out, errb = exec.Command("bash", "-c", "TZ=" + tz + " /bin/date +%z").Output()
-+							}
-+						}
-+						if errb == nil {
-+							td := strings.TrimSpace(string(out))
-+							Debugf("output of 'date %%z': %s", td)
-+							a, _ := strconv.Atoi(td[1:3])
-+							b, _ := strconv.Atoi(td[3:])
-+							base = a * 60 * 60 + b * 60
-+							if td[0:1] == "-" {
-+								base = -base
-+							}
-+						}else{
-+							if(nullSymlinked){
-+								Debugf("exec 'date', failed: %v", errb)
-+							}
++							out, errb = exec.Command("bash", "-c", "TZ=" + tz + " /bin/date +%z").Output()
 +						}
 +					}
-+				}
-+			}
-+			if base == 0 {
-+				Debug("Trying read /proc/cmdline")
-+					cmdline, err := ReadAll("/proc/cmdline")
-+					if err == nil {
-+						Debugf("/proc/cmdline = $s", cmdline)
-+						ti := strings.Index(cmdline, " TZS=")
-+						if ti != -1 {
-+							tw := strings.Index(cmdline[ti + 5:], " ")
-+							if tw != -1 {
-+								base, _ = strconv.Atoi(cmdline[ti + 5:ti + 5 + tw])
-+								Debugf("base = %d", base)
-+							}
-+						}else{
-+							Debugf("cannot find 'TZS=' in /proc/cmdline")
++					if errb == nil {
++						td := strings.TrimSpace(string(out))
++						Debugf("output of 'date %%z': %s", td)
++						a, _ := strconv.Atoi(td[1:3])
++						b, _ := strconv.Atoi(td[3:])
++						base = a * 60 * 60 + b * 60
++						if td[0:1] == "-" {
++							base = -base
 +						}
 +					}else{
-+						Debugf("cannot read /proc/cmdline")
++						if(nullSymlinked){
++							Debugf("exec 'date', failed: %v", errb)
++						}
 +					}
-+			}
-+			Debugf("before set: base = %d", base)
-+			if base != 0 {
-+				if tz == "" {
-+					tz = "LOCAL"
 +				}
-+				loc := time.FixedZone(tz, base)
-+				time.Local = loc
-+				Debugf("set time zone")
-+				Debugf("time difference: %d seconds", base)
 +			}
-+			if nullSymlinked {
-+				os.Remove("/dev/null")
++		}
++		if base == 0 {
++			Debug("Trying read /proc/cmdline")
++				cmdline, err := ReadAll("/proc/cmdline")
++				if err == nil {
++					Debugf("/proc/cmdline = $s", cmdline)
++					ti := strings.Index(cmdline, " TZS=")
++					if ti != -1 {
++						tw := strings.Index(cmdline[ti + 5:], " ")
++						if tw != -1 {
++							base, _ = strconv.Atoi(cmdline[ti + 5:ti + 5 + tw])
++							Debugf("base = %d", base)
++						}
++					}else{
++						Debugf("cannot find 'TZS=' in /proc/cmdline")
++					}
++				}else{
++					Debugf("cannot read /proc/cmdline")
++				}
++		}
++		Debugf("before set: base = %d", base)
++		if base != 0 {
++			if tz == "" {
++				tz = "LOCAL"
 +			}
++			loc := time.FixedZone(tz, base)
++			time.Local = loc
++			Debugf("set time zone")
++			Debugf("time difference: %d seconds", base)
++		}
++		if nullSymlinked {
++			os.Remove("/dev/null")
 +		}
 +		if isInitrd() {
 +			Infof("logger started in initrd.")
++			Infof("Current time location: %s", tl.String())
 +		}
 +	}
 +}
@@ -1256,7 +1254,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	if logTheseApps() {
  		innerInit(false)
  		FsReady()
-@@ -131,6 +449,8 @@
+@@ -131,6 +447,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1265,7 +1263,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +483,7 @@
+@@ -163,6 +481,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1273,7 +1271,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -249,8 +570,10 @@
+@@ -249,8 +568,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
