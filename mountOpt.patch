@@ -851,7 +851,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-21 11:54:24.906788300 +0900
++++ os.new/pkg/log/log.go	2024-05-21 12:50:20.956788300 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -1046,7 +1046,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,8 +237,206 @@
+@@ -120,8 +237,205 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -1138,7 +1138,6 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		formatter := logFormat{}
 +		formatter.TimestampFormat = DefaultTimeFormat
 +		logrus.SetFormatter(&formatter)
-+		tl := time.Local
 +		tzs := os.Getenv("TZS")
 +		if tzs != "" {
 +			base, err := strconv.Atoi(tzs)
@@ -1253,7 +1252,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	if logTheseApps() {
  		innerInit(false)
  		FsReady()
-@@ -131,6 +446,8 @@
+@@ -131,6 +445,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1262,7 +1261,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +480,7 @@
+@@ -163,6 +479,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1270,7 +1269,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -249,8 +567,10 @@
+@@ -249,8 +566,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
