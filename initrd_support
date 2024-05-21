@@ -166,6 +166,13 @@ before_sysinit(){
 				fi
 			done
 		fi
+	elif [ -e /etc/localtime ];then
+		TZ=`getTZ /etc/localtime`
+	else
+		mkdir -p etc
+		ln -sf /usr/share/zoneinfo/Etc/UTC /etc/localtime
+		mkdir -p /etc/profile.d
+		echo "export TZ=" > /etc/profile.d/timezone.sh
 	fi
 	if [ -n "$TZ" ];then
 		mkdir -p /etc/profile.d
@@ -173,12 +180,6 @@ before_sysinit(){
 		for i__ in console syslog udev system-cron acpid ntp docker network; do
 			yq e -i ".rancher.services.$i__.environment.TZ|=\"$TZ\"" $UF
 		done
-	fi
-	if [ ! -e etc/localtime ];then
-		mkdir -p etc
-		ln -sf /usr/share/zoneinfo/Etc/UTC etc/localtime
-		mkdir -p etc/profile.d
-		echo "export TZ=" > etc/profile.d/timezone.sh
 	fi
 	info Using /usr/share/ros/os-config.yml on `which_dev_on /usr/share/ros/os-config.yml`.
 	USER_DOCKER_IMAGE=`yq ".rancher.services.docker.image" /usr/share/ros/os-config.yml`

@@ -509,7 +509,7 @@ $libs"
 	done
 	cp -a /usr/lib/locale ./usr/lib
 	cp -a /usr/share/zoneinfo ./usr/share
-	if [ -n "$TZ" ];then
+	if [ -z "$TZ" ];then
 		TZ=Etc/UTC
 	fi
 	if [ -e usr/share/zoneinfo/$TZ ];then
@@ -536,6 +536,7 @@ $libs"
 			fi
 		done
 	fi
+	echo "export TZ=$TZ" > etc/profile.d/timezone.sh
 	if [ -d "$for_state" ];then
 		cp -a /usr/lib/locale $for_state/usr/lib
 		cp -a /usr/share/zoneinfo $for_state/usr/share
