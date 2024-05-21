@@ -177,6 +177,7 @@ before_sysinit(){
 	if [ -n "$TZ" ];then
 		mkdir -p /etc/profile.d
 		echo "export TZ=$TZ" > /etc/profile.d/timezone.sh
+		touch $UF
 		for i__ in console syslog udev system-cron acpid ntp docker network; do
 			yq e -i ".rancher.services.$i__.environment.TZ|=\"$TZ\"" $UF
 		done
