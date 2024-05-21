@@ -41,7 +41,7 @@ __FILE_PATH__() {
 }
 
 
-if [ $(__CMD_DIR__)/bashlib_y != $(__FILE__) -a -e $(__CMD_DIR__)/bashlib_y ];then
+if [ -e "$(__CMD_DIR__)/bashlib_y" -a "`readlink -f $(__CMD_DIR__)/bashlib_y`" != "$(__FILE__)" ];then
 	source $(__CMD_DIR__)/bashlib_y
 else
 
