@@ -239,9 +239,6 @@ function do_mount(){
 				done
 				;;
 		esac
-		if [ -n "$srcs_mod" ];then
-			srcs_mod
-		fi
 	elif [ ! -b "$src" -a ! -d "$src" ];then
 		dbv $src
 		_die "$src is not mountable."
@@ -331,7 +328,7 @@ function do_mount(){
 					fi
 					if [ -z "$forceDegraded" ];then
 						local i=0
-						while 1;do
+						while true;do
 							_mount $opts $moptsNoDeg $src $dst
 							res=$?
 							case $? in
