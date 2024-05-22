@@ -356,7 +356,6 @@ function do_mount(){
 							esac
 							sleep 2
 						done
-						res=$?
 					else
 						_mount $opts $moptsWithDeg $src $dst
 						res=$?
