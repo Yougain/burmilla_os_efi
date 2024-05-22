@@ -73,59 +73,52 @@ before_sysinit(){
 		info /opt is missing
 	fi
 	info / is on $(stat -f -c '%T' /)
-	OR=/usr/share/ros/oem_top_lvl/oem_root
-	if [ "$(stat -f -c '%T' /)" = "ramfs" ];then # boot from installer
-		mkdir -p /opt/initrd
-		mount --bind / /opt/initrd
-		mkdir -p /var/lib/rancher/conf/cloud-config.d
-		if [ -n "$ref_boot_uuid" ];then # referencing boot drive
-			if do_mount -v --salvage-btrfs 7 $OR; then
-				umount7=1
-			fi
-			if [ -z "$TZ" -a -L $OR/etc/localtime ];then
-				TZ=`readlink $OR/etc/localtime`
-				TZ=${TZ#/usr/share/zoneinfo/}
-			fi
-			if [ -e $OR/var/lib/rancher/conf ];then
-				if [ -e $OR/var/lib/rancher/conf/cloud-config.yml ];then
-					cp -av $OR/var/lib/rancher/conf/cloud-config.yml /var/lib/rancher/conf
-				fi
-				cp -av $OR/var/lib/rancher/conf/cloud-config.d /var/lib/rancher/conf
-				mkdir -p /etc
-				cp -a $OR/etc/ssh /etc
-				yq e -i 'del(.runcmd)' $UF
-			fi
+	OR=/usr/share/ros/oem
+	if [ -n "$DEBUG" -o -n "$INITRD_MOUNT" ];then
+		mkdir -p /usr/share/ros/initrd
+		mount --bind / /usr/share/ros/initrd
+	fi
+	mkdir -p /var/lib/rancher/conf/cloud-config.d
+	if [ -e $OR/var/lib/rancher/conf ];then # for booting system, need user_config.yml on state or inintrd drive
+		oemMounted=1
+		if [ -e $OR/var/lib/rancher/conf/cloud-config.yml ];then
+			cp -av $OR/var/lib/rancher/conf/cloud-config.yml /var/lib/rancher/conf
 		fi
-		set_volume console:/etc/{ssh,localtime,profile.d/timezone.sh}
+		cp -av $OR/var/lib/rancher/conf/cloud-config.d /var/lib/rancher/conf
+		mkdir -p /etc
+		cp -af $OR/etc/ssh /etc
+		cp -f $OR/etc/localtime /etc
+		mkdir -p /etc/profile.d
+		cp -af $OR/etc/profile.d/timezone.sh /etc/profile.d
+	fi
+	if [ "$(stat -f -c '%T' /)" = "ramfs" ];then # boot from installer
+		ln -s / /usr/share/ros/.oem_link # mimic root by using ramdisk because do not use oem
+		if [ -n "$oemMounted" ];then
+			yq e -i 'del(.runcmd)' $UF # no need when booting by installer
+		elif [ -n "$TZ" ]; then # boot by installer with oem drive missing
+			touch $UF
+			for i__ in console syslog udev system-cron acpid ntp docker network; do
+				yq e -i ".rancher.services.$i__.environment.TZ|=\"$TZ\"" $UF
+			done
+		fi
 		d_ssh=
 	else # normal boot
-		if [ -n "$INITRD_MOUNT" ];then
-			mkdir -p /opt/initrd
-			mount --bind / /opt/initrd
-		fi
-		do_mount 5 -o subvol=/ /usr/share/ros/state_top_lvl
-		do_mount 7 -o subvol=/ /usr/share/ros/oem_top_lvl
-		if [ -z "$TZ" -a -L $OR/etc/localtime ];then
-			TZ=`readlink $OR/etc/localtime`
-			TZ=${TZ#/usr/share/zoneinfo/}
-		fi
-        set_oem_volume                                                              \
-            system-volumes:{/var/lib/rancher/conf,/var/log}                         \
-            container-data-volumes:/var/lib/{,m-}user-docker                        \
-            user-volumes:{/home,/opt,/var/lib/kubelet,/root}                        \
-            console:/etc/ssh
-        set_volume                                                                  \
-            console:{/boot,/usr/bin/bashlib_y,/usr/bin/blkid2,/usr/bin/do_mount,/usr/share/bashlib_y,/etc/localtime,/etc/profile.d/timezone.sh}
-		if [ ! -e $OR/etc/localtime -o -d $OR/etc/localtime ];then
-			rm -rf $OR/etc/localtime
-			ln -s /usr/share/zoneinfo/Etc/UTC /etc/localtime
-		fi
+		ln -s oem /usr/share/ros/.oem_link # use oem drive
+        #set_oem_volume                                                              \
+        #    system-volumes:{/var/lib/rancher/conf,/var/log}                         \
+        #    container-data-volumes:/var/lib/{,m-}user-docker                        \
+        #    user-volumes:{/home,/opt,/var/lib/kubelet,/root}                        \
+        #    console:/etc/ssh
+        #set_volume                                                                  \
+        #    console:{/boot,/usr/bin/bashlib_y,/usr/bin/blkid2,/usr/bin/do_mount,/usr/share/bashlib_y,/etc/localtime,/etc/profile.d/timezone.sh}
 		do_mount 2 /boot/efi
 		do_mount 3
-		btrfs quota enable /usr/share/ros/state_top_lvl
-		btrfs quota enable /usr/share/ros/state_top_lvl/state_root
-		btrfs quota enable /usr/share/ros/oem_top_lvl
-		btrfs quota enable /usr/share/ros/oem_top_lvl/oem_root
+		do_mount 5 /usr/share/ros/.state_top_lvl
+		do_mount 7 /usr/share/ros/.oem_top_lvl
+		btrfs quota enable /usr/share/ros/.state_top_lvl
+		btrfs quota enable /usr/share/ros/.state_top_lvl/state_root
+		btrfs quota enable /usr/share/ros/.oem_top_lvl
+		btrfs quota enable /usr/share/ros/.oem_top_lvl/oem_root
 		d_ssh=$OR
 	fi
 	if [ "${BURMILLAOS_VER%%.*}" = "v1" ];then
@@ -134,53 +127,6 @@ before_sysinit(){
 			sed -ie '/^Include \/etc\/ssh\/sshd_config.d/s/^/# /' $d_ssh/etc/ssh/sshd_config-1
 		fi
 		set_volume_p "$d_ssh" -1 console:/etc/ssh/sshd_config
-	fi
-	if [ -n "$umount7" ];then
-		umount $OR
-	fi
-	local found
-	if [ -n "$TZ" ];then
-		if [ -e /usr/share/zoneinfo/$TZ ];then
-			TZ=`getTZ /usr/share/zoneinfo/$TZ`
-		else
-			for f in `find /usr/share/zoneinfo`; do
-				if [ -f "$f" ];then
-					for t in `strings $f`; do
-						if [ "$t" = "$TZ" ] ; then
-							found=$f
-							info $TZ found in $f
-							break
-						fi
-					done
-				fi
-				if [ -n "$found" ];then
-					if [ -e /etc/localtime ];then
-						if ! diff /etc/localtime $found; then
-							rm -f  /etc/localtime
-							ln -s $found /etc/localtime
-						fi
-					else
-						ln -s $found /etc/localtime
-					fi
-					break
-				fi
-			done
-		fi
-	elif [ -e /etc/localtime ];then
-		TZ=`getTZ /etc/localtime`
-	else
-		mkdir -p etc
-		ln -sf /usr/share/zoneinfo/Etc/UTC /etc/localtime
-		mkdir -p /etc/profile.d
-		echo "export TZ=" > /etc/profile.d/timezone.sh
-	fi
-	if [ -n "$TZ" ];then
-		mkdir -p /etc/profile.d
-		echo "export TZ=$TZ" > /etc/profile.d/timezone.sh
-		touch $UF
-		for i__ in console syslog udev system-cron acpid ntp docker network; do
-			yq e -i ".rancher.services.$i__.environment.TZ|=\"$TZ\"" $UF
-		done
 	fi
 	info Using /usr/share/ros/os-config.yml on `which_dev_on /usr/share/ros/os-config.yml`.
 	USER_DOCKER_IMAGE=`yq ".rancher.services.docker.image" /usr/share/ros/os-config.yml`
