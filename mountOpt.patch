@@ -620,7 +620,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/configfiles/configfiles.go os.new/p
  
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/fsmount/fsmount.go	2024-05-15 21:24:45.380032900 +0900
++++ os.new/pkg/init/fsmount/fsmount.go	2024-05-22 22:27:34.341263300 +0900
 @@ -4,6 +4,8 @@
  	"fmt"
  	"strings"
@@ -684,7 +684,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
 -	if err != nil {
 -		return err
 +	if _, err := os.Stat("/usr/bin/do_mount"); err == nil {
-+		cmd := exec.Command("/usr/bin/do_mount", dname, target, "--verbose", "-o", option)
++		cmd := exec.Command("/usr/bin/do_mount", dname, target, "--initrd", "--verbose", "-o", option)
 +		cmd.Stderr = os.Stderr
 +		errb := cmd.Run()
 +		if errb != nil {
@@ -728,7 +728,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  func tryMountState(cfg *config.CloudConfig) error {
 diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/prepare/prepare.go
 --- os.prev/pkg/init/prepare/prepare.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/prepare/prepare.go	2024-05-18 17:20:33.808551000 +0900
++++ os.new/pkg/init/prepare/prepare.go	2024-05-22 22:30:46.311263300 +0900
 @@ -3,10 +3,13 @@
  import (
  	"os"
@@ -743,7 +743,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
  )
  
  var (
-@@ -24,12 +27,43 @@
+@@ -24,18 +27,49 @@
  	return c, dfs.PrepareFs(&mountConfig)
  }
  
@@ -787,46 +787,10 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
  	log.Debugf("Cmdline debug = %t", cfg.Rancher.Debug)
  	if cfg.Rancher.Debug {
  		log.SetLevel(log.DebugLevel)
-@@ -37,5 +71,42 @@
+ 	} else {
  		log.SetLevel(log.InfoLevel)
  	}
- 
-+	copied := false
-+	os.Mkdir("/mnt", 0755)
-+	cmd = exec.Command("do_mount", "--salvage-btrfs", "4", "/mnt")
-+	cmd.Stderr = os.Stderr
-+	errb = cmd.Run()
-+	if errb == nil {
-+		defer mount.Unmount("/mnt")
-+		_, errb = os.Stat("/mnt/initrd_support")
-+		if errb == nil {
-+			errb = CopyFile("/mnt/initrd_support", "/usr/share/bashlib_y")
-+			if errb != nil {
-+				log.Infof("'initrd_support' on efi partition is copied on initrd")
-+				copied = true
-+			}
-+		}
-+	}else{
-+		log.Infof("do_mount 4 /mnt, failed.")
-+	}
-+	if ! copied {
-+		cmd = exec.Command("do_mount", "2", "/mnt")
-+		cmd.Stderr = os.Stderr
-+		errb := cmd.Run()
-+		if errb != nil {
-+			log.Infof("do_mount 2 /mnt, failed.")
-+		}else{
-+			defer mount.Unmount("/mnt")
-+			_, errb = os.Stat("/mnt/boot/initrd_support")
-+			if errb == nil {
-+				errb = CopyFile("/mnt/boot/initrd_support", "/usr/share/bashlib_y")
-+				if errb != nil {
-+					log.Infof("The file, 'initrd_support' on boot partition is copied on initrd")
-+					copied = true
-+				}
-+			}
-+		}
-+	}
+-
 +	
  	return cfg, nil
  }
