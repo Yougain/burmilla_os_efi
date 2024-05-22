@@ -185,7 +185,7 @@ function do_mount(){
 				label=${BASH_REMATCH[1]}
 				arg=${BASH_REMATCH[2]}
 				if [ "$label" = "LABEL" ];then
-					if [[ $arg =~ ^RANCHER_(OEM|STATE|SWAP|BOOT)_SIBLING$ ]] && [ ${#src_attrs[@]} = 1 ];then
+					if [[ $arg =~ ^RANCHER_ ]] && [ ${#src_attrs[@]} = 1 -a -n "$ref_boot_uuid" ];then
 						mountRancher=1
 					fi
 				fi
