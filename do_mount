@@ -36,7 +36,7 @@ function do_mount(){
 		dbv $ret
 		if echo $msg|grep "already mounted" > /dev/null;then
 			err $msg
-			ret=1
+			ret=2
 		else
 			if echo $msg|grep "wrong fs" > /dev/null;then
 				if [ "$type" = "btrfs" ]; then
@@ -185,7 +185,7 @@ function do_mount(){
 				label=${BASH_REMATCH[1]}
 				arg=${BASH_REMATCH[2]}
 				if [ "$label" = "LABEL" ];then
-					if [[ $arg =~ ^RANCHER_(OEM|STATE|SWAP|BOOT)_SIBLING$ ]] && ${#src_attrs[@]} = 1 ];then
+					if [[ $arg =~ ^RANCHER_(OEM|STATE|SWAP|BOOT)_SIBLING$ ]] && [ ${#src_attrs[@]} = 1 ];then
 						mountRancher=1
 					fi
 				fi
@@ -196,7 +196,7 @@ function do_mount(){
 		dbv "$cline"
 		dbv $mountRancher
 		eval "srcs=(\`$cline\`)"
-		if [ -n "$mountRacher" ];then
+		if [ -n "$mountRancher" ];then
 			for d in ${srcs[@]}; do
 				if [[ $d =~ ([0-9]+)$ ]];then
 					dbv $d `partNum2Dev ${BASH_REMATCH[1]}`
@@ -332,23 +332,31 @@ function do_mount(){
 					fi
 					if [ -z "$forceDegraded" ];then
 						local i=0
-						while ! _mount $opts $moptsNoDeg $src $dst;do
-							if [ $i = 0 ];then
-								info_n retrying .
-							else
-								echo -n .
-							fi
-							i=$((i + 1))
-							if [ $i = 5 ];then
-								echo
-								_mount $opts $moptsWithDeg $src $dst
-								res=$?
-								if [ "$res" = 0 ];then
-									_warn "Mounted degraded drive."
-									echo "Mounted degraded drive." > $SCRIPT_VAR_DIR/degraded
+						while 1;do
+							_mount $opts $moptsNoDeg $src $dst
+							res=$?
+							case $? in
+							1)
+								if [ $i = 0 ];then
+									info_n retrying .
+								else
+									echo -n . >&1
 								fi
+								i=$((i + 1))
+								if [ $i = 5 ];then
+									echo >&1
+									_mount $opts $moptsWithDeg $src $dst
+									res=$?
+									if [ "$res" = 0 ];then
+										_warn "Mounted degraded drive."
+										echo "Mounted degraded drive." > $SCRIPT_VAR_DIR/degraded
+									fi
+									break
+								fi
+								;;
+							*)
 								break
-							fi
+							esac
 							sleep 2
 						done
 						res=$?

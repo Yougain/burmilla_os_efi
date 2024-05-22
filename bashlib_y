@@ -226,13 +226,13 @@ tmp_dir(){
 	SCRIPT_TMP_DIR=/tmp/$f/${0##*/}/`date +"%y-%m-%d_%H-%M-%S.%N%z"`-$$@$start_time
 	SCRIPT_ID=$$@$start_time
 	if ! mkdir -p $SCRIPT_TMP_DIR; then
-		echo -e "$error"Cannot create script temporary directory. Terminated.$normal
+		echo -e "$error"Cannot create script temporary directory. Terminated.$normal >&2
 		exit 1
 	fi
 	SCRIPT_VAR_DIR=/var/tmp/$f
 	if ! mkdir -p $SCRIPT_TMP_DIR; then
 		sudo -n chmod 777 $SCRIPT_VAR_DIR 2> /dev/null
-		echo -e "$error"cannot create script dir$normal
+		echo -e "$error"cannot create script dir$normal >&2
 		exit 1
 	fi
 	if [ -n "$SUDO_USER" -a -e "/etc/passwd" ];then
@@ -243,7 +243,7 @@ tmp_dir(){
 	fi
 	local lnk=$SCRIPT_TMP_DIR/../latest
 	if [ -n "$DEBUG" ];then
-		echo -e "$debug"\$SCRIPT_TMP_DIR = $SCRIPT_TMP_DIR"$normal"
+		echo -e "$debug"\$SCRIPT_TMP_DIR = $SCRIPT_TMP_DIR"$normal" >&2
 	fi
 	rm -f $lnk
 	if [ -n "$DEBUG" ];then
@@ -261,12 +261,12 @@ initialize_support_lib(){
 	if [ -z "$SSH_PARAM_LIST" ];then
 		declare -A SSH_PARAM_LIST
 		if [ -n "$DEBUG" ];then
-			declare -p SSH_PARAM_LIST
+			declare -p SSH_PARAM_LIST >&2
 		fi
 		tmp_dir
 		ret=$?
 		if [ -n "$DEBUG" ];then
-			declare -p SCRIPT_ID
+			declare -p SCRIPT_ID >&2
 		fi
 		return $ret
 	else
@@ -276,13 +276,13 @@ initialize_support_lib(){
 
 if initialize_support_lib; then
 	if [ -n "$DEBUG" ];then
-		echo "initializing support lib ..."
-		declare -p SCRIPT_ID
+		echo "initializing support lib ..." >&2
+		declare -p SCRIPT_ID >&2
 	fi
 	if ! declare -p SSH_PARAM_LIST 2>/dev/null; then
 		declare -A SSH_PARAM_LIST
 		if [ -n "$DEBUG" ];then
-			declare -p SSH_PARAM_LIST
+			declare -p SSH_PARAM_LIST >&2
 		fi
 	fi
 _black="0"
@@ -1124,8 +1124,8 @@ recursive_path(){
 
 else
 	if [ -n "$DEBUG" ];then
-		echo "support lib already initialized ..."
-		declare -p SSH_PARAM_LIST
+		echo "support lib already initialized ..." >&2
+		declare -p SSH_PARAM_LIST >&2
 	fi
 
 
