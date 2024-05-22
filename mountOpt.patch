@@ -728,8 +728,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/
  func tryMountState(cfg *config.CloudConfig) error {
 diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/prepare/prepare.go
 --- os.prev/pkg/init/prepare/prepare.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/prepare/prepare.go	2024-05-22 22:30:46.311263300 +0900
-@@ -3,10 +3,13 @@
++++ os.new/pkg/init/prepare/prepare.go	2024-05-23 06:49:29.197889400 +0900
+@@ -3,6 +3,8 @@
  import (
  	"os"
  	"strings"
@@ -738,12 +738,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
  
  	"github.com/burmilla/os/config"
  	"github.com/burmilla/os/pkg/dfs"
- 	"github.com/burmilla/os/pkg/log"
-+	"github.com/docker/docker/pkg/mount"
- )
- 
- var (
-@@ -24,18 +27,49 @@
+@@ -24,18 +26,49 @@
  	return c, dfs.PrepareFs(&mountConfig)
  }
  
