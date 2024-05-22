@@ -282,6 +282,19 @@ diff -Naur '--exclude=.git' os.prev/cmd/init/init.go os.new/cmd/init/init.go
  		recovery.Recovery(err)
  		return err
  	}
+diff -Naur '--exclude=.git' os.prev/cmd/power/shutdown.go os.new/cmd/power/shutdown.go
+--- os.prev/cmd/power/shutdown.go	2024-03-14 20:29:45.937485300 +0900
++++ os.new/cmd/power/shutdown.go	2024-05-22 14:31:13.031263300 +0900
+@@ -27,6 +27,9 @@
+ func Shutdown() {
+ 	log.InitLogger()
+ 	app := cli.NewApp()
++	
++	cmd := exec.Command("/opt/rancher/bin/shutdown.sh")
++	cmd.Run()
+ 
+ 	app.Name = filepath.Base(os.Args[0])
+ 	app.Usage = fmt.Sprintf("%s BurmillaOS\nbuilt: %s", app.Name, config.BuildDate)
 diff -Naur '--exclude=.git' os.prev/config/config.go os.new/config/config.go
 --- os.prev/config/config.go	2024-03-14 20:29:45.957485300 +0900
 +++ os.new/config/config.go	2024-05-14 20:04:27.407314900 +0900

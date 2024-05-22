@@ -182,12 +182,27 @@ function do_mount(){
 		for attr in ${src_attrs[@]}; do
 			dbv $attr
 			if [[ $attr =~ ^([^=]+)=(.*)$ ]];then
+				if [ "${BASH_REMATCH[1]}" = "LABEL" ];then
+					if [[ ${BASH_REMATCH[2]} =~ ^RANCHER_(OEM|STATE|SWAP|BOOT)$ ]] && ${#src_attrs[@]} = 1 ];then
+						mountRancher=1
+					fi
+				fi
 				cline="$cline ${BASH_REMATCH[1]}=\"${BASH_REMATCH[2]}\""
 				dbv "$cline"
 			fi
 		done
 		dbv "$cline"
 		eval "srcs=(\`$cline\`)"
+		if [ -n "$mountRacher" ];then
+			for d in ${srcs[@]}; do
+				if [[ $d =~ ([0-9]+)$ ]];then
+					if [ $d = "`partNum2Dev ${BASH_REMATCH[1]}`" ];then
+						srcs_mod+=($d)
+					fi
+				fi
+			done
+			srcs=(${srcs_mod[@]})
+		fi
 		case ${#srcs[@]} in
 			0)
 				dbv
@@ -221,6 +236,9 @@ function do_mount(){
 				done
 				;;
 		esac
+		if [ -n "$srcs_mod" ];then
+			srcs_mod
+		fi
 	elif [ ! -b "$src" -a ! -d "$src" ];then
 		dbv $src
 		_die "$src is not mountable."
