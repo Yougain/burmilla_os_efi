@@ -199,7 +199,6 @@ function do_mount(){
 		if [ -n "$mountRancher" ];then
 			for d in ${srcs[@]}; do
 				if [[ $d =~ ([0-9]+)$ ]];then
-					dbv $d `partNum2Dev ${BASH_REMATCH[1]}`
 					if [ $d = "`partNum2Dev ${BASH_REMATCH[1]}`" ];then
 						srcs_mod+=($d)
 					fi
