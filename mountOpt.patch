@@ -889,7 +889,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-23 14:52:33.937889400 +0900
++++ os.new/pkg/log/log.go	2024-05-23 14:57:34.967889400 +0900
 @@ -2,22 +2,49 @@
  
  import (
@@ -1319,7 +1319,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -181,13 +509,13 @@
+@@ -181,7 +509,7 @@
  }
  
  // AddRSyslogHook only needs to be called separately when using the InitDeferedLogger
@@ -1328,13 +1328,6 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  // and then fails due to the network not being up
  // TODO: create a "defered SyslogHook that always gets initialised, but if it fails to connect, stores the logs
  //
- //	and retries connecting every time its triggered....
- func AddRSyslogHook() {
--	val := cmdline.GetCmdline("netconsole")
-+	val := cline.GetCmdline("netconsole")
- 	netconsole := val.(string)
- 	if netconsole != "" {
- 		// "loglevel=8 netconsole=9999@10.0.2.14/,514@192.168.33.148/"
 @@ -249,8 +577,10 @@
  
  	if debugThisLogger {
