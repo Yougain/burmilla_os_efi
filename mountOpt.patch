@@ -889,7 +889,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-23 14:50:09.447889400 +0900
++++ os.new/pkg/log/log.go	2024-05-23 14:52:33.937889400 +0900
 @@ -2,22 +2,49 @@
  
  import (
@@ -905,9 +905,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	"path/filepath"
  	"strings"
  
--	"github.com/burmilla/os/config/cmdline"
+ 	"github.com/burmilla/os/config/cmdline"
 -
-+	"github.com/burmilla/os/config/cline"
 +	"github.com/google/shlex"
  	"github.com/sirupsen/logrus"
 +
