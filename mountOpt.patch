@@ -889,7 +889,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-23 15:00:20.667889400 +0900
++++ os.new/pkg/log/log.go	2024-05-23 15:01:24.877889400 +0900
 @@ -2,22 +2,49 @@
  
  import (
@@ -1182,10 +1182,10 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +			cline, _ := ReadAll("/proc/cmdline")
 +		}
 +		if cline != "" {
-+			Infof("/proc/cline = $s", cline)
++			Infof("/proc/cmdline = $s", cline)
 +			words, err := shlex.Split(cline)
 +			if err != nil {
-+				Infof("cannot parse /proc/cline")
++				Infof("cannot parse /proc/cmdline")
 +			}else{
 +				found := false
 +				for _, word := range words {
