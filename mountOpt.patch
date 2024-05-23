@@ -889,7 +889,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-23 18:18:59.397889400 +0900
++++ os.new/pkg/log/log.go	2024-05-23 18:42:19.297889400 +0900
 @@ -2,22 +2,50 @@
  
  import (
@@ -1259,9 +1259,9 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		}else{
 +			formatter := &logrus.JSONFormatter{
 +				FieldMap: logrus.FieldMap{
-+					FieldKeyTime:  "@timestamp",
-+				 	FieldKeyLevel: "@level",
-+					FieldKeyMsg:   "@message",
++					logrus.FieldKeyTime:  "@timestamp",
++				 	logrus.FieldKeyLevel: "@level",
++					logrus.FieldKeyMsg:   "@message",
 +				},
 +			}
 +			logrus.SetFormatter(formatter)
