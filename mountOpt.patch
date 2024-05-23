@@ -624,7 +624,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/dfs/scratch.go os.new/pkg/dfs/scratch.go
  		return cmd, err
 diff -Naur '--exclude=.git' os.prev/pkg/init/configfiles/configfiles.go os.new/pkg/init/configfiles/configfiles.go
 --- os.prev/pkg/init/configfiles/configfiles.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/configfiles/configfiles.go	2024-05-14 20:04:27.407314900 +0900
++++ os.new/pkg/init/configfiles/configfiles.go	2024-05-24 08:10:22.577667300 +0900
 @@ -55,6 +55,7 @@
  			ConfigFiles[name] = content
  		}
@@ -633,6 +633,22 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/configfiles/configfiles.go os.new/p
  	return cfg, nil
  }
  
+@@ -78,6 +79,7 @@
+ 			log.Error(err)
+ 		}
+ 		log.Infof("Swizzle: Wrote file to %s", name)
++		
+ 	}
+ 	if err := os.MkdirAll(config.VarRancherDir, os.ModeDir|0755); err != nil {
+ 		log.Error(err)
+@@ -86,6 +88,7 @@
+ 		log.Error(err)
+ 	}
+ 	log.FsReady()
++	log.ClearUntilLogWritable()
+ 	log.Debugf("WARNING: switchroot and mount OEM2 and BOOT phases not written to log file")
+ 
+ 	return cfg, nil
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2024-03-14 20:29:45.967485300 +0900
 +++ os.new/pkg/init/fsmount/fsmount.go	2024-05-22 22:27:34.341263300 +0900
@@ -889,8 +905,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-23 22:49:37.860000000 +0900
-@@ -2,23 +2,54 @@
++++ os.new/pkg/log/log.go	2024-05-24 08:11:08.507667300 +0900
+@@ -2,26 +2,61 @@
  
  import (
  	"fmt"
@@ -933,6 +949,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  var debugThisLogger = false
 -
 +var preservedLogs = ""
++var preservedLogsJ = ""
 +var preserveLogFN = ""
 +var doPreserve = false
 +var base = -1 // time difference
@@ -947,7 +964,13 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  type Fields logrus.Fields
  type Level logrus.Level
  type Logger logrus.Logger
-@@ -63,53 +94,225 @@
++var firstReadCmdline = false
++var firstExecDate = false
++
+ 
+ const (
+ 	// PanicLevel level, highest level of severity. Logs and then calls panic with the
+@@ -63,53 +98,202 @@
  	return Level(logrus.GetLevel())
  }
  
@@ -955,6 +978,19 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +func UntilLogWritable(lgFName string){
 +	preserveLogFN = lgFName
 +	fmt.Printf("setting log file, '%s'\n", preserveLogFN)
++}
++
++func ClearUntilLogWritable(){
++	file, err := os.OpenFile(preserveLogFN, os.O_WRONLY|os.O_APPEND, 0644)
++	defer file.Close()
++	if err == nil {
++		if(!isJSON){
++			file.WriteString(preservedLogs)
++		}else{
++			file.WriteString(preservedLogsJ)
++		}
++	}
++	preserveLogFN = ""
 +}
 +
 +func mayRedirect(lv string, format string, args ...interface{}) {
@@ -965,48 +1001,12 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +func _mayRedirect(lv string, args ...interface{}) {
 +	if preserveLogFN != "" {
 +		t := time.Now()
-+		_, err := os.Stat(preserveLogFN)
-+		if err != nil { // file missing
-+			doPreserve = true
-+		} else { // file exists
-+			if doPreserve {
-+				 // write preserved
-+				file, err := os.OpenFile(preserveLogFN, os.O_WRONLY|os.O_APPEND, 0644)
-+				if err == nil {
-+					file.WriteString(preservedLogs)
-+					file.Close()
-+				}
-+				preserveLogFN = ""
-+				doPreserve = false
-+				if base != -1 {
-+					checkOemVarDir = true
-+				}
-+			}
++		msg := ""
++		for _, arg := range args{
++			msg += fmt.Sprintf("%v", arg)
 +		}
-+		if doPreserve {
-+			msg := ""
-+			for _, arg := range args{
-+				msg += fmt.Sprintf("%v", arg)
-+			}
-+			preservedLogs += strings.ToUpper(lv + " ")[0:5] + " " + t.Format(DefaultTimeFormat) + " " + msg + "\n"
-+		}
-+	}
-+	if checkOemVarDir {
-+		_, err := os.Stat(oemVarDir)
-+		if err == nil {
-+			checkOemVarDir = false
-+			os.Mkdir(oemVarDirInitrd, 0755)
-+			file, err := os.Create(timeDiffFN)
-+			if err == nil {
-+				file.WriteString(fmt.Sprintf("%d", base))
-+				file.Close()
-+				file, err = os.Create(tzFN)
-+				if err == nil {
-+					file.WriteString(tz)
-+					file.Close()
-+				}
-+			}
-+		}
++		preservedLogs += strings.ToUpper(lv + " ")[0:5] + " " + t.Format(DefaultTimeFormat) + " " + msg + "\n"
++		preservedLogsJ +=fmt.Sprintf(`{"level":"%s","message","%s","timestamp":"%s"}`, strings.TrimSpace(strings.ToLower(lv)), msg, t.Format(DefaultTimeFormat)) + "\n" 
 +	}
 +}
 +
@@ -1017,7 +1017,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +
 +
 +func _checkUnderInit(lv string, args ...interface{}) bool {
-+	if underInit {
++	if underInit || !firstReadCmdline || !firstExecDate {
 +		msg := ""
 +		for _, arg := range args{
 +			msg += fmt.Sprintf("%v", arg)
@@ -1026,7 +1026,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		level := strings.TrimSpace(strings.ToLower(lv))
 +		
 +		beforeInitLogText += strings.ToUpper(level + "  ")[0:5] + " " + ts + " " + msg + "\n"
-+		beforeInitLogJSON += fmt.Sprintf(`{"level":"%s","message","%s","timestamp":"%s"}`, level, msg, ts)
++		beforeInitLogJSON += fmt.Sprintf(`{"level":"%s","message","%s","timestamp":"%s"}`, level, msg, ts) + "\n"
 +		return true
 +	}else{
 +		if beforeInitLogText != "" {
@@ -1173,7 +1173,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,8 +323,252 @@
+@@ -120,8 +304,261 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -1287,6 +1287,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +			cline, err = ReadAll("/proc/cmdline")
 +			if err != nil {
 +				Infof("Error %v", err)
++			}else{
++				firstReadCmdline = true
 +			}
 +		}
 +		if cline != "" {
@@ -1322,9 +1324,14 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		out, errb = exec.Command("bash", "-c", "TZ=" + tz + " /usr/bin/date +%z").Output()
 +		if errb != nil {
 +			out, errb = exec.Command("bash", "-c", "TZ=" + tz + " /bin/date +%z").Output()
++		}else{
++			Infof("/usr/bin/date: error = %v", errb)
 +		}
++	}else{
++		Infof("date: error = %v", errb)
 +	}
 +	if errb == nil {
++		firstExecDate = true
 +		td := strings.TrimSpace(string(out))
 +		Infof("output of 'date %%z': %s", td)
 +		a, _ := strconv.Atoi(td[1:3])
@@ -1334,6 +1341,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +			base = -base
 +		}
 +		Infof("base = %i", base)
++	}else{
++		Infof("/bin/date: error = %v", errb)
 +	}
 +	return errb
 +}
@@ -1426,7 +1435,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	if logTheseApps() {
  		innerInit(false)
  		FsReady()
-@@ -131,6 +578,8 @@
+@@ -131,6 +568,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1435,7 +1444,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +612,7 @@
+@@ -163,6 +602,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1443,7 +1452,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -181,7 +631,7 @@
+@@ -181,7 +621,7 @@
  }
  
  // AddRSyslogHook only needs to be called separately when using the InitDeferedLogger
@@ -1452,7 +1461,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  // and then fails due to the network not being up
  // TODO: create a "defered SyslogHook that always gets initialised, but if it fails to connect, stores the logs
  //
-@@ -249,8 +699,10 @@
+@@ -249,8 +689,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
