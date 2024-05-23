@@ -292,7 +292,7 @@ function do_mount(){
 					_die "'$dst' is not a directory."
 				fi
 				dbv $dst
-				if ! mkdir -p "$dst"
+				if ! mkdir -p "$dst";then
 					_die "Cannot create directory '$dst'."
 					dst_created=1
 				fi
