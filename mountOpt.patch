@@ -905,8 +905,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-24 08:11:08.507667300 +0900
-@@ -2,26 +2,61 @@
++++ os.new/pkg/log/log.go	2024-05-24 08:39:21.817667300 +0900
+@@ -2,26 +2,58 @@
  
  import (
  	"fmt"
@@ -937,10 +937,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +	DefaultTimeFormat = "2006-01-02 Mon 15:04:05.000000 -0700"
 +	oemVarDir = "/usr/share/ros/oem/var/lib/rancher"
 +	oemVarDirInitrd = oemVarDir + "/initrd"
-+	timeDiffFN = oemVarDirInitrd + "/time_diff_seconds"
-+	tzFN = oemVarDirInitrd + "/TZ"
 +	initrdInfoDir = "/opt/rancher/initrd"
-+	timeDiffFN2 = initrdInfoDir + "/time_diff_seconds"
  )
  
  var logFile *os.File
@@ -970,7 +967,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  
  const (
  	// PanicLevel level, highest level of severity. Logs and then calls panic with the
-@@ -63,53 +98,202 @@
+@@ -63,53 +95,202 @@
  	return Level(logrus.GetLevel())
  }
  
@@ -1173,7 +1170,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,8 +304,261 @@
+@@ -120,8 +301,261 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -1317,34 +1314,50 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +}
 +
 +
-+func getBase(tz string) error {
-+	Infof("getBase %s", tz)
-+	out, errb := exec.Command("bash", "-c", "TZ=" + tz + " date +%z").Output()
-+	if errb != nil {
-+		out, errb = exec.Command("bash", "-c", "TZ=" + tz + " /usr/bin/date +%z").Output()
++func getBase() bool {
++	Infof("getBase start", tz)
++	if tz == "" {
++		tz = os.Getenv("TZ")
++		if tz == "" {
++			targetPath, err := os.Readlink("/etc/localtime")
++			if err == nil {
++				tz = strings.TrimPrefix(targetPath, "/usr/share/zoneinfo/")
++			}
++		}
++	}
++	if tz == "" {
++		tz = getParam("TZ")
++	}
++	if tz != "" {
++		Infof("getBase from %s", tz)
++		out, errb := exec.Command("bash", "-c", "TZ=" + tz + " date +%z").Output()
 +		if errb != nil {
-+			out, errb = exec.Command("bash", "-c", "TZ=" + tz + " /bin/date +%z").Output()
++			out, errb = exec.Command("bash", "-c", "TZ=" + tz + " /usr/bin/date +%z").Output()
++			if errb != nil {
++				out, errb = exec.Command("bash", "-c", "TZ=" + tz + " /bin/date +%z").Output()
++			}else{
++				Infof("/usr/bin/date: error = %v", errb)
++			}
 +		}else{
-+			Infof("/usr/bin/date: error = %v", errb)
++			Infof("date: error = %v", errb)
 +		}
-+	}else{
-+		Infof("date: error = %v", errb)
-+	}
-+	if errb == nil {
-+		firstExecDate = true
-+		td := strings.TrimSpace(string(out))
-+		Infof("output of 'date %%z': %s", td)
-+		a, _ := strconv.Atoi(td[1:3])
-+		b, _ := strconv.Atoi(td[3:])
-+		base = a * 60 * 60 + b * 60
-+		if td[0:1] == "-" {
-+			base = -base
++		if errb == nil {
++			firstExecDate = true
++			td := strings.TrimSpace(string(out))
++			Infof("output of 'date %%z': %s", td)
++			a, _ := strconv.Atoi(td[1:3])
++			b, _ := strconv.Atoi(td[3:])
++			base = a * 60 * 60 + b * 60
++			if td[0:1] == "-" {
++				base = -base
++			}
++			Infof("base = %i", base)
++		}else{
++			Infof("/bin/date: error = %v", errb)
 +		}
-+		Infof("base = %i", base)
-+	}else{
-+		Infof("/bin/date: error = %v", errb)
++		return true
 +	}
-+	return errb
++	return false
 +}
 +
 +// InitLogger sets up Logging to log to /dev/kmsg and to Syslog
@@ -1375,34 +1388,18 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +					os.Symlink("/idev/null", "/dev/null")
 +					nullSymlinked = true // initrd started
 +				}
-+			} else {
-+				base, _ = ReadInt(timeDiffFN)
-+				Infof("ReadInt(timeDiffFN): base = %d", base)
-+				str, err := ReadAll(tzFN)
-+				if err == nil { // file exists
-+					tz = strings.TrimSpace(str)
-+				}
 +			}
 +			Infof("Now base = %d", base)
 +			if err != nil || base == -1 {
-+				tz = os.Getenv("TZ")
-+				if tz == "" {
-+					targetPath, err := os.Readlink("/etc/localtime")
-+					if err == nil {
-+						tz = strings.TrimPrefix(targetPath, "/usr/share/zoneinfo/")
-+					}
-+				}
-+				if tz != "" {
-+					if errb := getBase(tz); errb != nil {
-+						if(nullSymlinked){
-+							Infof("exec 'date', failed: %v", errb)
-+						}
++				if getBase() {
++					if(nullSymlinked){
++						Infof("exec 'date', failed: %v", errb)
 +					}
 +				}
 +			}
 +		}
 +		if base == -1 {
-+			if errb := getBase(tz); errb != nil{
++			if getBase() {
 +				if(nullSymlinked){
 +					Infof("exec 'date', failed: %v", errb)
 +				}
@@ -1435,7 +1432,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	if logTheseApps() {
  		innerInit(false)
  		FsReady()
-@@ -131,6 +568,8 @@
+@@ -131,6 +565,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1444,7 +1441,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +602,7 @@
+@@ -163,6 +599,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1452,7 +1449,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -181,7 +621,7 @@
+@@ -181,7 +618,7 @@
  }
  
  // AddRSyslogHook only needs to be called separately when using the InitDeferedLogger
@@ -1461,7 +1458,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  // and then fails due to the network not being up
  // TODO: create a "defered SyslogHook that always gets initialised, but if it fails to connect, stores the logs
  //
-@@ -249,8 +689,10 @@
+@@ -249,8 +686,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
