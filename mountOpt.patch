@@ -889,7 +889,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-23 22:35:38.060000000 +0900
++++ os.new/pkg/log/log.go	2024-05-23 22:38:13.810000000 +0900
 @@ -2,23 +2,54 @@
  
  import (
@@ -1010,9 +1010,9 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +	}
 +}
 +
-+func checkUnderInit(lv string, format string, args ...interface{}) {
++func checkUnderInit(lv string, format string, args ...interface{}) bool{
 +	msg := fmt.Sprintf(format, args...)
-+	_checkUnderInit(lv, msg)
++	return _checkUnderInit(lv, msg)
 +}
 +
 +
