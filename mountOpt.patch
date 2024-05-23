@@ -889,13 +889,13 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-23 18:42:19.297889400 +0900
-@@ -2,22 +2,50 @@
++++ os.new/pkg/log/log.go	2024-05-23 22:17:35.230000000 +0900
+@@ -2,23 +2,54 @@
  
  import (
  	"fmt"
 +	"time"
-+  "strconv"
++    "strconv"
  	"io"
  	"log/syslog"
  	"os"
@@ -931,6 +931,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  var userHook *ShowuserlogHook
  var defaultLogLevel logrus.Level
  var debugThisLogger = false
+-
 +var preservedLogs = ""
 +var preserveLogFN = ""
 +var doPreserve = false
@@ -938,11 +939,15 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +var tz = "" // time zone name
 +var checkOemVarDir = false
 +var initFormatExecuted = false
++var underInit = false
 +var cline = ""
- 
++var beforeInitLogText = ""
++var beforeInitLogJSON = ""
++var isJSON = false
  type Fields logrus.Fields
  type Level logrus.Level
-@@ -63,53 +91,145 @@
+ type Logger logrus.Logger
+@@ -63,53 +94,216 @@
  	return Level(logrus.GetLevel())
  }
  
@@ -1005,90 +1010,161 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +	}
 +}
 +
++func checkUnderInit(lv string, args ...interface{}) bool {
++	if underInit {
++		ts := time.Now().Format(DefaultTimeFormat)
++		msg := fmt.Sprintf(format, args...)
++		level := strings.TrimSpace(strings.ToLower(t))
++		
++		beforeInitLogText += strings.ToUpper(level + " ")[0:5] + " " + ts + " " + msg + "\n"
++		beforeInitLogJSON += fmt.sprintf(`{"level":"%s","message","%s","timestamp":"%s"}`, level, msg, ts)
++		return true
++	}else{
++		if beforeInitLogText != "" {
++			if !isJSON {
++				fmt.Fprintln(os.Stderr, beforeInitLogText)
++			}else{
++				fmt.Fprintln(os.Stderr, beforeInitLogJSON)
++			}
++			beforeInitLogText = ""
++			beforeInitLogJSON = ""
++		}
++		return false
++	}
++}
++
 +
  func Debugf(format string, args ...interface{}) {
++	if checkUnderInit("DEBUG", args...) {
++		return
++	}
 +	mayRedirect("DEBUG", format, args...)
 +	initFormat()
  	logrus.Debugf(format, args...)
  }
  func Infof(format string, args ...interface{}) {
++	if checkUnderInit("INFO ", args...) {
++		return
++	}
 +	mayRedirect("INFO ", format, args...)
 +	initFormat()
  	logrus.Infof(format, args...)
  }
  func Printf(format string, args ...interface{}) {
++	if checkUnderInit("PRINT", args...) {
++		return
++	}
 +	mayRedirect("PRINT", format, args...)
 +	initFormat()
  	logrus.Printf(format, args...)
  }
  func Warnf(format string, args ...interface{}) {
++	if checkUnderInit("WARN ", args...) {
++		return
++	}
 +	mayRedirect("WARN ", format, args...)
 +	initFormat()
  	logrus.Warnf(format, args...)
  }
  func Warningf(format string, args ...interface{}) {
++	if checkUnderInit("WARN ", args...) {
++		return
++	}
 +	mayRedirect("WARN ", format, args...)
 +	initFormat()
  	logrus.Warningf(format, args...)
  }
  func Errorf(format string, args ...interface{}) {
++	if checkUnderInit("ERROR", args...) {
++		return
++	}
 +	mayRedirect("ERROR", format, args...)
 +	initFormat()
  	logrus.Errorf(format, args...)
  }
  func Fatalf(format string, args ...interface{}) {
++	if checkUnderInit("FATAL", args...) {
++		return
++	}
 +	mayRedirect("FATAL", format, args...)
 +	initFormat()
  	logrus.Fatalf(format, args...)
  }
  func Panicf(format string, args ...interface{}) {
++	if checkUnderInit("PANIC", args...) {
++		return
++	}
 +	mayRedirect("PANIC", format, args...)
 +	initFormat()
  	logrus.Panicf(format, args...)
  }
  
  func Debug(args ...interface{}) {
++	if checkUnderInit("DEBUG", args...) {
++		return
++	}
 +	_mayRedirect("DEBUG", args...)
 +	initFormat()
  	logrus.Debug(args...)
  }
  func Info(args ...interface{}) {
++	if checkUnderInit("INFO ", args...) {
++		return
++	}
 +	_mayRedirect("INFO ", args...)
 +	initFormat()
  	logrus.Info(args...)
  }
  func Print(args ...interface{}) {
++	if checkUnderInit("PRINT", args...) {
++		return
++	}
 +	_mayRedirect("PRINT", args...)
 +	initFormat()
  	logrus.Print(args...)
  }
  func Warn(args ...interface{}) {
-+	_mayRedirect("DEBUG", args...)
++	if checkUnderInit("WARN ", args...) {
++		return
++	}
++	_mayRedirect("WARN ", args...)
 +	initFormat()
  	logrus.Warn(args...)
  }
  func Warning(args ...interface{}) {
++	if checkUnderInit("WARN ", args...) {
++		return
++	}
 +	_mayRedirect("WARN ", args...)
 +	initFormat()
  	logrus.Warning(args...)
  }
  func Error(args ...interface{}) {
++	if checkUnderInit("ERROR", args...) {
++		return
++	}
 +	_mayRedirect("ERROR", args...)
 +	initFormat()
  	logrus.Error(args...)
  }
  func Fatal(args ...interface{}) {
++	if checkUnderInit("FATAL", args...) {
++		return
++	}
 +	_mayRedirect("FATAL", args...)
 +	initFormat()
  	logrus.Fatal(args...)
  }
  func Panic(args ...interface{}) {
++	if checkUnderInit("PANIC", args...) {
++		return
++	}
 +	_mayRedirect("PANIC", args...)
 +	initFormat()
  	logrus.Panic(args...)
  }
  
-@@ -120,8 +240,245 @@
+@@ -120,8 +314,252 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -1140,9 +1216,15 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +
 +
 +type jFormat struct {
++    TimestampFormat string
 +}
 +
 +func (f *jFormat) Format(entry *logrus.Entry) ([]byte, error) {
++  delete(entry.Data, "file")
++  delete(entry.Data, "func")
++  entry.Data["time"] = entry.Time
++  entry.Data["message"] = entry.Message
++  entry.Data["level"] = entry.Level
 +  serialized, err := json.Marshal(entry.Data)
 +    if err != nil {
 +      return nil, fmt.Errorf("Failed to marshal fields to JSON, %v", err)
@@ -1249,23 +1331,22 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +
 +// InitLogger sets up Logging to log to /dev/kmsg and to Syslog
 +func initFormat() {
-+	if !initFormatExecuted {
++	if !initFormatExecuted && !underInit{
++		underInit = true
++		Infof("start initFormat: base = %d", base)
 +		base = -1
-+		initFormatExecuted = true
-+		formatter := logFormat{}
-+		formatter.TimestampFormat = DefaultTimeFormat
 +		if getParam("ROS_LOG_FORMAT") == "non-json" {
++			isJSON = false
++			formatter := logFormat{}
++			formatter.TimestampFormat = DefaultTimeFormat
 +			logrus.SetFormatter(&formatter)
 +		}else{
-+			formatter := &logrus.JSONFormatter{
-+				FieldMap: logrus.FieldMap{
-+					logrus.FieldKeyTime:  "@timestamp",
-+				 	logrus.FieldKeyLevel: "@level",
-+					logrus.FieldKeyMsg:   "@message",
-+				},
-+			}
-+			logrus.SetFormatter(formatter)
++			isJSON = true
++			jFormatter := jFormat{}
++			jFormatter.TimestampFormat = DefaultTimeFormat
++			logrus.SetFormatter(&jFormatter)
 +		}
++		initFormatExecuted = true
 +		nullSymlinked := false
 +		Infof("before set: base = %d", base)
 +		if base == -1 {
@@ -1284,7 +1365,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +					tz = strings.TrimSpace(str)
 +				}
 +			}
-+			Infof("Now base = $d", base)
++			Infof("Now base = %d", base)
 +			if err != nil || base == -1 {
 +				tz = os.Getenv("TZ")
 +				if tz == "" {
@@ -1325,6 +1406,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +			Infof("logger started in initrd.")
 +		}
 +		Infof("after set: base = %d", base)
++		underInit = false
++		initFormatExecuted = true
 +	}
 +}
 +
@@ -1334,7 +1417,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	if logTheseApps() {
  		innerInit(false)
  		FsReady()
-@@ -131,6 +488,8 @@
+@@ -131,6 +569,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1343,7 +1426,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +522,7 @@
+@@ -163,6 +603,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1351,7 +1434,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -181,7 +541,7 @@
+@@ -181,7 +622,7 @@
  }
  
  // AddRSyslogHook only needs to be called separately when using the InitDeferedLogger
@@ -1360,7 +1443,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  // and then fails due to the network not being up
  // TODO: create a "defered SyslogHook that always gets initialised, but if it fails to connect, stores the logs
  //
-@@ -249,8 +609,10 @@
+@@ -249,8 +690,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
