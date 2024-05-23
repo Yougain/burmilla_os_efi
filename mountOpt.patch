@@ -889,7 +889,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-23 14:57:34.967889400 +0900
++++ os.new/pkg/log/log.go	2024-05-23 15:00:20.667889400 +0900
 @@ -2,22 +2,49 @@
  
  import (
@@ -1178,8 +1178,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +	if res := os.Getenv(name); res == "" {
 +		Infof("res = ''")
 +		if cline == "" {
-+			Infof("Trying read /proc/cline")
-+			cline, _ := ReadAll("/proc/cline")
++			Infof("Trying read /proc/cmdline")
++			cline, _ := ReadAll("/proc/cmdline")
 +		}
 +		if cline != "" {
 +			Infof("/proc/cline = $s", cline)
@@ -1190,7 +1190,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +				found := false
 +				for _, word := range words {
 +					if strings.HasPrefix(word, name + "=") {
-+						res = strings[len(name) + 1:]
++						res = word[len(name) + 1:]
 +						Infof("found %s", res)
 +						found = true
 +					}
