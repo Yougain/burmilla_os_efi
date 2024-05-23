@@ -889,7 +889,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-23 22:41:51.000000000 +0900
++++ os.new/pkg/log/log.go	2024-05-23 22:49:37.860000000 +0900
 @@ -2,23 +2,54 @@
  
  import (
@@ -1160,7 +1160,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +	if _checkUnderInit("FATAL", args...) {
 +		return
 +	}
-+	_mayRedirect("FATAL", args..
++	_mayRedirect("FATAL", args...)
 +	initFormat()
  	logrus.Fatal(args...)
  }
