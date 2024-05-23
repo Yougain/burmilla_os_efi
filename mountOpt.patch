@@ -889,8 +889,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-23 14:17:30.097889400 +0900
-@@ -2,22 +2,48 @@
++++ os.new/pkg/log/log.go	2024-05-23 14:50:09.447889400 +0900
+@@ -2,22 +2,49 @@
  
  import (
  	"fmt"
@@ -905,10 +905,12 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	"path/filepath"
  	"strings"
  
- 	"github.com/burmilla/os/config/cmdline"
+-	"github.com/burmilla/os/config/cmdline"
+-
++	"github.com/burmilla/os/config/cline"
 +	"github.com/google/shlex"
- 
--	"github.com/sirupsen/logrus"
+ 	"github.com/sirupsen/logrus"
++
  	lsyslog "github.com/sirupsen/logrus/hooks/syslog"
 +
 +)
@@ -936,11 +938,11 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +var tz = "" // time zone name
 +var checkOemVarDir = false
 +var initFormatExecuted = false
-+var cmdline = ""
++var cline = ""
  
  type Fields logrus.Fields
  type Level logrus.Level
-@@ -63,53 +89,145 @@
+@@ -63,53 +90,145 @@
  	return Level(logrus.GetLevel())
  }
  
@@ -1086,7 +1088,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,8 +238,214 @@
+@@ -120,8 +239,214 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -1176,15 +1178,15 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +	Infof("getParam %s", name)
 +	if res := os.Getenv(name); res == "" {
 +		Infof("res = ''")
-+		if cmdline == "" {
-+			Infof("Trying read /proc/cmdline")
-+			cmdline, _ := ReadAll("/proc/cmdline")
++		if cline == "" {
++			Infof("Trying read /proc/cline")
++			cline, _ := ReadAll("/proc/cline")
 +		}
-+		if cmdline != "" {
-+			Infof("/proc/cmdline = $s", cmdline)
-+			words, err := shlex.Split(cmdline)
++		if cline != "" {
++			Infof("/proc/cline = $s", cline)
++			words, err := shlex.Split(cline)
 +			if err != nil {
-+				Infof("cannot parse /proc/cmdline")
++				Infof("cannot parse /proc/cline")
 +			}else{
 +				found := false
 +				for _, word := range words {
@@ -1195,11 +1197,11 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +					}
 +				}
 +				if !found {
-+					Infof("cannot find '%s=' in /proc/cmdline", name)
++					Infof("cannot find '%s=' in /proc/cline", name)
 +				}
 +			}
 +		}else{
-+			Infof("cannot read /proc/cmdline")
++			Infof("cannot read /proc/cline")
 +		}
 +	}
 +	return res
@@ -1301,7 +1303,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	if logTheseApps() {
  		innerInit(false)
  		FsReady()
-@@ -131,6 +455,8 @@
+@@ -131,6 +456,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1310,7 +1312,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +489,7 @@
+@@ -163,6 +490,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1318,7 +1320,23 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -249,8 +576,10 @@
+@@ -181,13 +509,13 @@
+ }
+ 
+ // AddRSyslogHook only needs to be called separately when using the InitDeferedLogger
+-// init.Main can't read /proc/cmdline at start.
++// init.Main can't read /proc/cline at start.
+ // and then fails due to the network not being up
+ // TODO: create a "defered SyslogHook that always gets initialised, but if it fails to connect, stores the logs
+ //
+ //	and retries connecting every time its triggered....
+ func AddRSyslogHook() {
+-	val := cmdline.GetCmdline("netconsole")
++	val := cline.GetCmdline("netconsole")
+ 	netconsole := val.(string)
+ 	if netconsole != "" {
+ 		// "loglevel=8 netconsole=9999@10.0.2.14/,514@192.168.33.148/"
+@@ -249,8 +577,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
