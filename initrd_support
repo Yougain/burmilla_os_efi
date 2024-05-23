@@ -90,7 +90,8 @@ before_sysinit(){
 		cp -av $OR/var/lib/rancher/conf/cloud-config.d /var/lib/rancher/conf
 		mkdir -p /etc
 		cp -af $OR/etc/ssh /etc
-		cp -f $OR/etc/localtime /etc
+		rm -f /etc/localtime
+		cp -a $OR/etc/localtime /etc
 		mkdir -p /etc/profile.d
 		cp -af $OR/etc/profile.d/timezone.sh /etc/profile.d
 	fi

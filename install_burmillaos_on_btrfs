@@ -62,6 +62,18 @@ while (( "$#" )); do
 				next_install_ssh_port=1
 				;;
 			*)
+				if [[ $1 =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+					n="${BASH_REMATCH[1]}"
+					a="${BASH_REMATCH[2]}"
+					x=$n="`shellquote a`"
+					if [ -z "$EXTRA_KPARAMS" ];then
+						LINUX_EXTRA="$x"
+					else
+						LINUX_EXTRA="$LINUX_EXTRA $x"
+					fi
+					shift
+					continue
+				fi
 				if [ "${1:0:1}" = "-" ];then
 					die "unknown option, '$1'"
 				fi
@@ -1339,6 +1351,7 @@ export TZ
 	echo VERSION="$VERSION"
 	store_env -s /installing/boot_dev/LINUX-$VERSION
 	store_env -s /installing/boot_dev/LINUX_DEBUG-$VERSION
+	store_env -s /installing/boot_dev/LINUX_EXTRA
 	store_env -s /installing/efipart/VERSION
 FINAL
 

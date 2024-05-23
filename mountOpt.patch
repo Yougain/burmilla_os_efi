@@ -27,7 +27,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/config.go os.new/cmd/control/con
  func env2map(env []string) map[string]string {
 diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/control/console_init.go
 --- os.prev/cmd/control/console_init.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/console_init.go	2024-05-16 12:28:23.740000000 +0900
++++ os.new/cmd/control/console_init.go	2024-05-23 14:06:40.487889400 +0900
 @@ -11,6 +11,7 @@
  	"strings"
  	"syscall"
@@ -36,7 +36,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/contr
  
  	"github.com/burmilla/os/cmd/cloudinitexecute"
  	"github.com/burmilla/os/config"
-@@ -259,6 +260,71 @@
+@@ -259,6 +260,72 @@
  	if err := cmd.Run(); err != nil {
  		log.Error(err)
  	}
@@ -91,11 +91,12 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/contr
 +				if ips != "" {
 +					_, err = file.WriteString(`
 +For installation, please execute:
-+  wget http://` + ips + `/install.sh -q -O - \| bash -s SERVER_NAME FIXED_IP SSH_PORT DEVICE
-+    SERVER_NAME : New server name, ex. 'serv1.foo.com'
-+    FIXED_IP    : New fixed IPv4 address for the system, ex. '10.1.1.1'
-+    SSH_PORT	: SSH port number for the system, ex. '20022'
-+    DEVICE      : Device name on which the system is installed, ex. '/dev/sdc'
++  wget http://` + ips + `/install.sh -q -O - \| bash -s NAME IP SPORT DEV KVARS...
++    NAME     : New server name, ex. 'serv1.foo.com'
++    IP       : New fixed IPv4 address for the system, ex. '10.1.1.1'
++    SPORT	 : SSH port number for the system, ex. '20022'
++    DEV      : Device name on which the system is installed, ex. '/dev/sdc'
++    KVARS... : Extra kernel environmental variables, ex. 'ROS_LOG_FORMAT=non-json ...'
 +from your terminal.
 +` )
 +				}
@@ -108,7 +109,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/contr
  
  	cloudinitexecute.ApplyConsole(cfg)
  
-@@ -293,7 +359,7 @@
+@@ -293,7 +360,7 @@
  		return err
  	}
  
@@ -441,6 +442,20 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
 +	BootMountOpt string   `yaml:"boot_mountopt,omitempty"`
  	BootDev    string   `yaml:"boot_dev,omitempty"`
  }
+ 
+diff -Naur '--exclude=.git' os.prev/images/02-console/Dockerfile os.new/images/02-console/Dockerfile
+--- os.prev/images/02-console/Dockerfile	2024-03-14 20:29:45.967485300 +0900
++++ os.new/images/02-console/Dockerfile	2024-05-23 10:17:33.147889400 +0900
+@@ -34,7 +34,9 @@
+     && addgroup --gid 1200 user-docker \
+     && adduser --system -u 1200 --gid 1200 --disabled-login --no-create-home user-docker \
+     && echo 'user-docker:100000:65536' > /etc/subuid \
+-    && echo 'user-docker:100000:65536' > /etc/subgid
++    && echo 'user-docker:100000:65536' > /etc/subgid \
++    && rm -f /etc/localtime \
++    && cp /usr/share/zoneinfo/Etc/UTC /etc/localtime
+ 
+ COPY build/iscsid.conf /etc/iscsi/
  
 diff -Naur '--exclude=.git' os.prev/install_burmillaos_on_btrfs os.new/install_burmillaos_on_btrfs
 --- os.prev/install_burmillaos_on_btrfs	1970-01-01 09:00:00.000000000 +0900
@@ -874,8 +889,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-23 09:35:12.027889400 +0900
-@@ -2,9 +2,14 @@
++++ os.new/pkg/log/log.go	2024-05-23 14:17:30.097889400 +0900
+@@ -2,22 +2,48 @@
  
  import (
  	"fmt"
@@ -890,9 +905,10 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	"path/filepath"
  	"strings"
  
-@@ -12,12 +17,32 @@
+ 	"github.com/burmilla/os/config/cmdline"
++	"github.com/google/shlex"
  
- 	"github.com/sirupsen/logrus"
+-	"github.com/sirupsen/logrus"
  	lsyslog "github.com/sirupsen/logrus/hooks/syslog"
 +
 +)
@@ -920,10 +936,11 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +var tz = "" // time zone name
 +var checkOemVarDir = false
 +var initFormatExecuted = false
++var cmdline = ""
  
  type Fields logrus.Fields
  type Level logrus.Level
-@@ -63,53 +88,145 @@
+@@ -63,53 +89,145 @@
  	return Level(logrus.GetLevel())
  }
  
@@ -1069,7 +1086,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,8 +237,193 @@
+@@ -120,8 +238,214 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -1155,6 +1172,40 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +}
 +
 +
++func getParam(name string) string {
++	Infof("getParam %s", name)
++	if res := os.Getenv(name); res == "" {
++		Infof("res = ''")
++		if cmdline == "" {
++			Infof("Trying read /proc/cmdline")
++			cmdline, _ := ReadAll("/proc/cmdline")
++		}
++		if cmdline != "" {
++			Infof("/proc/cmdline = $s", cmdline)
++			words, err := shlex.Split(cmdline)
++			if err != nil {
++				Infof("cannot parse /proc/cmdline")
++			}else{
++				found := false
++				for _, word := range words {
++					if strings.HasPrefix(word, name + "=") {
++						res = strings[len(name) + 1:]
++						Infof("found %s", res)
++						found = true
++					}
++				}
++				if !found {
++					Infof("cannot find '%s=' in /proc/cmdline", name)
++				}
++			}
++		}else{
++			Infof("cannot read /proc/cmdline")
++		}
++	}
++	return res
++}
++
++
 +func getBase(tz string) error {
 +	out, errb := exec.Command("bash", "-c", "TZ=" + tz + " date +%z").Output()
 +	if errb != nil {
@@ -1182,7 +1233,9 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		initFormatExecuted = true
 +		formatter := logFormat{}
 +		formatter.TimestampFormat = DefaultTimeFormat
-+		logrus.SetFormatter(&formatter)
++		if getParam("ROS_LOG_FORMAT") == "non-json" {
++			logrus.SetFormatter(&formatter)
++		}
 +		nullSymlinked := false
 +		if base == -1 {
 +			_, err := os.Stat("/dev/null")
@@ -1217,25 +1270,10 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +			}
 +		}
 +		if base == -1 {
-+			Debugf("Trying read /proc/cmdline")
-+			cmdline, err := ReadAll("/proc/cmdline")
-+			if err == nil {
-+				Debugf("/proc/cmdline = $s", cmdline)
-+				ti := strings.Index(cmdline, " TZ=")
-+				if ti != -1 {
-+					tw := strings.Index(cmdline[ti + 4:], " ")
-+					if tw != -1 {
-+						if errb := getBase(cmdline[ti + 4:ti + 4 + tw]); errb != nil{
-+							if(nullSymlinked){
-+								Infof("exec 'date', failed: %v", errb)
-+							}
-+						}
-+					}
-+				}else{
-+					Debugf("cannot find 'TZ=' in /proc/cmdline")
++			if errb := getBase(tz); errb != nil{
++				if(nullSymlinked){
++					Infof("exec 'date', failed: %v", errb)
 +				}
-+			}else{
-+				Debugf("cannot read /proc/cmdline")
 +			}
 +		}
 +		Debugf("before set: base = %d", base)
@@ -1263,7 +1301,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	if logTheseApps() {
  		innerInit(false)
  		FsReady()
-@@ -131,6 +433,8 @@
+@@ -131,6 +455,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1272,7 +1310,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +467,7 @@
+@@ -163,6 +489,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1280,7 +1318,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -249,8 +554,10 @@
+@@ -249,8 +576,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
