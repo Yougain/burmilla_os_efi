@@ -27,7 +27,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/config.go os.new/cmd/control/con
  func env2map(env []string) map[string]string {
 diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/control/console_init.go
 --- os.prev/cmd/control/console_init.go	2024-03-14 20:29:45.937485300 +0900
-+++ os.new/cmd/control/console_init.go	2024-05-23 14:06:40.487889400 +0900
++++ os.new/cmd/control/console_init.go	2024-05-23 14:28:06.747889400 +0900
 @@ -11,6 +11,7 @@
  	"strings"
  	"syscall"
@@ -94,7 +94,7 @@ diff -Naur '--exclude=.git' os.prev/cmd/control/console_init.go os.new/cmd/contr
 +  wget http://` + ips + `/install.sh -q -O - \| bash -s NAME IP SPORT DEV KVARS...
 +    NAME     : New server name, ex. 'serv1.foo.com'
 +    IP       : New fixed IPv4 address for the system, ex. '10.1.1.1'
-+    SPORT	 : SSH port number for the system, ex. '20022'
++    SPORT    : SSH port number for the system, ex. '20022'
 +    DEV      : Device name on which the system is installed, ex. '/dev/sdc'
 +    KVARS... : Extra kernel environmental variables, ex. 'ROS_LOG_FORMAT=non-json ...'
 +from your terminal.
