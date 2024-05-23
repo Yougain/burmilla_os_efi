@@ -874,7 +874,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-23 08:39:59.787889400 +0900
++++ os.new/pkg/log/log.go	2024-05-23 09:35:12.027889400 +0900
 @@ -2,9 +2,14 @@
  
  import (
@@ -1069,7 +1069,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,8 +237,189 @@
+@@ -120,8 +237,193 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -1208,7 +1208,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +					}
 +				}
 +				if tz != "" {
-+					if getBase(tz) == nil {
++					if errb := getBase(tz); errb != nil {
 +						if(nullSymlinked){
 +							Infof("exec 'date', failed: %v", errb)
 +						}
@@ -1225,7 +1225,11 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +				if ti != -1 {
 +					tw := strings.Index(cmdline[ti + 4:], " ")
 +					if tw != -1 {
-+						getBase(cmdline[ti + 4:ti + 4 + tw])
++						if errb := getBase(cmdline[ti + 4:ti + 4 + tw]); errb != nil{
++							if(nullSymlinked){
++								Infof("exec 'date', failed: %v", errb)
++							}
++						}
 +					}
 +				}else{
 +					Debugf("cannot find 'TZ=' in /proc/cmdline")
@@ -1259,7 +1263,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	if logTheseApps() {
  		innerInit(false)
  		FsReady()
-@@ -131,6 +429,8 @@
+@@ -131,6 +433,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1268,7 +1272,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +463,7 @@
+@@ -163,6 +467,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1276,7 +1280,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -249,8 +550,10 @@
+@@ -249,8 +554,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
