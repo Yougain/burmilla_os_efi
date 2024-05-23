@@ -889,7 +889,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-23 22:17:35.230000000 +0900
++++ os.new/pkg/log/log.go	2024-05-23 22:26:09.500000000 +0900
 @@ -2,23 +2,54 @@
  
  import (
@@ -1010,14 +1010,14 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +	}
 +}
 +
-+func checkUnderInit(lv string, args ...interface{}) bool {
++func checkUnderInit(lv string, format string, args ...interface{}) bool {
 +	if underInit {
 +		ts := time.Now().Format(DefaultTimeFormat)
 +		msg := fmt.Sprintf(format, args...)
-+		level := strings.TrimSpace(strings.ToLower(t))
++		level := strings.TrimSpace(strings.ToLower(lv))
 +		
-+		beforeInitLogText += strings.ToUpper(level + " ")[0:5] + " " + ts + " " + msg + "\n"
-+		beforeInitLogJSON += fmt.sprintf(`{"level":"%s","message","%s","timestamp":"%s"}`, level, msg, ts)
++		beforeInitLogText += strings.ToUpper(lvevel + "  ")[0:5] + " " + ts + " " + msg + "\n"
++		beforeInitLogJSON += fmt.Sprintf(`{"level":"%s","message","%s","timestamp":"%s"}`, level, msg, ts)
 +		return true
 +	}else{
 +		if beforeInitLogText != "" {
