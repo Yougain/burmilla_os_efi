@@ -889,8 +889,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-23 17:32:44.767889400 +0900
-@@ -2,22 +2,49 @@
++++ os.new/pkg/log/log.go	2024-05-23 18:07:15.977889400 +0900
+@@ -2,22 +2,50 @@
  
  import (
  	"fmt"
@@ -904,6 +904,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +	"syscall"
  	"path/filepath"
  	"strings"
++	"encoding/json"
  
  	"github.com/burmilla/os/config/cmdline"
 -
@@ -941,7 +942,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  
  type Fields logrus.Fields
  type Level logrus.Level
-@@ -63,53 +90,145 @@
+@@ -63,53 +91,145 @@
  	return Level(logrus.GetLevel())
  }
  
@@ -1087,7 +1088,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,8 +239,225 @@
+@@ -120,8 +240,245 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -1102,8 +1103,6 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +type logFormat struct {
 +    TimestampFormat string
 +}
-+
-+
 +
 +//Format function
 +func (f *logFormat) Format(entry *logrus.Entry) ([]byte, error) {
@@ -1138,6 +1137,19 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +    b.WriteByte('\n')
 +    return b.Bytes(), nil
 +}
++
++
++type jFormat struct {
++}
++
++func (f *jFormat) Format(entry *logrus.Entry) ([]byte, error) {
++  serialized, err := json.Marshal(entry.Data)
++    if err != nil {
++      return nil, fmt.Errorf("Failed to marshal fields to JSON, %v", err)
++    }
++  return append(serialized, '\n'), nil
++}
++
 +
 +
 +func ReadInt(filename string) (int, error) {
@@ -1238,13 +1250,21 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +// InitLogger sets up Logging to log to /dev/kmsg and to Syslog
 +func initFormat() {
 +	if !initFormatExecuted {
++		base = -1
 +		initFormatExecuted = true
 +		formatter := logFormat{}
 +		formatter.TimestampFormat = DefaultTimeFormat
 +		if getParam("ROS_LOG_FORMAT") == "non-json" {
 +			logrus.SetFormatter(&formatter)
 +		}else{
-+			logrus.SetFormatter(&logrus.JSONFormatter{})
++			formatter := &JSONFormatter{
++				FieldMap: FieldMap{
++					FieldKeyTime:  "@timestamp",
++				 	FieldKeyLevel: "@level",
++					FieldKeyMsg:   "@message",
++				},
++			}
++			logrus.SetFormatter(formatter)
 +		}
 +		nullSymlinked := false
 +		Infof("before set: base = %d", base)
@@ -1304,6 +1324,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		if isInitrd() {
 +			Infof("logger started in initrd.")
 +		}
++		Infof("after set: base = %d", base)
 +	}
 +}
 +
@@ -1313,7 +1334,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	if logTheseApps() {
  		innerInit(false)
  		FsReady()
-@@ -131,6 +467,8 @@
+@@ -131,6 +488,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1322,7 +1343,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +501,7 @@
+@@ -163,6 +522,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1330,7 +1351,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -181,7 +520,7 @@
+@@ -181,7 +541,7 @@
  }
  
  // AddRSyslogHook only needs to be called separately when using the InitDeferedLogger
@@ -1339,7 +1360,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  // and then fails due to the network not being up
  // TODO: create a "defered SyslogHook that always gets initialised, but if it fails to connect, stores the logs
  //
-@@ -249,8 +588,10 @@
+@@ -249,8 +609,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
