@@ -74,6 +74,9 @@ before_sysinit(){
 	fi
 	info / is on $(stat -f -c '%T' /)
 	OR=/usr/share/ros/oem
+	if [ ! -e "$OR" ];then
+		do_mount 7 /usr/share/ros/oem
+	fi
 	if [ -n "$DEBUG" -o -n "$INITRD_MOUNT" ];then
 		mkdir -p /usr/share/ros/initrd
 		mount --bind / /usr/share/ros/initrd

@@ -1235,7 +1235,7 @@ ssh_sudo <<'FINAL'
 		chmod 700 /installing/oem_top/oem_root/root/.ssh
 		cp -a /var/log /installing/oem_top/oem_root/var
 		mkdir -p /installing/oem_top/oem_root/opt/rancher/conf/grub
-		echo -n "USER_SETTINGS='TZ="$TZL" TZS=$TZS rancher.network.interfaces.$NET_DEV.address=$IP/$NETMASK rancher.network.interfaces.$NET_DEV.gateway=$GATEWAY rancher.network.dns.nameservers=$DNS_SETTINGS_YQ'" > /installing/oem_top/oem_root/opt/rancher/conf/grub/USER_SETTINGS
+		echo -n "USER_SETTINGS='rancher.network.interfaces.$NET_DEV.address=$IP/$NETMASK rancher.network.interfaces.$NET_DEV.gateway=$GATEWAY rancher.network.dns.nameservers=$DNS_SETTINGS_YQ'" > /installing/oem_top/oem_root/opt/rancher/conf/grub/USER_SETTINGS
 		chmod +x /installing/oem_top/oem_root/opt/rancher/conf/grub/USER_SETTINGS
 		mkdir -p /installing/oem_top/oem_root/etc
 		cp -a /etc/ssh /installing/oem_top/oem_root/etc
