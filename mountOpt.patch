@@ -889,7 +889,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-23 16:51:13.477889400 +0900
++++ os.new/pkg/log/log.go	2024-05-23 17:08:37.187889400 +0900
 @@ -2,22 +2,49 @@
  
  import (
@@ -1087,7 +1087,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,8 +239,222 @@
+@@ -120,8 +239,223 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -1176,11 +1176,12 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +func getParam(name string) string {
 +	Infof("getParam %s", name)
 +	res := os.Getenv(name)
++	var err error
 +	if res == "" {
 +		Infof("res = ''")
 +		if cline == "" {
 +			Infof("Trying read /proc/cmdline")
-+			cline, err := ReadAll("/proc/cmdline")
++			cline, err = ReadAll("/proc/cmdline")
 +			if err != nil {
 +				Infof("Error %v", err)
 +			}
@@ -1310,7 +1311,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	if logTheseApps() {
  		innerInit(false)
  		FsReady()
-@@ -131,6 +464,8 @@
+@@ -131,6 +465,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1319,7 +1320,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +498,7 @@
+@@ -163,6 +499,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1327,7 +1328,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -181,7 +517,7 @@
+@@ -181,7 +518,7 @@
  }
  
  // AddRSyslogHook only needs to be called separately when using the InitDeferedLogger
@@ -1336,7 +1337,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  // and then fails due to the network not being up
  // TODO: create a "defered SyslogHook that always gets initialised, but if it fails to connect, stores the logs
  //
-@@ -249,8 +585,10 @@
+@@ -249,8 +586,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
