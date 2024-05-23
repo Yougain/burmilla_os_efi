@@ -889,7 +889,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-23 17:08:37.187889400 +0900
++++ os.new/pkg/log/log.go	2024-05-23 17:32:44.767889400 +0900
 @@ -2,22 +2,49 @@
  
  import (
@@ -1087,7 +1087,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,8 +239,223 @@
+@@ -120,8 +239,225 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -1143,14 +1143,14 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +func ReadInt(filename string) (int, error) {
 +	file, err := os.Open(filename)
 +	if err != nil {
-+		return 0, err
++		return -1, err
 +	}
 +	defer file.Close()
 +
 +	var buffer bytes.Buffer
 +	_, err = io.Copy(&buffer, file)
 +	if err != nil {
-+		return 0, err
++		return -1, err
 +	}
 +	b, _ := strconv.Atoi(buffer.String())
 +	return b, nil
@@ -1247,6 +1247,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +			logrus.SetFormatter(&logrus.JSONFormatter{})
 +		}
 +		nullSymlinked := false
++		Infof("before set: base = %d", base)
 +		if base == -1 {
 +			_, err := os.Stat("/dev/null")
 +			if err != nil { // file missing
@@ -1257,11 +1258,13 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +				}
 +			} else {
 +				base, _ = ReadInt(timeDiffFN)
++				Infof("ReadInt(timeDiffFN): base = %d", base)
 +				str, err := ReadAll(tzFN)
 +				if err == nil { // file exists
 +					tz = strings.TrimSpace(str)
 +				}
 +			}
++			Infof("Now base = $d", base)
 +			if err != nil || base == -1 {
 +				tz = os.Getenv("TZ")
 +				if tz == "" {
@@ -1286,7 +1289,6 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +				}
 +			}
 +		}
-+		Infof("before set: base = %d", base)
 +		if base != -1 {
 +			if tz == "" {
 +				tz = "LOCAL"
@@ -1311,7 +1313,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	if logTheseApps() {
  		innerInit(false)
  		FsReady()
-@@ -131,6 +465,8 @@
+@@ -131,6 +467,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1320,7 +1322,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +499,7 @@
+@@ -163,6 +501,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1328,7 +1330,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -181,7 +518,7 @@
+@@ -181,7 +520,7 @@
  }
  
  // AddRSyslogHook only needs to be called separately when using the InitDeferedLogger
@@ -1337,7 +1339,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  // and then fails due to the network not being up
  // TODO: create a "defered SyslogHook that always gets initialised, but if it fails to connect, stores the logs
  //
-@@ -249,8 +586,10 @@
+@@ -249,8 +588,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
