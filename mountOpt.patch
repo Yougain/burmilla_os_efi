@@ -889,7 +889,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-23 22:26:09.500000000 +0900
++++ os.new/pkg/log/log.go	2024-05-23 22:35:38.060000000 +0900
 @@ -2,23 +2,54 @@
  
  import (
@@ -947,7 +947,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  type Fields logrus.Fields
  type Level logrus.Level
  type Logger logrus.Logger
-@@ -63,53 +94,216 @@
+@@ -63,53 +94,225 @@
  	return Level(logrus.GetLevel())
  }
  
@@ -1010,13 +1010,22 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +	}
 +}
 +
-+func checkUnderInit(lv string, format string, args ...interface{}) bool {
++func checkUnderInit(lv string, format string, args ...interface{}) {
++	msg := fmt.Sprintf(format, args...)
++	_checkUnderInit(lv, msg)
++}
++
++
++func _checkUnderInit(lv string, args ...interface{}) bool {
 +	if underInit {
++		msg := ""
++		for _, arg := range args{
++			msg += fmt.Sprintf("%v", arg)
++		}
 +		ts := time.Now().Format(DefaultTimeFormat)
-+		msg := fmt.Sprintf(format, args...)
 +		level := strings.TrimSpace(strings.ToLower(lv))
 +		
-+		beforeInitLogText += strings.ToUpper(lvevel + "  ")[0:5] + " " + ts + " " + msg + "\n"
++		beforeInitLogText += strings.ToUpper(level + "  ")[0:5] + " " + ts + " " + msg + "\n"
 +		beforeInitLogJSON += fmt.Sprintf(`{"level":"%s","message","%s","timestamp":"%s"}`, level, msg, ts)
 +		return true
 +	}else{
@@ -1035,7 +1044,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +
 +
  func Debugf(format string, args ...interface{}) {
-+	if checkUnderInit("DEBUG", args...) {
++	if checkUnderInit("DEBUG", format, args...) {
 +		return
 +	}
 +	mayRedirect("DEBUG", format, args...)
@@ -1043,7 +1052,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Debugf(format, args...)
  }
  func Infof(format string, args ...interface{}) {
-+	if checkUnderInit("INFO ", args...) {
++	if checkUnderInit("INFO ", format, args...) {
 +		return
 +	}
 +	mayRedirect("INFO ", format, args...)
@@ -1051,7 +1060,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Infof(format, args...)
  }
  func Printf(format string, args ...interface{}) {
-+	if checkUnderInit("PRINT", args...) {
++	if checkUnderInit("PRINT", format, args...) {
 +		return
 +	}
 +	mayRedirect("PRINT", format, args...)
@@ -1059,7 +1068,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Printf(format, args...)
  }
  func Warnf(format string, args ...interface{}) {
-+	if checkUnderInit("WARN ", args...) {
++	if checkUnderInit("WARN ", format, args...) {
 +		return
 +	}
 +	mayRedirect("WARN ", format, args...)
@@ -1067,7 +1076,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Warnf(format, args...)
  }
  func Warningf(format string, args ...interface{}) {
-+	if checkUnderInit("WARN ", args...) {
++	if checkUnderInit("WARN ", format, args...) {
 +		return
 +	}
 +	mayRedirect("WARN ", format, args...)
@@ -1075,7 +1084,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Warningf(format, args...)
  }
  func Errorf(format string, args ...interface{}) {
-+	if checkUnderInit("ERROR", args...) {
++	if checkUnderInit("ERROR", format, args...) {
 +		return
 +	}
 +	mayRedirect("ERROR", format, args...)
@@ -1083,7 +1092,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Errorf(format, args...)
  }
  func Fatalf(format string, args ...interface{}) {
-+	if checkUnderInit("FATAL", args...) {
++	if checkUnderInit("FATAL", format, args...) {
 +		return
 +	}
 +	mayRedirect("FATAL", format, args...)
@@ -1091,7 +1100,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Fatalf(format, args...)
  }
  func Panicf(format string, args ...interface{}) {
-+	if checkUnderInit("PANIC", args...) {
++	if checkUnderInit("PANIC", format, args...) {
 +		return
 +	}
 +	mayRedirect("PANIC", format, args...)
@@ -1100,7 +1109,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  }
  
  func Debug(args ...interface{}) {
-+	if checkUnderInit("DEBUG", args...) {
++	if _checkUnderInit("DEBUG", "", args...) {
 +		return
 +	}
 +	_mayRedirect("DEBUG", args...)
@@ -1108,7 +1117,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Debug(args...)
  }
  func Info(args ...interface{}) {
-+	if checkUnderInit("INFO ", args...) {
++	if _checkUnderInit("INFO ", "", args...) {
 +		return
 +	}
 +	_mayRedirect("INFO ", args...)
@@ -1116,7 +1125,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Info(args...)
  }
  func Print(args ...interface{}) {
-+	if checkUnderInit("PRINT", args...) {
++	if _checkUnderInit("PRINT", "", args...) {
 +		return
 +	}
 +	_mayRedirect("PRINT", args...)
@@ -1124,7 +1133,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Print(args...)
  }
  func Warn(args ...interface{}) {
-+	if checkUnderInit("WARN ", args...) {
++	if _checkUnderInit("WARN ", "", args...) {
 +		return
 +	}
 +	_mayRedirect("WARN ", args...)
@@ -1132,7 +1141,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Warn(args...)
  }
  func Warning(args ...interface{}) {
-+	if checkUnderInit("WARN ", args...) {
++	if _checkUnderInit("WARN ", args...) {
 +		return
 +	}
 +	_mayRedirect("WARN ", args...)
@@ -1140,7 +1149,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Warning(args...)
  }
  func Error(args ...interface{}) {
-+	if checkUnderInit("ERROR", args...) {
++	if _checkUnderInit("ERROR", args...) {
 +		return
 +	}
 +	_mayRedirect("ERROR", args...)
@@ -1148,7 +1157,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Error(args...)
  }
  func Fatal(args ...interface{}) {
-+	if checkUnderInit("FATAL", args...) {
++	if _checkUnderInit("FATAL", args...) {
 +		return
 +	}
 +	_mayRedirect("FATAL", args...)
@@ -1156,7 +1165,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Fatal(args...)
  }
  func Panic(args ...interface{}) {
-+	if checkUnderInit("PANIC", args...) {
++	if _checkUnderInit("PANIC", args...) {
 +		return
 +	}
 +	_mayRedirect("PANIC", args...)
@@ -1164,7 +1173,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,8 +314,252 @@
+@@ -120,8 +323,252 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -1417,7 +1426,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	if logTheseApps() {
  		innerInit(false)
  		FsReady()
-@@ -131,6 +569,8 @@
+@@ -131,6 +578,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1426,7 +1435,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +603,7 @@
+@@ -163,6 +612,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1434,7 +1443,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -181,7 +622,7 @@
+@@ -181,7 +631,7 @@
  }
  
  // AddRSyslogHook only needs to be called separately when using the InitDeferedLogger
@@ -1443,7 +1452,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  // and then fails due to the network not being up
  // TODO: create a "defered SyslogHook that always gets initialised, but if it fails to connect, stores the logs
  //
-@@ -249,8 +690,10 @@
+@@ -249,8 +699,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
