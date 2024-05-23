@@ -47,7 +47,7 @@ if [ -n "$1" ];then
 	fi
 	sudo rm -rf ~/os
 	git-force-clone https://github.com/burmilla/os.git ~/os
-	git-force-clone https://github.com/google/shlex ~/os/vendor/github.com/google/shlex
+	git-force-clone https://github.com/google/shlex.git ~/os/vendor/github.com/google/shlex
 	cp -a ~/os/vendor/golang.org/x/sys/unix ~/unix
 	pushd ~/os
 	commit=${commits[$i]}
@@ -69,6 +69,7 @@ if [ -n "$1" ];then
 else
 	sudo rm -rf ~/os
 	git-force-clone https://github.com/burmilla/os.git ~/os
+	git-force-clone https://github.com/google/shlex.git ~/os/vendor/github.com/google/shlex
 	pushd ~/os
 fi
 
