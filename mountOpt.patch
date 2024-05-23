@@ -889,7 +889,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-23 18:07:15.977889400 +0900
++++ os.new/pkg/log/log.go	2024-05-23 18:18:59.397889400 +0900
 @@ -2,22 +2,50 @@
  
  import (
@@ -1257,8 +1257,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		if getParam("ROS_LOG_FORMAT") == "non-json" {
 +			logrus.SetFormatter(&formatter)
 +		}else{
-+			formatter := &JSONFormatter{
-+				FieldMap: FieldMap{
++			formatter := &logrus.JSONFormatter{
++				FieldMap: logrus.FieldMap{
 +					FieldKeyTime:  "@timestamp",
 +				 	FieldKeyLevel: "@level",
 +					FieldKeyMsg:   "@message",
