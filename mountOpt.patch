@@ -889,7 +889,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-23 22:38:13.810000000 +0900
++++ os.new/pkg/log/log.go	2024-05-23 22:41:51.000000000 +0900
 @@ -2,23 +2,54 @@
  
  import (
@@ -1109,7 +1109,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  }
  
  func Debug(args ...interface{}) {
-+	if _checkUnderInit("DEBUG", "", args...) {
++	if _checkUnderInit("DEBUG", args...) {
 +		return
 +	}
 +	_mayRedirect("DEBUG", args...)
@@ -1117,7 +1117,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Debug(args...)
  }
  func Info(args ...interface{}) {
-+	if _checkUnderInit("INFO ", "", args...) {
++	if _checkUnderInit("INFO ", args...) {
 +		return
 +	}
 +	_mayRedirect("INFO ", args...)
@@ -1125,7 +1125,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Info(args...)
  }
  func Print(args ...interface{}) {
-+	if _checkUnderInit("PRINT", "", args...) {
++	if _checkUnderInit("PRINT", args...) {
 +		return
 +	}
 +	_mayRedirect("PRINT", args...)
@@ -1133,7 +1133,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Print(args...)
  }
  func Warn(args ...interface{}) {
-+	if _checkUnderInit("WARN ", "", args...) {
++	if _checkUnderInit("WARN ", args...) {
 +		return
 +	}
 +	_mayRedirect("WARN ", args...)
@@ -1160,7 +1160,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +	if _checkUnderInit("FATAL", args...) {
 +		return
 +	}
-+	_mayRedirect("FATAL", args...)
++	_mayRedirect("FATAL", args..
 +	initFormat()
  	logrus.Fatal(args...)
  }
