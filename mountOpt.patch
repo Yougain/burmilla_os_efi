@@ -905,7 +905,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-24 16:25:01.317667300 +0900
++++ os.new/pkg/log/log.go	2024-05-24 16:29:14.597667300 +0900
 @@ -2,26 +2,59 @@
  
  import (
@@ -968,7 +968,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  
  const (
  	// PanicLevel level, highest level of severity. Logs and then calls panic with the
-@@ -63,53 +96,180 @@
+@@ -63,53 +96,179 @@
  	return Level(logrus.GetLevel())
  }
  
@@ -1046,7 +1046,6 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +
 +func InnerDebugf(format string, args ...interface{}){
 +	checkUnderInit("DEBUG", format, args...)
-+	initFormat()
 +	logrus.Debugf(format, args...)
 +}
 +
@@ -1149,7 +1148,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,8 +280,253 @@
+@@ -120,8 +279,253 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -1403,7 +1402,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	if logTheseApps() {
  		innerInit(false)
  		FsReady()
-@@ -131,6 +536,8 @@
+@@ -131,6 +535,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1412,7 +1411,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +570,7 @@
+@@ -163,6 +569,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1420,7 +1419,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -181,7 +589,7 @@
+@@ -181,7 +588,7 @@
  }
  
  // AddRSyslogHook only needs to be called separately when using the InitDeferedLogger
@@ -1429,7 +1428,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  // and then fails due to the network not being up
  // TODO: create a "defered SyslogHook that always gets initialised, but if it fails to connect, stores the logs
  //
-@@ -249,8 +657,10 @@
+@@ -249,8 +656,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
