@@ -77,10 +77,6 @@ before_sysinit(){
 	if [ ! -e "$OR" ];then
 		do_mount 7 /usr/share/ros/oem
 	fi
-	if [ -n "$DEBUG" -o -n "$INITRD_MOUNT" ];then
-		mkdir -p /usr/share/ros/initrd
-		mount --bind / /usr/share/ros/initrd
-	fi
 	mkdir -p /var/lib/rancher/conf/cloud-config.d
 	if [ -e $OR/var/lib/rancher/conf ];then # for booting system, need user_config.yml on state or inintrd drive
 		oemMounted=1
@@ -96,6 +92,15 @@ before_sysinit(){
 		cp -af $OR/etc/profile.d/timezone.sh /etc/profile.d
 	fi
 	if [ "$(stat -f -c '%T' /)" = "ramfs" ];then # boot from installer
+		installer_boot=1
+	fi
+	if [ -n "$installer_boot" -o -n "$DEBUG" -o -n "$INITRD_MOUNT" ];then
+		mkdir -p /usr/share/ros/initrd
+		mount --bind / /usr/share/ros/initrd
+	fi
+	if [ -n "$installer_boot" ];then # boot from installer
+		mkdir -p /usr/share/ros/initrd
+		mount --bind / /usr/share/ros/initrd
 		ln -s / /usr/share/ros/.oem_link # mimic root by using ramdisk because do not use oem
 		if [ -n "$oemMounted" ];then
 			yq e -i 'del(.runcmd)' $UF # no need when booting by installer
@@ -108,13 +113,6 @@ before_sysinit(){
 		d_ssh=
 	else # normal boot
 		ln -s oem /usr/share/ros/.oem_link # use oem drive
-        #set_oem_volume                                                              \
-        #    system-volumes:{/var/lib/rancher/conf,/var/log}                         \
-        #    container-data-volumes:/var/lib/{,m-}user-docker                        \
-        #    user-volumes:{/home,/opt,/var/lib/kubelet,/root}                        \
-        #    console:/etc/ssh
-        #set_volume                                                                  \
-        #    console:{/boot,/usr/bin/bashlib_y,/usr/bin/blkid2,/usr/bin/do_mount,/usr/share/bashlib_y,/etc/localtime,/etc/profile.d/timezone.sh}
 		do_mount 2 /boot/efi
 		do_mount 3
 		do_mount 5 /usr/share/ros/.state_top_lvl

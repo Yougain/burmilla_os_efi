@@ -905,7 +905,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-24 17:59:19.267667300 +0900
++++ os.new/pkg/log/log.go	2024-05-24 19:57:39.297667300 +0900
 @@ -2,26 +2,59 @@
  
  import (
@@ -968,7 +968,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  
  const (
  	// PanicLevel level, highest level of severity. Logs and then calls panic with the
-@@ -63,53 +96,179 @@
+@@ -63,53 +96,181 @@
  	return Level(logrus.GetLevel())
  }
  
@@ -1028,13 +1028,15 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		beforeInitLogJSON += fmt.Sprintf(`{"level":"%s","message","%s","time":"%s"}`,  strings.TrimSpace(strings.ToLower(lv)), msg, t.Format(JTimeFormat)) + "\n" 
 +	}else{
 +		if beforeInitLogText != "" {
-+			file, err := os.OpenFile("/var/log/boot/init_logger.log", os.O_WRONLY|os.O_APPEND, 0644)
-+			defer file.Close()
-+			if err == nil {
-+				if !isJSON {
-+					file.WriteString(beforeInitLogText)
-+				}else{
-+					file.WriteString(beforeInitLogJSON)
++			if os.Getenv("DEBUG") != "" {
++				file, err := os.OpenFile("/var/log/boot/init_logger.log", os.O_WRONLY|os.O_APPEND, 0644)
++				defer file.Close()
++				if err == nil {
++					if !isJSON {
++						file.WriteString(beforeInitLogText)
++					}else{
++						file.WriteString(beforeInitLogJSON)
++					}
 +				}
 +				beforeInitLogText = ""
 +				beforeInitLogJSON = ""
@@ -1148,7 +1150,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,6 +279,261 @@
+@@ -120,6 +281,278 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -1204,6 +1206,23 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +}
 +
 +func (f *jFormat) Format(entry *logrus.Entry) ([]byte, error) {
++  delete(entry.Data, "file")
++  delete(entry.Data, "func")
++  entry.Data["time"] = entry.Time
++  entry.Data["message"] = entry.Message
++  entry.Data["level"] = entry.Level
++  serialized, err := json.Marshal(entry.Data)
++    if err != nil {
++      return nil, fmt.Errorf("Failed to marshal fields to JSON, %v", err)
++    }
++  return append(serialized, '\n'), nil
++}
++
++type sFormat struct {
++    TimestampFormat string
++}
++
++func (f *sFormat) Format(entry *logrus.Entry) ([]byte, error) {
 +  delete(entry.Data, "file")
 +  delete(entry.Data, "func")
 +  entry.Data["time"] = entry.Time
@@ -1310,7 +1329,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +	if errb != nil {
 +		InnerDebugf("/bin/bash -s set: error = %v", errb)
 +	}else{
-+		InnerDebugf("/bin/bash -s set: out = %v", out)
++		InnerDebugf("/bin/bash -s set: out = %s", out)
 +	}
 +	if tz != "" {
 +		InnerDebugf("getBase from %s", tz)
@@ -1330,7 +1349,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +				InnerDebugf("/usr/bin/date: successfull = %v", out)
 +			}
 +		}else{
-+			InnerDebugf("date: successfull = %v", out)
++			InnerDebugf("date: successfull = %s", out)
 +		}
 +		if errb == nil {
 +			firstExecDate = true
@@ -1355,7 +1374,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		underInit = true
 +		InnerDebugf("start initFormat: base = %d", base)
 +		base = -1
-+		if getParam("ROS_LOG_FORMAT") == "non-json" {
++		if getParam("ROS_LOG_FORMAT") == "plain" {
 +			isJSON = false
 +			formatter := logFormat{}
 +			formatter.TimestampFormat = DefaultTimeFormat
@@ -1410,7 +1429,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  // InitLogger sets up Logging to log to /dev/kmsg and to Syslog
  func InitLogger() {
  	if logTheseApps() {
-@@ -131,6 +545,8 @@
+@@ -131,6 +564,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1419,7 +1438,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +579,7 @@
+@@ -163,6 +598,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1427,7 +1446,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -181,7 +598,7 @@
+@@ -181,7 +617,7 @@
  }
  
  // AddRSyslogHook only needs to be called separately when using the InitDeferedLogger
@@ -1436,7 +1455,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  // and then fails due to the network not being up
  // TODO: create a "defered SyslogHook that always gets initialised, but if it fails to connect, stores the logs
  //
-@@ -249,8 +666,10 @@
+@@ -249,8 +685,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
