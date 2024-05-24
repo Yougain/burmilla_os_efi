@@ -905,7 +905,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-24 17:24:08.427667300 +0900
++++ os.new/pkg/log/log.go	2024-05-24 17:54:49.317667300 +0900
 @@ -2,26 +2,59 @@
  
  import (
@@ -1310,11 +1310,11 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		InnerDebugf("getBase from %s", tz)
 +		out, errb := exec.Command("bash", "-c", "TZ=" + tz + " date +%z").Output()
 +		if errb != nil {
-+			InnerDebugf("date: error = %v / PATH=%s", errb, os.Getenv("PATH"))
-+			out, errb = exec.Command("bash", "-c", "TZ=" + tz + " /usr/bin/date +%z").Output()
++			InnerDebugf("date: error = %v / PATH='%s'", errb, os.Getenv("PATH"))
++			out, errb = exec.Command("/usr/bin/bash", "-c", "TZ=" + tz + " /usr/bin/date +%z").Output()
 +			if errb != nil {
-+				InnerDebugf("date: error = %v", errb)
-+				out, errb = exec.Command("bash", "-c", "TZ=" + tz + " /bin/date +%z").Output()
++				InnerDebugf("/usr/bin/date: error = %v", errb)
++				out, errb = exec.Command("/bin/bash", "-c", "TZ=" + tz + " /bin/date +%z").Output()
 +				if errb != nil {
 +					InnerDebugf("/bin/date: error = %v", errb)
 +				}else{
