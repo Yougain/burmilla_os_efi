@@ -905,7 +905,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-24 16:29:14.597667300 +0900
++++ os.new/pkg/log/log.go	2024-05-24 16:31:14.177667300 +0900
 @@ -2,26 +2,59 @@
  
  import (
@@ -1028,7 +1028,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		beforeInitLogJSON += fmt.Sprintf(`{"level":"%s","message","%s","time":"%s"}`,  strings.TrimSpace(strings.ToLower(lv)), msg, t.Format(JTimeFormat)) + "\n" 
 +	}else{
 +		if beforeInitLogText != "" {
-+			file, err := os.OpenFile("/var/log/boot/init_logger.log", os.O_CREAT|os.O_WRONLY|os.O_APPEND, 0644)
++			file, err := os.OpenFile("/var/log/boot/init_logger.log", os.O_WRONLY|os.O_APPEND, 0644)
 +			defer file.Close()
 +			if err == nil {
 +				if !isJSON {
