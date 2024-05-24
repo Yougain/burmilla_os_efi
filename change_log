@@ -1,3 +1,4 @@
+Fri May 24 18:01:45 JST 2024 3.2.53 g
 Tue Mar 19 07:17:43 JST 2024 2.73.7 remove ros installed initrd and replace to installer's initrd
 Tue Mar 19 07:17:18 JST 2024 2.73.6 remove ros installed initrd and replace to installer's initrd
 Mon Mar 18 22:05:30 JST 2024 2.73.5 Execute system-docker load -i "/installing/installer/rancheros/fullinstaller.tar.tz" before execiting "ros install"

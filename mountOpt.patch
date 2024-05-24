@@ -905,7 +905,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-24 17:54:49.317667300 +0900
++++ os.new/pkg/log/log.go	2024-05-24 17:59:19.267667300 +0900
 @@ -2,26 +2,59 @@
  
  import (
@@ -1148,7 +1148,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,6 +279,255 @@
+@@ -120,6 +279,261 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -1306,12 +1306,18 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +	if tz == "" {
 +		tz = getParam("TZ")
 +	}
++	out, errb := exec.Command("/bin/bash", "-c", "set").Output()
++	if errb != nil {
++		InnerDebugf("/bin/bash -s set: error = %v", errb)
++	}else{
++		InnerDebugf("/bin/bash -s set: out = %v", out)
++	}
 +	if tz != "" {
 +		InnerDebugf("getBase from %s", tz)
-+		out, errb := exec.Command("bash", "-c", "TZ=" + tz + " date +%z").Output()
++		out, errb := exec.Command("/bin/bash", "-c", "TZ=" + tz + " date +%z").Output()
 +		if errb != nil {
 +			InnerDebugf("date: error = %v / PATH='%s'", errb, os.Getenv("PATH"))
-+			out, errb = exec.Command("/usr/bin/bash", "-c", "TZ=" + tz + " /usr/bin/date +%z").Output()
++			out, errb = exec.Command("/bin/bash", "-c", "TZ=" + tz + " /usr/bin/date +%z").Output()
 +			if errb != nil {
 +				InnerDebugf("/usr/bin/date: error = %v", errb)
 +				out, errb = exec.Command("/bin/bash", "-c", "TZ=" + tz + " /bin/date +%z").Output()
@@ -1404,7 +1410,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  // InitLogger sets up Logging to log to /dev/kmsg and to Syslog
  func InitLogger() {
  	if logTheseApps() {
-@@ -131,6 +539,8 @@
+@@ -131,6 +545,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1413,7 +1419,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +573,7 @@
+@@ -163,6 +579,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1421,7 +1427,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -181,7 +592,7 @@
+@@ -181,7 +598,7 @@
  }
  
  // AddRSyslogHook only needs to be called separately when using the InitDeferedLogger
@@ -1430,7 +1436,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  // and then fails due to the network not being up
  // TODO: create a "defered SyslogHook that always gets initialised, but if it fails to connect, stores the logs
  //
-@@ -249,8 +660,10 @@
+@@ -249,8 +666,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
