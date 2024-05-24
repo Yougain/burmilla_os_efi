@@ -905,7 +905,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-24 15:12:10.117667300 +0900
++++ os.new/pkg/log/log.go	2024-05-24 15:42:36.067667300 +0900
 @@ -2,26 +2,59 @@
  
  import (
@@ -935,7 +935,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +	tmpfsMagic int64 = 0x01021994
 +	ramfsMagic int64 = 0x858458f6
 +	DefaultTimeFormat = "2006-01-02 Mon 15:04:05.000000 -0700"
-+	JFormat = "2006-01-02T15:04:05.000000000Z"
++	JTimeFormat = "2006-01-02T15:04:05.000000000Z"
 +	oemVarDir = "/usr/share/ros/oem/var/lib/rancher"
 +	oemVarDirInitrd = oemVarDir + "/initrd"
 +	initrdInfoDir = "/opt/rancher/initrd"
@@ -968,7 +968,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  
  const (
  	// PanicLevel level, highest level of severity. Logs and then calls panic with the
-@@ -63,53 +96,175 @@
+@@ -63,53 +96,179 @@
  	return Level(logrus.GetLevel())
  }
  
@@ -1010,9 +1010,9 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +	}
 +}
 +
-+func checkUnderInit(lv string, format string, args ...interface{}) bool{
++func checkUnderInit(lv string, format string, args ...interface{}) {
 +	msg := fmt.Sprintf(format, args...)
-+	return _checkUnderInit(lv, msg)
++	_checkUnderInit(lv, msg)
 +}
 +
 +
@@ -1022,20 +1022,24 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		for _, arg := range args{
 +			msg += fmt.Sprintf("%v", arg)
 +		}
-+		ts := time.Now().Format(DefaultTimeFormat)
++		t := time.Now()
 +		level := strings.TrimSpace(strings.ToLower(lv))
 +		
-+		beforeInitLogText += strings.ToUpper(level + "  ")[0:5] + " " + ts + " " + msg + "\n"
-+		beforeInitLogJSON += fmt.Sprintf(`{"level":"%s","message","%s","timestamp":"%s"}`, level, msg, ts) + "\n"
++		beforeInitLogText += strings.ToUpper(lv + "  ")[0:5] + " " + t.Format(DefaultTimeFormat) + " " + msg + "\n"
++		beforeInitLogJSON += fmt.Sprintf(`{"level":"%s","message","%s","time":"%s"}`,  strings.TrimSpace(strings.ToLower(lv)), msg, t.Format(JTimeFormat)) + "\n" 
 +	}else{
 +		if beforeInitLogText != "" {
-+			if !isJSON {
-+				fmt.Fprintln(os.Stderr, beforeInitLogText)
-+			}else{
-+				fmt.Fprintln(os.Stderr, beforeInitLogJSON)
++			file, err := os.OpenFile("/var/log/boot/init.log", os.O_WRONLY|os.O_APPEND, 0644)
++			defer file.Close()
++			if err == nil {
++				if !isJSON {
++					file.WriteString(beforeInitLogText)
++				}else{
++					file.WriteString(beforeInitLogJSON)
++				}
++				beforeInitLogText = ""
++				beforeInitLogJSON = ""
 +			}
-+			beforeInitLogText = ""
-+			beforeInitLogJSON = ""
 +		}
 +	}
 +}
@@ -1144,7 +1148,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,8 +275,253 @@
+@@ -120,8 +279,253 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -1398,7 +1402,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	if logTheseApps() {
  		innerInit(false)
  		FsReady()
-@@ -131,6 +531,8 @@
+@@ -131,6 +535,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1407,7 +1411,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +565,7 @@
+@@ -163,6 +569,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1415,7 +1419,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -181,7 +584,7 @@
+@@ -181,7 +588,7 @@
  }
  
  // AddRSyslogHook only needs to be called separately when using the InitDeferedLogger
@@ -1424,7 +1428,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  // and then fails due to the network not being up
  // TODO: create a "defered SyslogHook that always gets initialised, but if it fails to connect, stores the logs
  //
-@@ -249,8 +652,10 @@
+@@ -249,8 +656,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
