@@ -905,7 +905,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-24 10:57:24.297667300 +0900
++++ os.new/pkg/log/log.go	2024-05-24 14:10:01.327667300 +0900
 @@ -2,26 +2,58 @@
  
  import (
@@ -967,14 +967,14 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  
  const (
  	// PanicLevel level, highest level of severity. Logs and then calls panic with the
-@@ -63,53 +95,202 @@
+@@ -63,53 +95,205 @@
  	return Level(logrus.GetLevel())
  }
  
 +
 +func UntilLogWritable(lgFName string){
 +	preserveLogFN = lgFName
-+	fmt.Printf("setting log file, '%s'\n", preserveLogFN)
++	Infof("setting log file, '%s'\n", preserveLogFN)
 +}
 +
 +func ClearUntilLogWritable(){
@@ -986,6 +986,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		}else{
 +			file.WriteString(preservedLogsJ)
 +		}
++	}else{
++		
 +	}
 +	preserveLogFN = ""
 +}
@@ -1024,7 +1026,8 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		
 +		beforeInitLogText += strings.ToUpper(level + "  ")[0:5] + " " + ts + " " + msg + "\n"
 +		beforeInitLogJSON += fmt.Sprintf(`{"level":"%s","message","%s","timestamp":"%s"}`, level, msg, ts) + "\n"
-+		return true
++		//return true
++		return false
 +	}else{
 +		if beforeInitLogText != "" {
 +			if !isJSON {
@@ -1170,7 +1173,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,8 +301,253 @@
+@@ -120,8 +304,253 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -1315,7 +1318,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +
 +
 +func getBase() bool {
-+	Infof("getBase start", tz)
++	Infof("getBase start %s", tz)
 +	if tz == "" {
 +		tz = os.Getenv("TZ")
 +		if tz == "" {
@@ -1351,7 +1354,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +			if td[0:1] == "-" {
 +				base = -base
 +			}
-+			Infof("base = %i", base)
++			Infof("base = %d", base)
 +		}else{
 +			Infof("/bin/date: error = %v", errb)
 +		}
@@ -1424,7 +1427,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	if logTheseApps() {
  		innerInit(false)
  		FsReady()
-@@ -131,6 +557,8 @@
+@@ -131,6 +560,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1433,7 +1436,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +591,7 @@
+@@ -163,6 +594,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1441,7 +1444,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -181,7 +610,7 @@
+@@ -181,7 +613,7 @@
  }
  
  // AddRSyslogHook only needs to be called separately when using the InitDeferedLogger
@@ -1450,7 +1453,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  // and then fails due to the network not being up
  // TODO: create a "defered SyslogHook that always gets initialised, but if it fails to connect, stores the logs
  //
-@@ -249,8 +678,10 @@
+@@ -249,8 +681,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
