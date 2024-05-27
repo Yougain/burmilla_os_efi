@@ -495,7 +495,7 @@ $libs"
 			die "cannot get file form burmilla/os-console:$VER"
 		fi
 	fi
-	sudo docker cp $DID:/etc/ssh ./
+	sudo docker cp $DID:/etc/ssh ./etc
 	sudo docker kill $DID
 	if [ -d "$for_state" ];then
 		cp -a /usr/lib/locale $for_state/usr/lib
