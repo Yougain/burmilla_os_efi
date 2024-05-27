@@ -75,7 +75,7 @@ before_sysinit(){
 	info / is on $(stat -f -c '%T' /)
 	OR=/usr/share/ros/oem
 	if [ ! -e "$OR" ];then
-		do_mount 7 /usr/share/ros/oem
+		do_mount -v --salvage-btrfs 7 /usr/share/ros/oem
 	fi
 	mkdir -p /var/lib/rancher/conf/cloud-config.d
 	if [ -e $OR/var/lib/rancher/conf ];then # for booting system, need user_config.yml on state or inintrd drive
@@ -115,12 +115,14 @@ before_sysinit(){
 		ln -s oem /usr/share/ros/.oem_link # use oem drive
 		do_mount 2 /boot/efi
 		do_mount 3
-		do_mount 5 /usr/share/ros/.state_top_lvl
-		do_mount 7 /usr/share/ros/.oem_top_lvl
-		btrfs quota enable /usr/share/ros/.state_top_lvl
-		btrfs quota enable /usr/share/ros/.state_top_lvl/state_root
-		btrfs quota enable /usr/share/ros/.oem_top_lvl
-		btrfs quota enable /usr/share/ros/.oem_top_lvl/oem_root
+		if do_mount 5 /usr/share/ros/.state_top_lvl; then
+			btrfs quota enable /usr/share/ros/.state_top_lvl
+			btrfs quota enable /usr/share/ros/.state_top_lvl/state_root
+		fi
+		if do_mount 7 /usr/share/ros/.oem_top_lvl; then
+			btrfs quota enable /usr/share/ros/.oem_top_lvl
+			btrfs quota enable /usr/share/ros/.oem_top_lvl/oem_root
+		fi
 		d_ssh=$OR
 	fi
 	if [ "${BURMILLAOS_VER%%.*}" = "v1" ];then
