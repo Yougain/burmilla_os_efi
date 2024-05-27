@@ -485,10 +485,15 @@ $libs"
 	echo "TZ=UTC" > ./etc/profile.d/timezone.sh
 	
 	VER=${INITRD_FILE#initrd-}
-	sudo docker run --entrypoint /bin/sleep burmilla/os-console:$VER 1000000 &
+
 	DID=`sudo docker ps | grep $VER | awk '{print $1}'`
 	if [ -z "$DID" ];then
-		die "cannot get file form burmilla/os-console:$VER"
+		sudo docker run --entrypoint /bin/sleep burmilla/os-console:$VER 1000000 &
+		sleep 5
+		DID=`sudo docker ps | grep $VER | awk '{print $1}'`
+		if [ -z "$DID" ];then
+			die "cannot get file form burmilla/os-console:$VER"
+		fi
 	fi
 	sudo docker cp $DID:/etc/ssh ./
 	sudo docker kill $DID
