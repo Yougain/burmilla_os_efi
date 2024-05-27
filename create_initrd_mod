@@ -484,7 +484,7 @@ $libs"
 	mkdir -p ./etc/profile.d
 	echo "TZ=UTC" > ./etc/profile.d/timezone.sh
 	
-	VER=${INITRD_FILE#inintrd-}
+	VER=${INITRD_FILE#initrd-}
 	sudo docker run --entrypoint /bin/sleep burmilla/os-console:$VER 1000000 &
 	DID=`sudo docker ps | grep $VER | awk '{print $1}'`
 	if [ -z "$DID" ];then
