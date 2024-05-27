@@ -85,11 +85,15 @@ before_sysinit(){
 		fi
 		cp -av $OR/var/lib/rancher/conf/cloud-config.d /var/lib/rancher/conf
 		mkdir -p /etc
-		cp -af $OR/etc/ssh /etc
-		rm -f /etc/localtime
-		cp -a $OR/etc/localtime /etc
-		mkdir -p /etc/profile.d
-		cp -af $OR/etc/profile.d/timezone.sh /etc/profile.d
+		if [ -e $OR/etc/ssh ];then
+			cp -af $OR/etc/ssh /etc
+		fi
+		if [ -e $OR/etc/localtime ];then
+			cp -af $OR/etc/localtime /etc
+		fi
+		if [ -e $OR/etc/profile.d/timezone.sh ];then
+			cp -af $OR/etc/profile.d/timezone.sh /etc/profile.d
+		fi
 	fi
 	if [ "$(stat -f -c '%T' /)" = "ramfs" ];then # boot from installer
 		installer_boot=1

@@ -481,6 +481,17 @@ $libs"
 	cp -a /usr/share/zoneinfo ./usr/share
 	mkdir -p ./etc
 	cp -a /usr/share/zoneinfo/Etc/UTC ./etc/localtime
+	mkdir -p ./etc/profile.d
+	echo "TZ=UTC" > ./etc/profile.d/timezone.sh
+	
+	VER=${INITRD_FILE#inintrd-}
+	docker run --entrypoint /bin/sleep burmilla/os-console:$VER 1000000 &
+	DID=`docker ps | grep $VER | awk '{print $1}'`
+	if [ -z "$DID" ];then
+		die "cannot get file form burmilla/os-console:$VER"
+	fi
+	docker cp $DID:/etc/ssh ./
+	docker kill $DID
 	if [ -d "$for_state" ];then
 		cp -a /usr/lib/locale $for_state/usr/lib
 		cp -a /usr/share/zoneinfo $for_state/usr/share
