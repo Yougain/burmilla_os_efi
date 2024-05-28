@@ -2,6 +2,8 @@
 
 source bashlib_y
 
+org_dir=`readlink -f .`
+
 require create_initrd_mod ssh_do write_script
 require -s blkid2 do_mount initrd_support do_install chain_bak partNum2Dev args parse_func
 
@@ -1470,7 +1472,7 @@ fi
 
 
 UF=/installing/state/var/lib/rancher/conf/cloud-config.d/user_config.yml
-UFL=/installing/oem_part/var/lib/rancher/conf_lib/cloud-config.d/user_config.yml
+UFL=/installing/oem_part/var/lib/rancher/conf/cloud-config.d/user_config.yml
 
 ssh_sudo <<'FINAL'
 	dbv ${!SCRIPT_FILES[@]}
@@ -1648,9 +1650,14 @@ ssh_sudo <<'FINAL'
 			fi
 		done
 	SHUTDOWN
-	if ! cp -a write_script blkid2 do_mount chain_bak partNum2Dev args parse_func /installing/oem_part/opt/rancher/bin;then
-		die missing file
-	fi
+	pushd $org_dir
+	for i in write_script blkid2 do_mount chain_bak partNum2Dev args parse_func; do
+		msg=`cp -a $i /installing/oem_part/opt/rancher/bin 2>&1`
+		if [ $? != 0 ]; then
+			die $msg
+		fi
+	done
+	popd
 
 	chain_bak -10 --compare /installing/oem_part/opt/rancher/bin/start.sh{.0,}
 	chain_bak -10 --compare /installing/oem_part/opt/rancher/bin/shutdown.sh{.0,}
