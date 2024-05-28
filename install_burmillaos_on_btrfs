@@ -407,7 +407,13 @@ function extract_uc_params(){
 				echo "ERROR:Cannot download /usr/bin/yq" >&2
 			fi
 			UC_PORT=`sudo yq .rancher.ssh.port $F`
+			if [ "$UC_PORT" = "null" ];then
+				UC_PORT=
+			fi
 			UC_HNAME_FULL=`sudo yq .hostname $F`
+			if [ "$UC_HNAME_FULL" = "null" ];then
+				UC_HNAME_FULL="localhost.localdomain"
+			fi
 			UC_IPS=`sudo yq .rancher.network.interfaces $F| egrep -o "address:\s+[0-9.:]+" | awk '{print $2}'`
 			if [ -n "`sudo grep state_root $F`" ]; then
 				echo USER_CONFIG=1
@@ -1028,10 +1034,24 @@ sleep 5
 
 #blkid2
 
+if [ -n "$part_not_found" ];then
+	whiteBgRed_n "Do you create new partition table on $TARGET_DEV?"
+	yellowBgRed_n  "[y/n]: "
+	if ! ask_yes_no;then
+		die "User terminated."
+	fi
+	whiteBgRed_n "All data on $TARGET_DEV, will be lost."
+	whiteBgRed_n "Still create new?"
+	yellowBgRed_n  "[y/n]: "
+	if ! ask_yes_no;then
+		die "User terminated."
+	fi
+fi
+
 ssh_sudo <<'FINAL'
 	dbv ${!SCRIPT_FILES[@]}
 
-	apt_check gdisk lvm2 dosfstools btrfs-progs parted util-linux cpio gzip fdisk strace 2> /dev/null
+	apt_check gdisk lvm2 dosfstools btrfs-progs parted util-linux cpio gzip fdisk strace binutils 2> /dev/null
 	for l in RANCHER_BOOT RANCHER_OEM RANCHER_STATE RANCHER_SWAP; do
 		b2res="`blkid2 LABEL=$l > /dev/null`"
 		if ! [[ $b2res =~ (^|\ )$TARGET_DEV($|\ )  ]]; then
@@ -1039,69 +1059,111 @@ ssh_sudo <<'FINAL'
 			part_not_found=1
 		fi
 	done
-	if [ -n $part_not_found ];then
-		whiteBgRed_n "Do you create new partition table on $TARGET_DEV?"
-		yellowBgRed_n  "[y/n]: "
-		if ! ask_yes_no;then
-			die "User terminated."
-		fi
-		whiteBgRed_n "All data on $TARGET_DEV, will be lost."
-		whiteBgRed_n "Still create new?"
-		yellowBgRed_n  "[y/n]: "
-		if ! ask_yes_no;then
-			die "User terminated."
-		fi
+	info SWAP_PART_SIZE=[$SWAP_PART_SIZE]
+	info BOOT_PART_SIZE=[$BOOT_PART_SIZE]
+	info STATE_PART_SIZE=[$STATE_PART_SIZE]
+	info RESERVED_PART_SIZE=[$RESERVED_PART_SIZE]
+	if [ -n "$part_not_found" ];then
 		dd if=/dev/zero of=$TARGET_DEV bs=1G count=1
 		partprobe
-		gdisk $TARGET_DEV <<"	EOF"
-		2
-		x
-		l
-		1
-		m
-		n
-		1
-
-		2047
-		ef02
-		x
-		l
-		2048
-		m
-		n
-		2
-
-		+256M
-		ef00
-		n
-		3
-
-		$SWAP_PART_SIZE
-		8200
-		n
-		4
-
-		$BOOT_PART_SIZE
-		8300
-		n
-		5
-
-		$STATE_PART_SIZE
-		8300
-		n
-		6
-
-		$RESERVED_PART_SIZE
-		8300
-		n
-		7
-
-
-		8300
-		p
-		w
-		y
-		EOF
+		cat - <<EOF
+	2
+	x
+	l
+	1
+	m
+	n
+	1
+	
+	2047
+	ef02
+	x
+	l
+	2048
+	m
+	n
+	2
+	
+	+256M
+	ef00
+	n
+	3
+	
+	$SWAP_PART_SIZE
+	8200
+	n
+	4
+	
+	$BOOT_PART_SIZE
+	8300
+	n
+	5
+	
+	$STATE_PART_SIZE
+	8300
+	n
+	6
+	
+	$RESERVED_PART_SIZE
+	8300
+	n
+	7
+	
+	
+	8300
+	p
+	w
+	y
+	EOF
+		gdisk $TARGET_DEV <<EOF
+	2
+	x
+	l
+	1
+	m
+	n
+	1
+	
+	2047
+	ef02
+	x
+	l
+	2048
+	m
+	n
+	2
+	
+	+256M
+	ef00
+	n
+	3
+	
+	$SWAP_PART_SIZE
+	8200
+	n
+	4
+	
+	$BOOT_PART_SIZE
+	8300
+	n
+	5
+	
+	$STATE_PART_SIZE
+	8300
+	n
+	6
+	
+	$RESERVED_PART_SIZE
+	8300
+	n
+	7
+	
+	
+	8300
+	p
+	w
+	y
+	EOF
 		partprobe
 		gdisk -l $TARGET_DEV
 		sleep 1
@@ -1234,15 +1296,18 @@ ssh_sudo <<'FINAL'
 	# initialize oem drive if it does not exists, or remain contact
 	mkdir -p /installing/oem_top
 	if ! do_mount $TARGET_DEV7 -o subvol=/ /installing/oem_top; then
+		dbv
 		initOEM=1
 	fi
 	if [ ! -e /dev/disk/by-label/RANCHER_OEM ];then
+		dbv
 		initOEM=1
 	fi
 	if [ -n "$INITIALIZE_OEM" ]; then
 		initOEM=1
 	fi
 	if [ -n "$initOEM" ];then
+		umount /installing/oem_top
 		mkfs.btrfs -L RANCHER_OEM -f $TARGET_DEV7
 		partprobe
 		OEM_UUID_SUB=`/sbin/blkid $TARGET_DEV7| awk '{print $4}'`
@@ -1254,14 +1319,24 @@ ssh_sudo <<'FINAL'
 		btrfs subvolume create /installing/oem_top/oem_root
 		echo btrfs subvolume set-default `btrfs subvolume list /installing/oem_top|grep oem_root|awk '{print $2}'` /installing/oem_top
 		btrfs subvolume set-default `btrfs subvolume list /installing/oem_top|grep oem_root|awk '{print $2}'` /installing/oem_top
-		cp -a /installing/state_top/state_root/opt /installing/oem_top/oem_root
-		cp -a /installing/state_top/state_root/home /installing/oem_top/oem_root
+		if [ -e /installing/state_top/state_root/opt ];then
+			cp -a /installing/state_top/state_root/opt /installing/oem_top/oem_root
+		fi
+		if [ -e /installing/state_top/state_root/home ];then
+			cp -a /installing/state_top/state_root/home /installing/oem_top/oem_root
+		fi
 		mkdir -p /installing/oem_top/oem_root/var/lib/rancher/conf
 		cp -a /installing/state_top/state_root/var/lib/rancher/conf /installing/oem_top/oem_root/var/lib/rancher
-		cp -a /installing/state_top/state_root/var/lib/kubelet /installing/oem_top/oem_root/var/lib
+		if [ -e /installing/state_top/state_root/var/lib/kubelet ];then
+			cp -a /installing/state_top/state_root/var/lib/kubelet /installing/oem_top/oem_root/var/lib
+		fi
 		cp -a /root /installing/oem_top/oem_root
-		cp -a /installing/state_top/state_root/var/lib/user-docker /installing/oem_top/oem_root/var/lib
-		cp -a /installing/state_top/state_root/var/lib/m-user-docker /installing/oem_top/oem_root/var/lib
+		if [ -e /installing/state_top/state_root/var/lib/user-docker ];then
+			cp -a /installing/state_top/state_root/var/lib/user-docker /installing/oem_top/oem_root/var/lib
+		fi
+		if [ -e /installing/state_top/state_root/var/lib/m-user-docker ];then
+			cp -a /installing/state_top/state_root/var/lib/m-user-docker /installing/oem_top/oem_root/var/lib
+		fi
 		chmod 550 /installing/oem_top/oem_root/root
 		mkdir -p /installing/oem_top/oem_root/root/.ssh
 		chmod 700 /installing/oem_top/oem_root/root/.ssh
@@ -1305,10 +1380,13 @@ TZ=$TZ
 export TZ
 " > /installing/oem_top/oem_root/etc/profile.d/timezone.sh
 		fi
-		cp -a /var/lib/{,m-}user-docker /installing/oem_top/oem_root/var/lib
-		rm_all /installing/state_top/state_root/{root,opt,home,var/log}
+		if [ -e /var/lib/user-docker ];then
+			cp -a /var/lib/user-docker /installing/oem_top/oem_root/var/lib
+		fi
+		if [ -e /var/lib/m-user-docker ];then
+			cp -a /var/lib/m-user-docker /installing/oem_top/oem_root/var/lib
+		fi
 		rm_all /installing/state_top/state_root/var/lib/rancher/conf
-		rm_all /installing/state_top/state_root/var/lib/{,m-}user-docker
 		umount /installing/oem_top
 	else
 		OEM_UUID_SUB=`/sbin/blkid $TARGET_DEV7| awk '{print $4}'`
@@ -1357,7 +1435,7 @@ export TZ
 
 	store_env /installing/efipart/TOPIC "" # empty
 	
-	BURMILLAOS_VER="`egrep '^\s*VERSION:\s+[^\s]+' /var/log/boot/init.log | awk '{print $2}'`"
+	BURMILLAOS_VER="`ros --version|awk '{print $2}'`"
 	if [ -z "$BURMILLAOS_VER" ];then
 		die cannot detect burmillaos version of installer
 	fi
@@ -1376,7 +1454,7 @@ export TZ
 FINAL
 
 
-if [ "$?" = "1" ];then
+if [ "$__SSH_DO_RET" = 1 ];then
 	exit 1
 fi
 
@@ -1452,7 +1530,9 @@ ssh_sudo <<'FINAL'
 	info USER_CONFIG=$USER_CONFIG
 	DATE=`TZ=$TZL date`
 	mkdir -p /installing/oem_part/var/lib/rancher/conf/cloud-config.d
+	mkdir -p ${UF%/*}
 	touch $UF
+	cat $UF
 	yq e -i ".hostname=\"$HNAME_FULL\"" $UF
 	yq e -i ".rancher.ssh.port=\"$PORT\"" $UF
 	yq e -i ".rancher.network.dns.nameservers=$DNS_SETTINGS_YQ" $UF
@@ -1471,7 +1551,6 @@ ssh_sudo <<'FINAL'
 				break
 				;;
 			"null" )
-				echo null
 				yq e -i '.ssh_authorized_keys.['$i']|="'"$KEY"'"' $UF
 				break
 				;;
@@ -1481,9 +1560,9 @@ ssh_sudo <<'FINAL'
 			break
 		fi
 	done
-	if [ "`cat $UFL`" != "`cat $UF`" ];then
-		chain_bak -10 $UF $UFL
-	fi
+	info "`echo $UF`"
+	info "`cat $UF`"
+	chain_bak -10 --compare $UF $UFL
 
 	#local time
 	#etc_localtime=`find /installing/state -name "localtime"| awk '{print $1}'`
@@ -1559,7 +1638,7 @@ ssh_sudo <<'FINAL'
 			S_USER_SETTINGS="rancher.network.interfaces.$S_NET_DEV.address=$S_IP_NETMASK rancher.network.interfaces.$S_NET_DEV.gateway=$S_GATEWAY rancher.network.dns.nameservers=$S_DNS_SETTINGS_YQ"
 			if [ "`cat $S_UF`" != "$S_USER_SETTINGS" ]; then
 				echo "$S_USER_SETTINGS" > /opt/rancher/conf/grub/USER_SETTINGS.0
-				chain_bak -10 /opt/rancher/conf/grub/USER_SETTINGS{.0,}
+				chain_bak -10 --compare /opt/rancher/conf/grub/USER_SETTINGS{.0,}
 			fi
 		fi
 		mkdir -p $(__FILE_DIR__)/shutdown.d
@@ -1569,18 +1648,14 @@ ssh_sudo <<'FINAL'
 			fi
 		done
 	SHUTDOWN
-	if !cp -a write_script blkid2 do_mount chain_bak partNum2Dev args parse_func /installing/oem_part/opt/rancher/bin;then
+	if ! cp -a write_script blkid2 do_mount chain_bak partNum2Dev args parse_func /installing/oem_part/opt/rancher/bin;then
 		die missing file
 	fi
 
-	if [ "`cat /installing/oem_part/opt/rancher/bin/start.sh.0`" != "`cat /installing/oem_part/opt/rancher/bin/start.sh`" ];then
-		chain_bak -10 --compare /installing/oem_part/opt/rancher/bin/start.sh.0 /installing/oem_part/opt/rancher/bin/start.sh
-	fi
-	if [ "`cat /installing/oem_part/opt/rancher/bin/shutdown.sh.0`" != "`cat /installing/oem_part/opt/rancher/bin/shutdown.sh`" ];then
-		chain_bak -10 --compare /installing/oem_part/opt/rancher/bin/shutdown.sh.0 /installing/oem_part/opt/rancher/bin/shutdown.sh
-	fi
-	deb wc start.sh=`wc /installing/oem_part/opt/rancher/bin/start.sh`
-	deb wc start.sh\(awk 1\)=`wc /installing/oem_part/opt/rancher/bin/start.sh|awk '{print $1}'`
+	chain_bak -10 --compare /installing/oem_part/opt/rancher/bin/start.sh{.0,}
+	chain_bak -10 --compare /installing/oem_part/opt/rancher/bin/shutdown.sh{.0,}
+	dbv wc start.sh=`wc /installing/oem_part/opt/rancher/bin/start.sh`
+	dbv wc start.sh\(awk 1\)=`wc /installing/oem_part/opt/rancher/bin/start.sh|awk '{print $1}'`
 	if [ "`wc /installing/oem_part/opt/rancher/bin/start.sh|awk '{print $1}'`" = 1 ];then
 		die "failed to create start.sh"
 	fi
@@ -1589,11 +1664,9 @@ ssh_sudo <<'FINAL'
 	# preserve user setting for grub
 	mkdir -p /installing/oem_part/opt/rancher/conf/grub
 	if [ "$USER_SETTINGS_FOR_GRUB_SOURCE" != "`cat /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS 2> /dev/null`" ]; then
-		if [ -e /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS ];then
-			chain_bak -10 --compare /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS
-		fi
-		echo -n "$USER_SETTINGS_FOR_GRUB_SOURCE" > /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS
-		chmod +x /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS
+		echo -n "$USER_SETTINGS_FOR_GRUB_SOURCE" > /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS.0
+		chmod +x /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS.0
+		chain_bak -10 --compare /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS{.0,}
 	fi
 
 	mkdir -p /installing/efipart
@@ -1604,5 +1677,10 @@ ssh_sudo <<'FINAL'
 	umount /installing/oem_part
 
 FINAL
+
+if [ "$__SSH_DO_RET" = 1 ];then
+	exit 1
+fi
+
 
 ssh_sudo reboot

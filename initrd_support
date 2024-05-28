@@ -119,11 +119,11 @@ before_sysinit(){
 		ln -s oem /usr/share/ros/.oem_link # use oem drive
 		do_mount 2 /boot/efi
 		do_mount 3
-		if do_mount 5 /usr/share/ros/.state_top_lvl; then
+		if do_mount 5 -o subvol=/ /usr/share/ros/.state_top_lvl; then
 			btrfs quota enable /usr/share/ros/.state_top_lvl
 			btrfs quota enable /usr/share/ros/.state_top_lvl/state_root
 		fi
-		if do_mount 7 /usr/share/ros/.oem_top_lvl; then
+		if do_mount 7 -o subvol=/ /usr/share/ros/.oem_top_lvl; then
 			btrfs quota enable /usr/share/ros/.oem_top_lvl
 			btrfs quota enable /usr/share/ros/.oem_top_lvl/oem_root
 		fi

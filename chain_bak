@@ -21,6 +21,9 @@ chain_bak(){
 					"--diff")
 						diff=1
 						;;
+					"--compare")
+						diff=1
+						;;
 					"--help")
 						help=1
 						;;

@@ -1039,18 +1039,21 @@ function ask_yes_no {
 	else
 		return 1
 	fi
-	case "$ASK__YES_NO" in
+	dbv $ASK_YES_NO
+	case "$ASK_YES_NO" in
 		[Yy]*)
 			echo $ASK__YES_NO >&2
+			dbv
 			return 0
 			;;
 		[Nn]*)
 			echo $ASK__YES_NO >&2
+			dbv
 			return 1
 			;;
 	esac
 	local ANS
-	
+	dbv
 	while true; do
 		read ANS < $tty
 		case $ANS in
