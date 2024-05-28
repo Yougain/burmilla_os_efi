@@ -1608,6 +1608,7 @@ ssh_sudo <<'FINAL'
 		echo "LAST_BOOTED_VER=$LAST_BOOTED_VER"  > /mnt_efi_test/LAST_BOOTED_VER
 		umount /mnt_efi_test
 		rmdir /mnt_efi_test
+		rm -f /mnt_efi_test/TOPIC
 		
 		mkdir -p $(__FILE_DIR__)/startup.d
 		ls $(__FILE_DIR__)/startup.d/*.sh 2>/dev/null|sort|while read sh;do
