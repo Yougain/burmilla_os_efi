@@ -4,8 +4,8 @@ source bashlib_y
 
 org_dir=`readlink -f .`
 
-require create_initrd_mod ssh_do write_script
-require -s blkid2 do_mount initrd_support do_install chain_bak partNum2Dev args parse_func
+require create_initrd_mod ssh_do
+require -s write_script blkid2 do_mount initrd_support do_install chain_bak partNum2Dev args parse_func
 
 apt_check(){
 	local sudo
@@ -1054,9 +1054,10 @@ ssh_sudo <<'FINAL'
 	dbv ${!SCRIPT_FILES[@]}
 
 	apt_check gdisk lvm2 dosfstools btrfs-progs parted util-linux cpio gzip fdisk strace binutils 2> /dev/null
-	for l in RANCHER_BOOT RANCHER_OEM RANCHER_STATE RANCHER_SWAP; do
-		b2res="`blkid2 LABEL=$l > /dev/null`"
-		if ! [[ $b2res =~ (^|\ )$TARGET_DEV($|\ )  ]]; then
+	for l in RANCHER_BOOT RANCHER_OEM RANCHER_STATE RANCHER_SWAP;do
+		b2res="`blkid2 LABEL=$l 2> /dev/null`"
+		dbv $l $b2res $TARGET_DEV
+		if ! [[ $b2res =~ ^$TARGET_DEV[0-9]+ ]]; then
 			warn Partition, LABEL=$l, not found.
 			part_not_found=1
 		fi
@@ -1584,6 +1585,7 @@ ssh_sudo <<'FINAL'
 		# Please use ./startup.d/foo.sh
 		source /opt/rancher/bin/bashlib_y
 		require chain_bak do_mount
+		PATH=/opt/rancher/bin:/sbin:/usr/sbin:/bin:/usr/bin
 		
 		chain_bak -10 /var/log/boot/init.log /var/log/boot/init.log.0
 		if [  ! -e /bin/env ];then
@@ -1598,10 +1600,10 @@ ssh_sudo <<'FINAL'
 		# clear booting flags on all sibling drives
 		/sbin/blkid | grep LABEL=\"EFI\" | awk '{print substr($1, 1, length($1) - 1)}' | while read efi; do
 			mount $efi /mnt_efi_test
-			rm -f /mnt_efi_test/LAST_BOOTED_VER
+			rm -vf /mnt_efi_test/LAST_BOOTED_VER
 			umount /mnt_efi_test
 		done
-		/usr/bin/do_mount 2 /mnt_efi_test
+		do_mount 2 /mnt_efi_test
 		LAST_BOOTED_VER="`cat /proc/cmdline|egrep -o ' BURMILLAOS_VER=[^ ]+'|egrep -o '[^=]+$'`"
 		echo "LAST_BOOTED_VER=$LAST_BOOTED_VER"  > /mnt_efi_test/LAST_BOOTED_VER
 		umount /mnt_efi_test
@@ -1620,6 +1622,7 @@ ssh_sudo <<'FINAL'
 		# Please use ./shutdown.d/foo.sh
 		source /opt/rancher/bin/bashlib_y
 		require chain_bak
+		PATH=/opt/rancher/bin:/sbin:/usr/sbin:/bin:/usr/bin
 
 		S_UF=/var/lib/racher/conf/cloud-config.d/user_config.yml
 		S_HNAME_FULL=`yq e -i ".hostname" $S_UF`
@@ -1650,36 +1653,26 @@ ssh_sudo <<'FINAL'
 			fi
 		done
 	SHUTDOWN
-	pushd $org_dir
+
+	mkdir -p /installing/state/usr/bin
 	for i in write_script blkid2 do_mount chain_bak partNum2Dev args parse_func; do
-		msg=`cp -a $i /installing/oem_part/opt/rancher/bin 2>&1`
-		if [ $? != 0 ]; then
-			die $msg
-		fi
+		do_install $i /installing/state
+		cp -a /installing/state/usr/share/bashlib_y/* /installing/oem_part/opt/rancher/bin
 	done
-	popd
 
 	chain_bak -10 --compare /installing/oem_part/opt/rancher/bin/start.sh{.0,}
 	chain_bak -10 --compare /installing/oem_part/opt/rancher/bin/shutdown.sh{.0,}
-	dbv wc start.sh=`wc /installing/oem_part/opt/rancher/bin/start.sh`
-	dbv wc start.sh\(awk 1\)=`wc /installing/oem_part/opt/rancher/bin/start.sh|awk '{print $1}'`
-	if [ "`wc /installing/oem_part/opt/rancher/bin/start.sh|awk '{print $1}'`" = 1 ];then
-		die "failed to create start.sh"
-	fi
-
 
 	# preserve user setting for grub
 	mkdir -p /installing/oem_part/opt/rancher/conf/grub
-	if [ "$USER_SETTINGS_FOR_GRUB_SOURCE" != "`cat /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS 2> /dev/null`" ]; then
-		echo -n "$USER_SETTINGS_FOR_GRUB_SOURCE" > /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS.0
-		chmod +x /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS.0
-		chain_bak -10 --compare /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS{.0,}
-	fi
+	echo -n "$USER_SETTINGS_FOR_GRUB_SOURCE" > /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS.0
+	chmod +x /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS.0
+	chain_bak -10 --compare /installing/oem_part/opt/rancher/conf/grub/USER_SETTINGS{.0,}
 
 	mkdir -p /installing/efipart
 	do_mount 2  /installing/efipart
-	INITRD=$INITRD_FILE-mod
 	rm -f /installing/efipart/TOPIC
+	echo "LAST_BOOTED_VER=${INITRD_FILE#initrd-}"  > /installing/efipart/LAST_BOOTED_VER
 	umount /installing/efipart
 	umount /installing/oem_part
 

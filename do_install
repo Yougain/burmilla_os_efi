@@ -1,7 +1,6 @@
 # bash source
 
 function do_install(){
-	info DO_INSTALL_PWD=$DO_INSTALL_PWD
 	dbv $@
 	local to_inst=$1
 	if [ -z "$to_inst" ];then
@@ -100,9 +99,12 @@ ${to_inst##*/} \$@
 								dbv ${!FUNC_SOURCE[@]}
 								for fn in ${!FUNC_SOURCE[@]}; do
 									if [ "$fn" = "$to_inst" ];then
+										dbv $fn $to_inst
 										f="${FUNC_SOURCE[$to_inst]}"
+										dbv $f
 										if [ -n "$f" ];then
 											sid="${SCRIPT_FILES["$f"]}"
+											dbv $sid
 											if [ -n "$sid" ];then
 												local IFS=""
 												eval 'echo -E "${'$sid'[*]}"'  | $sudo tee "$d/usr/share/$SUPPORT_LIB_NAME/${f##*/}" > /dev/null

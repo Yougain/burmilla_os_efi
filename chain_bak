@@ -145,8 +145,7 @@ chain_bak(){
 				if [ -f "$1" -a -f "$2" ]; then
 					if diff "$1" "$2" >/dev/null; then
 						if [ ! -n "$force" ];then
-							err "No difference between '$1' '$2'. Stop operation."
-							info "You can use force option (-f) to overcome this limitation by deleting '$2'"
+							info "No difference between '$1' '$2'. Stop operation."
 							return 1
 						else
 							info "No difference between '$1' '$2'."
