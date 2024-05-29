@@ -132,7 +132,7 @@ get_top_iso(){
 			if [ -z "$current" ];then
 				current="$f"
 			else
-				if $1 $f $current
+				if $1 $f $current; then
 					current="$f"
 				fi
 			fi
