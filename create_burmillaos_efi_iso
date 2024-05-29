@@ -64,9 +64,6 @@ if vercmp $LATEST_STABLE $LATEST_RC;then
 	LATEST_RC=
 fi
 
-LATEST_B_VERSION=`cat version|awk '{print $1}'`
-
-
 # argument analysis
 while (( "$#" )); do
 	case "$1" in
@@ -94,6 +91,12 @@ while (( "$#" )); do
 		"--force" )
 			FORCE=1
 			;;
+		"--no-recompile" )
+			NO_RECOMPILE=1
+			;;
+		"--just-compiled" )
+			JUST_COMPILED=1
+			;;
 		* )
 			BURMILLAOS_VER=$1
 			if ! [[ $1 =~ -btrfs- ]];then
@@ -108,6 +111,65 @@ while (( "$#" )); do
 	shift
 done
 
+
+match_iso(){
+	eval "rver_$2="
+	eval "bver_$2="
+	if [[ $1 =~ burimillaos-(v[0-9]+(\.[0-9]+)+)-btrfs-([0-9]+(\.[0-9]+)+))\.iso ]];then
+		eval "rver_$2=\"${BASH_REMATCH[1]}\""
+		eval "bver_$2=\"${BASH_REMATCH[2]}\""
+		return 0
+	else
+		return 1
+	fi
+}
+
+get_top_iso(){
+	top_iso=
+	local current
+	for f in ~/burmillaos_iso/burimillaos-*.iso; do
+		if match_iso "$f"; then
+			if [ -z "$current" ];then
+				current="$f"
+			else
+				if $1 $f $current
+					current="$f"
+				fi
+			fi
+		fi
+	done
+	top_iso="$current"
+}
+
+by_bver(){
+	match_iso $1 a
+	match_iso $1 b
+	if vercmp bver_a bver_b
+		return 0
+	else
+		return 1
+	fi
+}
+
+by_timestamp(){
+	[ "$1" -nt "$2" ]
+}
+
+if [ -n "$NO_RECOMPILE" ];then
+	get_top_iso by_bver
+elif [ -n "$JUST_COMPILED" ];then
+	get_top_iso by_timestamp
+fi
+
+if [ -n "$top_iso" ];then
+	match_iso $top_iso m
+	LATEST_B_VERSION=$bver_m
+else
+	LATEST_B_VERSION=`cat version|awk '{print $1}'`
+fi
+
+echo $LATEST_B_VERSION
+exit 1
 
 if [ -z "$BURMILLAOS_VER" ]; then
 	BURMILLAOS_VER=$LATEST_STABLE-btrfs-$LATEST_B_VERSION
