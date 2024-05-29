@@ -156,7 +156,7 @@ get_top_iso(){
 
 for pfx in r b; do
 	eval '
-		by_bver(){
+		by_'$pfx'ver(){
 			match_iso $1 a
 			match_iso $1 b
 			if vercmp '$pfx'ver_a '$pfx'ver_b; then
