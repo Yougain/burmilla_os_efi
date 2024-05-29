@@ -180,7 +180,7 @@ fi
 if [ -n "$top_iso" ];then
 	match_iso $top_iso m
 	if vercmp $rver_t $rver_m;then
-		if ! ask_yes_no "'$rver_m-btrfs-$bver_m' is not based on latest version of Burmilla OS, '$rver_m'.\nStill compile it?"
+		if ! ask_yes_no "'$rver_m-btrfs-$bver_m' is not based on latest version of Burmilla OS, '$rver_m'.\nStill compile it?"; then
 			die "User terminated."
 		fi
 	fi
