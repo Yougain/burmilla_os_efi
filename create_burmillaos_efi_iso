@@ -10,6 +10,8 @@ fi
 
 require write_script vercmp
 
+ask_yes_no_color whiteBgRed yellowBgRed
+
 
 UB_CERT_URL=https://letsencrypt.org/certs/lets-encrypt-r3.pem
 BM_RELEASE_URL=https://github.com/burmilla/os/releases
@@ -97,6 +99,12 @@ while (( "$#" )); do
 		"--just-compiled" )
 			JUST_COMPILED=1
 			;;
+		"-y")
+			ASK_YES_NO=y
+			;;
+		"-force")
+			ASK_YES_NO=y
+			;;
 		* )
 			BURMILLAOS_VER=$1
 			if ! [[ $1 =~ -btrfs- ]];then
@@ -141,19 +149,27 @@ get_top_iso(){
 	top_iso="$current"
 }
 
-by_bver(){
-	match_iso $1 a
-	match_iso $1 b
-	if vercmp bver_a bver_b; then
-		return 0
-	else
-		return 1
-	fi
-}
+for pfx in r b; do
+	eval '
+		by_bver(){
+			match_iso $1 a
+			match_iso $1 b
+			if vercmp '$pfx'ver_a '$pfx'ver_b; then
+				return 0
+			else
+				return 1
+			fi
+		}
+	'
+done
 
 by_timestamp(){
 	[ "$1" -nt "$2" ]
 }
+
+get_top_iso by_rver
+match_iso $top_iso t
+
 
 if [ -n "$NO_RECOMPILE" ];then
 	get_top_iso by_bver
@@ -163,6 +179,11 @@ fi
 
 if [ -n "$top_iso" ];then
 	match_iso $top_iso m
+	if vercmp $rver_t $rver_m;then
+		if ! ask_yes_no "'$rver_m-btrfs-$bver_m' is not based on latest version of Burmilla OS, '$rver_m'.\nStill compile it?"
+			die "User terminated."
+		fi
+	fi
 	LATEST_B_VERSION=$bver_m
 else
 	LATEST_B_VERSION=`cat version|awk '{print $1}'`

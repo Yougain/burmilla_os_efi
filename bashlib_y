@@ -1032,6 +1032,12 @@ trap_int(){
 trap cleanup EXIT
 trap trap_int INT
 
+
+ask_yes_no_color(){
+	eval "__ask_yes_no_color_caption=\"$1\""
+	eval "__ask_yes_no_color_yn=\"$2\""
+}
+
 function ask_yes_no {
 	local tty
 	if [ -t 2 ];then
@@ -1039,15 +1045,19 @@ function ask_yes_no {
 	else
 		return 1
 	fi
+	if [ -n "$1" ];then
+		"$__ask_yes_no_color_caption"_n $1 >&2
+		"$__ask_yes_no_color_yn"_n [y/n]: >&2
+	fi
 	dbv $ASK_YES_NO
 	case "$ASK_YES_NO" in
 		[Yy]*)
-			echo $ASK__YES_NO >&2
+			echo $ASK_YES_NO >&2
 			dbv
 			return 0
 			;;
 		[Nn]*)
-			echo $ASK__YES_NO >&2
+			echo $ASK_YES_NO >&2
 			dbv
 			return 1
 			;;
