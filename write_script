@@ -24,7 +24,7 @@ function store_env(){
 		die "store_env: illeagal variable name, '$vname'"
 	fi
 	if [ -n "$useSource" ];then
-		if [ $# == 1 ];then
+		if [ $# = 1 ];then
 			local dec_vname=$vname
 		else
 			eval "local dec_vname=\"\$2\""
@@ -40,14 +40,12 @@ function store_env(){
 	else
 		local HEAD
 		local content
-		if [ $# == "1" ];then
+		if [ $# = "1" ];then
 			content="${!vname}"
 		else
 			content="$2"
 		fi
-		content="`echo -E $content |sed 's/\\\\/\\\\\\\\/'|sed -z 's/\\n/\\\\\\n/'`"
-		content="$vname=$content
-"
+		#content="`echo -E $content |sed 's/\\\\/\\\\\\\\/'|sed -z 's/\\n/\\\\\\n/'`"
 		HEAD="# GRUB Environment Block
 $vname=$content
 "
@@ -56,7 +54,7 @@ $vname=$content
 			die "Cannot store variable, '$vname' on grub environment file. Exceeding size limit (< 1024)"
 		fi
 		local RES=$HEAD${SHARPS:0:$((1024 - ${#HEAD}))}
-		echo -nE "$RES" | tee $1 > /dev/null
+		echo -n "$RES" | tee $1 > /dev/null
 	fi
 }
 
