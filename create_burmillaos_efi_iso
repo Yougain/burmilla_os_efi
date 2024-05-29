@@ -129,7 +129,9 @@ match_iso(){
 	if [[ $1 =~ burmillaos-((v[0-9]+(\.[0-9]+)+)(-(rc|beta)[0-9]+(\.[0-9]+)*|))-btrfs-([0-9]+(\.[0-9]+)+)\.iso ]];then
 		eval "rver_$2=\"${BASH_REMATCH[1]}\""
 		eval "bver_$2=\"${BASH_REMATCH[7]}\""
-		dbv ${!rver_$2} ${!bver_$2}
+		local x=rver_$2
+		local y=bver_$2
+		dbv ${!x} ${!y}
 		return 0
 	else
 		return 1
