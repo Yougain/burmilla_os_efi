@@ -123,6 +123,7 @@ done
 match_iso(){
 	eval "rver_$2="
 	eval "bver_$2="
+	dbv
 	if [[ $1 =~ burimillaos-((v[0-9]+(\.[0-9]+)+)(-(rc|beta)[0-9]+(\.[0-9]+)*|))-btrfs-([0-9]+(\.[0-9]+)+)\.iso ]];then
 		eval "rver_$2=\"${BASH_REMATCH[1]}\""
 		eval "bver_$2=\"${BASH_REMATCH[6]}\""
