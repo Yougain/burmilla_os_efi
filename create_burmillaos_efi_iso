@@ -144,7 +144,7 @@ get_top_iso(){
 by_bver(){
 	match_iso $1 a
 	match_iso $1 b
-	if vercmp bver_a bver_b
+	if vercmp bver_a bver_b; then
 		return 0
 	else
 		return 1
