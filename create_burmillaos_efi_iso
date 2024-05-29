@@ -177,7 +177,7 @@ if [ -n "$NO_RECOMPILE" ];then
 elif [ -n "$JUST_COMPILED" ];then
 	get_top_iso by_timestamp
 fi
-dbv
+dbv $top_iso
 if [ -n "$top_iso" ];then
 	match_iso $top_iso m
 	if vercmp $rver_t $rver_m;then
