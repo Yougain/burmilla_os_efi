@@ -1046,8 +1046,8 @@ function ask_yes_no {
 		return 1
 	fi
 	if [ -n "$1" ];then
-		"$__ask_yes_no_color_caption"_n $1 >&2
-		"$__ask_yes_no_color_yn"_n [y/n]: >&2
+		"$__ask_yes_no_color_caption"_n "$1 " >&2
+		"$__ask_yes_no_color_yn"_n "[y/n]: " >&2
 	fi
 	dbv $ASK_YES_NO
 	case "$ASK_YES_NO" in
