@@ -139,7 +139,8 @@ match_iso(){
 get_top_iso(){
 	top_iso=
 	local current
-	for f in ~/burmilla_os_iso/burimillaos-*.iso; do
+	dbv
+	for f in ~/burmilla_os_iso/burmillaos-*.iso; do
 		if match_iso "$f"; then
 			dbv $rver_ $bver_
 			if [ -z "$current" ];then
