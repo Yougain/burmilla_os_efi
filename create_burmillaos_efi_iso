@@ -92,6 +92,7 @@ while (( "$#" )); do
 			;;
 		"--force" )
 			FORCE=1
+			ASK_YES_NO=y
 			;;
 		"--no-recompile" )
 			NO_RECOMPILE=1
@@ -102,9 +103,10 @@ while (( "$#" )); do
 		"-y")
 			ASK_YES_NO=y
 			;;
-		"-force")
-			ASK_YES_NO=y
+		"--write-usb-only")
+			SKIP_RECREATE=1
 			;;
+		"
 		* )
 			BURMILLAOS_VER=$1
 			if ! [[ $1 =~ -btrfs- ]];then
