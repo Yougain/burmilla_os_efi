@@ -1672,7 +1672,7 @@ ssh_sudo <<'FINAL'
 	mkdir -p /installing/state/var/lib
 	mkdir -p /installing/state/etc/profile.d
 	ln -sf oem /installing/state/usr/share/ros/.oem_link
-	ln -sf /usr/share/ros/oem/var/log /installing/state/var/log
+	ln -sf /usr/share/ros/oem/var/log /installing/state/var
 	ln -sf /usr/share/ros/oem/var/lib/rancher/conf /installing/state/var/lib/rancher
 	ln -sf /usr/share/ros/oem/etc/localtime /installing/state/etc
 	ln -sf /usr/share/ros/oem/etc/ssh /installing/state/etc

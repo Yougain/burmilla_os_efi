@@ -89,7 +89,7 @@ before_sysinit(){
 		if [ -e $OR/var/lib/rancher/conf ];then # use oem drive
 			mkdir -p /var/lib/rancher
 			mkdir -p /etc/profile.d
-			ln -sf $OR/var/log /var/log
+			ln -sf $OR/var/log /var
 			cp -af $OR/var/lib/rancher/conf /var/lib/rancher
 			ln -sf $OR/etc/localtime /etc
 			ln -sf $OR/etc/ssh /etc

@@ -910,7 +910,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-30 18:48:35.402000500 +0900
++++ os.new/pkg/log/log.go	2024-05-30 22:41:22.892000500 +0900
 @@ -2,26 +2,59 @@
  
  import (
@@ -1452,15 +1452,6 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -181,7 +618,7 @@
- }
- 
- // AddRSyslogHook only needs to be called separately when using the InitDeferedLogger
--// init.Main can't read /proc/cmdline at start.
-+// init.Main can't read /proc/cline at start.
- // and then fails due to the network not being up
- // TODO: create a "defered SyslogHook that always gets initialised, but if it fails to connect, stores the logs
- //
 @@ -249,8 +686,10 @@
  
  	if debugThisLogger {
