@@ -820,11 +820,6 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
 +	
  	return cfg, nil
  }
-diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/switchroot.go os.new/pkg/init/prepare/switchroot.go
---- os.prev/pkg/init/prepare/switchroot.go	1970-01-01 09:00:00.000000000 +0900
-+++ os.new/pkg/init/prepare/switchroot.go	2024-05-30 19:15:33.822000500 +0900
-@@ -0,0 +1 @@
-+
 diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg/init/switchroot/switchroot.go
 --- os.prev/pkg/init/switchroot/switchroot.go	2024-03-14 20:29:45.967485300 +0900
 +++ os.new/pkg/init/switchroot/switchroot.go	2024-05-30 20:46:17.212000500 +0900
