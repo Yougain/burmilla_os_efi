@@ -411,14 +411,14 @@ replace_debug(){
 	local lnc=1
 	local f=${1##*/}
 	local IFS=""
-	while read ln;do
-		echo "$ln" | sed -E 's/^([ \t]*debug[ \t])/\1'$f:$lnc' /g'
+	while read -r ln;do
+		echo -E "$ln" | sed -E 's/^([ \t]*debug[ \t])/\1'$f:$lnc' /g'
 		((++lnc))
 	done < $1
 }
 
 
-cp $(__FILE_DIR__)/grub.cfg $PD/boot/grub/grub.cfg
+replace_debug $(__FILE_DIR__)/grub.cfg > $PD/boot/grub/grub.cfg
 
 ISO_UUID_ARG="`date -u +%Y-%m-%d-%H-%M-%S-00`"
 ISO_UUID="UUID=$ISO_UUID_ARG"
