@@ -418,7 +418,7 @@ replace_debug(){
 }
 
 
-replace_debug $(__FILE_DIR__)/grub.cfg | tee $PD/boot/grub/grub.cfg > /dev/null
+cp $(__FILE_DIR__)/grub.cfg $PD/boot/grub/grub.cfg
 
 ISO_UUID_ARG="`date -u +%Y-%m-%d-%H-%M-%S-00`"
 ISO_UUID="UUID=$ISO_UUID_ARG"
