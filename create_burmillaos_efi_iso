@@ -183,13 +183,14 @@ by_timestamp(){
 info debug start
 dbv
 
-get_top_iso by_bver
+get_top_iso by_rver
 
 dbv $top_iso
 
 match_iso $top_iso t
 dbv $rver_t
 
+top_iso=
 
 if [ -n "$NO_RECOMPILE" ];then
 	get_top_iso by_bver
