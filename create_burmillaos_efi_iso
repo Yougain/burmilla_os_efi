@@ -169,6 +169,9 @@ by_timestamp(){
 	[ "$1" -nt "$2" ]
 }
 
+info debug start
+dbv
+
 get_top_iso by_rver
 
 dbv $top_iso
