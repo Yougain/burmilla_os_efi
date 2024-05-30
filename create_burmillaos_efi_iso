@@ -143,6 +143,7 @@ get_top_iso(){
 			else
 				if $1 $f $current; then
 					current="$f"
+					dbv $1 $f $current
 				fi
 			fi
 		fi
