@@ -150,17 +150,28 @@ get_top_iso(){
 	top_iso="$current"
 }
 
-for pfx in r b; do
+for pfx in "r b" "b r"; do
+	pfx=($pfx)
 	eval '
-		by_'$pfx'ver(){
+		by_'${pfx[0]}'ver(){
 			match_iso $1 a
 			match_iso $2 b
-			dbv vercmp $1 $2 $bver_a $bver_b $rver_a $rver_b $'$pfx'ver_a $'$pfx'ver_b
-			if vercmp $'$pfx'ver_a $'$pfx'ver_b; then
-				return 0
-			else
-				return 1
-			fi
+			vercmp $'${pfx[0]}'ver_a $'${pfx[0]}'ver_b
+			case $? in
+				0)
+					return 0
+					;;
+				1)
+					return 1
+					;;
+				2) # same
+					if vercmp $'${pfx[1]}'ver_a $'${pfx[1]}'ver_b;then
+						return 0
+					else
+						return 1
+					fi
+					;;
+			esac
 		}
 	'
 done
@@ -172,7 +183,7 @@ by_timestamp(){
 info debug start
 dbv
 
-get_top_iso by_rver
+get_top_iso by_bver
 
 dbv $top_iso
 
