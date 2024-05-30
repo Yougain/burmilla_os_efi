@@ -155,7 +155,7 @@ for pfx in r b; do
 		by_'$pfx'ver(){
 			match_iso $1 a
 			match_iso $2 b
-			dbv vercmp $1 $2 $bvar_a $bver_b $rvar_a $rver_b $'$pfx'ver_a $'$pfx'ver_b
+			dbv vercmp $1 $2 $bver_a $bver_b $rver_a $rver_b $'$pfx'ver_a $'$pfx'ver_b
 			if vercmp $'$pfx'ver_a $'$pfx'ver_b; then
 				return 0
 			else
