@@ -1473,7 +1473,7 @@ replace_debug(){
 }
 
 
-replace_debug $(__FILE_DIR__)/grub.cfg | ssh_sudo tee /installing/efipart/EFI/BOOT/grub.cfg > /dev/null
+cat $(__FILE_DIR__)/grub.cfg | ssh_sudo tee /installing/efipart/EFI/BOOT/grub.cfg > /dev/null
 
 dbv $INITRD_FILE
 
