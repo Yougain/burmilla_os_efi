@@ -820,9 +820,14 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/prepare.go os.new/pkg/init/
 +	
  	return cfg, nil
  }
+diff -Naur '--exclude=.git' os.prev/pkg/init/prepare/switchroot.go os.new/pkg/init/prepare/switchroot.go
+--- os.prev/pkg/init/prepare/switchroot.go	1970-01-01 09:00:00.000000000 +0900
++++ os.new/pkg/init/prepare/switchroot.go	2024-05-30 19:15:33.822000500 +0900
+@@ -0,0 +1 @@
++
 diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg/init/switchroot/switchroot.go
 --- os.prev/pkg/init/switchroot/switchroot.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/switchroot/switchroot.go	2024-05-19 07:33:18.680455000 +0900
++++ os.new/pkg/init/switchroot/switchroot.go	2024-05-30 20:46:17.212000500 +0900
 @@ -4,9 +4,10 @@
  	"fmt"
  	"io/ioutil"
@@ -905,7 +910,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-24 19:57:39.297667300 +0900
++++ os.new/pkg/log/log.go	2024-05-30 18:48:35.402000500 +0900
 @@ -2,26 +2,59 @@
  
  import (
@@ -968,7 +973,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  
  const (
  	// PanicLevel level, highest level of severity. Logs and then calls panic with the
-@@ -63,53 +96,181 @@
+@@ -63,53 +96,182 @@
  	return Level(logrus.GetLevel())
  }
  
@@ -1049,6 +1054,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +func InnerDebugf(format string, args ...interface{}){
 +	checkUnderInit("DEBUG", format, args...)
 +	logrus.Debugf(format, args...)
++	logrus.Printf(format, args...)
 +}
 +
 +
@@ -1150,7 +1156,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,6 +281,278 @@
+@@ -120,6 +282,278 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -1429,7 +1435,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  // InitLogger sets up Logging to log to /dev/kmsg and to Syslog
  func InitLogger() {
  	if logTheseApps() {
-@@ -131,6 +564,8 @@
+@@ -131,6 +565,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1438,7 +1444,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +598,7 @@
+@@ -163,6 +599,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1446,7 +1452,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -181,7 +617,7 @@
+@@ -181,7 +618,7 @@
  }
  
  // AddRSyslogHook only needs to be called separately when using the InitDeferedLogger
@@ -1455,7 +1461,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  // and then fails due to the network not being up
  // TODO: create a "defered SyslogHook that always gets initialised, but if it fails to connect, stores the logs
  //
-@@ -249,8 +685,10 @@
+@@ -249,8 +686,10 @@
  
  	if debugThisLogger {
  		if deferedHook {

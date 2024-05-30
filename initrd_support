@@ -77,24 +77,6 @@ before_sysinit(){
 	if [ ! -e "$OR" ];then
 		do_mount -v --salvage-btrfs 7 /usr/share/ros/oem
 	fi
-	mkdir -p /var/lib/rancher/conf/cloud-config.d
-	if [ -e $OR/var/lib/rancher/conf ];then # for booting system, need user_config.yml on state or inintrd drive
-		oemMounted=1
-		if [ -e $OR/var/lib/rancher/conf/cloud-config.yml ];then
-			cp -av $OR/var/lib/rancher/conf/cloud-config.yml /var/lib/rancher/conf
-		fi
-		cp -av $OR/var/lib/rancher/conf/cloud-config.d /var/lib/rancher/conf
-		mkdir -p /etc
-		if [ -e $OR/etc/ssh ];then
-			cp -af $OR/etc/ssh /etc
-		fi
-		if [ -e $OR/etc/localtime ];then
-			cp -af $OR/etc/localtime /etc
-		fi
-		if [ -e $OR/etc/profile.d/timezone.sh ];then
-			cp -af $OR/etc/profile.d/timezone.sh /etc/profile.d
-		fi
-	fi
 	if [ "$(stat -f -c '%T' /)" = "ramfs" ];then # boot from installer
 		installer_boot=1
 	fi
@@ -103,10 +85,15 @@ before_sysinit(){
 		mount --bind / /usr/share/ros/initrd
 	fi
 	if [ -n "$installer_boot" ];then # boot from installer
-		mkdir -p /usr/share/ros/initrd
-		mount --bind / /usr/share/ros/initrd
 		ln -s / /usr/share/ros/.oem_link # mimic root by using ramdisk because do not use oem
-		if [ -n "$oemMounted" ];then
+		if [ -e $OR/var/lib/rancher/conf ];then # use oem drive
+			mkdir -p /var/lib/rancher
+			mkdir -p /etc/profile.d
+			ln -sf $OR/var/log /var/log
+			cp -af $OR/var/lib/rancher/conf /var/lib/rancher
+			ln -sf $OR/etc/localtime /etc
+			ln -sf $OR/etc/ssh /etc
+			ln -sf $OR/etc/profile.d/timezone.sh /etc/profile.d
 			yq e -i 'del(.runcmd)' $UF # no need when booting by installer
 		elif [ -n "$TZ" ]; then # boot by installer with oem drive missing
 			touch $UF
@@ -116,7 +103,6 @@ before_sysinit(){
 		fi
 		d_ssh=
 	else # normal boot
-		ln -s oem /usr/share/ros/.oem_link # use oem drive
 		do_mount 2 /boot/efi
 		do_mount 3
 		if do_mount 5 -o subvol=/ /usr/share/ros/.state_top_lvl; then
