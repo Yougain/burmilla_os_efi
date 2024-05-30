@@ -457,7 +457,7 @@ sudo mkdir -p $BOOT_IMG_DATA/EFI/boot
 
 sudo cp -av $UD/EFI/boot/*  $BOOT_IMG_DATA/EFI/boot
 sudo cp -av $UD/boot/* $BOOT_IMG_DATA/boot
-#sudo cp -av $PD/boot/grub/grub.cfg $BOOT_IMG_DATA/EFI/boot
+sudo cp -av $PD/boot/grub/grub.cfg $BOOT_IMG_DATA/EFI/boot
 sudo cp -av $PD/boot/grub/grub.cfg $BOOT_IMG_DATA/boot/grub
 sudo cp -av $UD/ubuntu $BOOT_IMG_DATA
 
