@@ -138,6 +138,7 @@ get_top_iso(){
 	local current
 	for f in /home/$SUDO_USER/burmilla_os_iso/burmillaos-*.iso; do
 		if match_iso "$f"; then
+			dbv $f
 			if [ -z "$current" ];then
 				current="$f"
 			else
