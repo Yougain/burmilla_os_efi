@@ -449,16 +449,8 @@ sudo mount $BOOT_IMG $BOOT_IMG_DATA
 sudo mkdir -p $BOOT_IMG_DATA/efi/boot
 sudo mkdir -p $BOOT_IMG_DATA/boot
 
-#cat - > "$T"/early-config.cfg <<'END'
-#search --no-floppy --set=root --fs-uuid $ISO_UUID_ARG
-#configfile /boot/grub/grub.cfg
-#END
-
-
 sudo cp -av $UD/EFI/boot/*  $BOOT_IMG_DATA/efi/boot
-sudo cp -av $UD/boot/* $BOOT_IMG_DATA/boot
 sudo cp -av $PD/boot/grub/grub.cfg $BOOT_IMG_DATA/efi/boot
-sudo cp -av $PD/boot/grub/grub.cfg $BOOT_IMG_DATA/boot/grub
 
 sudo umount $BOOT_IMG_DATA
 sudo rm -rf $BOOT_IMG_DATA
