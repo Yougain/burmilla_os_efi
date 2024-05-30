@@ -5,7 +5,7 @@ source bashlib_y
 org_dir=`readlink -f .`
 
 require create_initrd_mod ssh_do
-require -s write_script blkid2 do_mount initrd_support do_install chain_bak partNum2Dev args parse_func
+require -s write_script blkid2 do_mount initrd_support do_install chain_bak partNum2Dev args parse_func trim_indent
 
 apt_check(){
 	local sudo
@@ -1692,6 +1692,7 @@ ssh_sudo <<'FINAL'
 
 FINAL
 
+dbv $__SSH_DO_RET
 if [ "$__SSH_DO_RET" = 1 ];then
 	exit 1
 fi
