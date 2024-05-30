@@ -1259,6 +1259,7 @@ ssh_sudo <<'FINAL'
 	mkdir -p /installing/efipart
 	mount $TARGET_DEV2 /installing/efipart
 	cp -r /installing/installer/EFI /installing/efipart
+	mkdir -p /installing/efipart/boot/grub # very important: erase errors of '/boot', '/,disk/info' and '/.disk/mini-info'
 
 	# move all files from $TARGET_DEV4 (initial state drive) to $TARGET_DEV5 (state drive) first
 	mkdir -p /installing/boot_dev
@@ -1466,14 +1467,14 @@ replace_debug(){
 	local lnc=1
 	local f=${1##*/}
 	local IFS=""
-	while read ln;do
-		echo "$ln" | sed -E 's/^([ \t]*debug[ \t])/\1'$f:$lnc' /g'
+	while read -r ln;do
+		echo -E "$ln" | sed -E 's/^([ \t]*debug[ \t])/\1'$f:$lnc' /g'
 		((++lnc))
 	done < $1
 }
 
 
-cat $(__FILE_DIR__)/grub.cfg | ssh_sudo tee /installing/efipart/EFI/BOOT/grub.cfg > /dev/null
+replace_debug $(__FILE_DIR__)/grub.cfg | ssh_sudo tee /installing/efipart/EFI/BOOT/grub.cfg > /dev/null
 
 dbv $INITRD_FILE
 
