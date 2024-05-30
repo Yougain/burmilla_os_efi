@@ -91,9 +91,9 @@ before_sysinit(){
 			mkdir -p /etc/profile.d
 			ln -sf $OR/var/log /var
 			cp -af $OR/var/lib/rancher/conf /var/lib/rancher
-			cp -sf $OR/etc/localtime /etc
-			cp -sf $OR/etc/ssh /etc
-			cp -sf $OR/etc/profile.d/timezone.sh /etc/profile.d
+			ln -sf $OR/etc/localtime /etc
+			ln -sf $OR/etc/ssh /etc
+			ln -sf $OR/etc/profile.d/timezone.sh /etc/profile.d
 			yq e -i 'del(.runcmd)' $UF # no need when booting by installer
 		elif [ -n "$TZ" ]; then # boot by installer with oem drive missing
 			touch $UF
