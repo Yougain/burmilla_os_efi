@@ -138,13 +138,11 @@ get_top_iso(){
 	local current
 	for f in /home/$SUDO_USER/burmilla_os_iso/burmillaos-*.iso; do
 		if match_iso "$f"; then
-			dbv $f
 			if [ -z "$current" ];then
 				current="$f"
 			else
 				if $1 $f $current; then
 					current="$f"
-					dbv $1 $f $current
 				fi
 			fi
 		fi
@@ -157,6 +155,7 @@ for pfx in r b; do
 		by_'$pfx'ver(){
 			match_iso $1 a
 			match_iso $2 b
+			dbv vercmp $'$pfx'ver_a $'$pfx'ver_b
 			if vercmp $'$pfx'ver_a $'$pfx'ver_b; then
 				return 0
 			else
