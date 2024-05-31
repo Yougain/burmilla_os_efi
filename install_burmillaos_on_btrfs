@@ -1671,7 +1671,6 @@ ssh_sudo <<'FINAL'
 	mkdir -p /installing/state/usr/share/ros
 	mkdir -p /installing/state/var/lib
 	mkdir -p /installing/state/etc/profile.d
-	ln -sf oem /installing/state/usr/share/ros/.oem_link
 
 	mkdir -p /installing/state/usr/bin
 	for i in write_script blkid2 do_mount chain_bak partNum2Dev args parse_func write_script trim_indent; do

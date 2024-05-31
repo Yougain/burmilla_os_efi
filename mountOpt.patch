@@ -624,7 +624,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/dfs/scratch.go os.new/pkg/dfs/scratch.go
  		return cmd, err
 diff -Naur '--exclude=.git' os.prev/pkg/init/configfiles/configfiles.go os.new/pkg/init/configfiles/configfiles.go
 --- os.prev/pkg/init/configfiles/configfiles.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/configfiles/configfiles.go	2024-05-24 08:10:22.577667300 +0900
++++ os.new/pkg/init/configfiles/configfiles.go	2024-05-31 14:02:13.504401600 +0900
 @@ -55,6 +55,7 @@
  			ConfigFiles[name] = content
  		}
@@ -641,14 +641,32 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/configfiles/configfiles.go os.new/p
  	}
  	if err := os.MkdirAll(config.VarRancherDir, os.ModeDir|0755); err != nil {
  		log.Error(err)
-@@ -86,6 +88,7 @@
+@@ -85,8 +87,24 @@
+ 	if err := os.Chmod(config.VarRancherDir, os.ModeDir|0755); err != nil {
  		log.Error(err)
  	}
++	if ! log.IsInitrd() {
++		src := "/usr/share/ros/oem/var/log"
++		target := "/var/log"
++		if _, err := os.Stat(src); err == nil {
++			os.MkdirAll("/var", os.ModeDir|0755)
++			if err := os.Remove(target); err != nil {
++				log.Infof("%s does not exist", target)
++			}
++
++			if err := os.Symlink(src, target); err != nil{
++				log.Errorf("Cannot create symlink, %s -> %s", src, target)
++			}else{
++				log.Infof("Created symlink, %s -> %s", src, target)
++			}
++		}
++	}
  	log.FsReady()
+-	log.Debugf("WARNING: switchroot and mount OEM2 and BOOT phases not written to log file")
 +	log.ClearUntilLogWritable()
- 	log.Debugf("WARNING: switchroot and mount OEM2 and BOOT phases not written to log file")
  
  	return cfg, nil
+ }
 diff -Naur '--exclude=.git' os.prev/pkg/init/fsmount/fsmount.go os.new/pkg/init/fsmount/fsmount.go
 --- os.prev/pkg/init/fsmount/fsmount.go	2024-03-14 20:29:45.967485300 +0900
 +++ os.new/pkg/init/fsmount/fsmount.go	2024-05-22 22:27:34.341263300 +0900
@@ -905,7 +923,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-30 22:41:22.892000500 +0900
++++ os.new/pkg/log/log.go	2024-05-31 13:50:12.684401600 +0900
 @@ -2,26 +2,59 @@
  
  import (
@@ -1156,7 +1174,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  }
  
 +
-+func isInitrd() bool {
++func IsInitrd() bool {
 +	var stat syscall.Statfs_t
 +	syscall.Statfs("/", &stat)
 +	return int64(stat.Type) == tmpfsMagic || int64(stat.Type) == ramfsMagic
@@ -1418,7 +1436,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		if nullSymlinked {
 +			os.Remove("/dev/null")
 +		}
-+		if isInitrd() {
++		if IsInitrd() {
 +			InnerDebugf("logger started in initrd.")
 +		}
 +		InnerDebugf("after set: base = %d", base)
