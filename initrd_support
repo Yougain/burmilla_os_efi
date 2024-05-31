@@ -106,6 +106,7 @@ before_sysinit(){
 		fi
 		d_ssh=
 	else # normal boot
+		ln -sf oem /usr/share/ros/.oem_link
 		do_mount 2 /boot/efi
 		do_mount 3
 		if do_mount 5 -o subvol=/ /usr/share/ros/.state_top_lvl; then
