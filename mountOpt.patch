@@ -624,7 +624,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/dfs/scratch.go os.new/pkg/dfs/scratch.go
  		return cmd, err
 diff -Naur '--exclude=.git' os.prev/pkg/init/configfiles/configfiles.go os.new/pkg/init/configfiles/configfiles.go
 --- os.prev/pkg/init/configfiles/configfiles.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/configfiles/configfiles.go	2024-05-31 14:02:13.504401600 +0900
++++ os.new/pkg/init/configfiles/configfiles.go	2024-05-31 14:45:44.384401600 +0900
 @@ -55,6 +55,7 @@
  			ConfigFiles[name] = content
  		}
@@ -650,12 +650,12 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/configfiles/configfiles.go os.new/p
 +		target := "/var/log"
 +		if _, err := os.Stat(src); err == nil {
 +			os.MkdirAll("/var", os.ModeDir|0755)
-+			if err := os.Remove(target); err != nil {
-+				log.Infof("%s does not exist", target)
++			if err := os.RemoveAll(target); err != nil {
++				log.Infof("%s does not exist: %v", target, err)
 +			}
 +
 +			if err := os.Symlink(src, target); err != nil{
-+				log.Errorf("Cannot create symlink, %s -> %s", src, target)
++				log.Errorf("Cannot create symlink, %s -> %s: %v", src, target, err)
 +			}else{
 +				log.Infof("Created symlink, %s -> %s", src, target)
 +			}
