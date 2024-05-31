@@ -119,10 +119,8 @@ before_sysinit(){
 		d_ssh=$OR
 	fi
 	if [ "${BURMILLAOS_VER%%.*}" = "v1" ];then
-		if [ ! -e $d_ssh/etc/ssh/sshd_config-1 ];then
-			sed -e '/^HostKeyAlgorithms/s/^/# /' $d_ssh/etc/ssh/sshd_config > $d_ssh/etc/ssh/sshd_config-1
-			sed -ie '/^Include \/etc\/ssh\/sshd_config.d/s/^/# /' $d_ssh/etc/ssh/sshd_config-1
-		fi
+		sed -e '/^HostKeyAlgorithms/s/^/# /' $d_ssh/etc/ssh/sshd_config > $d_ssh/etc/ssh/sshd_config-1
+		sed -ie '/^Include \/etc\/ssh\/sshd_config.d/s/^/# /' $d_ssh/etc/ssh/sshd_config-1
 		set_volume_p "$d_ssh" -1 console:/etc/ssh/sshd_config
 	else
 		set_volume_p "$d_ssh" console:/etc/ssh/sshd_config
