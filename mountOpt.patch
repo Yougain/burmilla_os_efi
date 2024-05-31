@@ -913,7 +913,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-31 15:39:39.584401600 +0900
++++ os.new/pkg/log/log.go	2024-05-31 16:01:12.854401600 +0900
 @@ -2,26 +2,59 @@
  
  import (
@@ -1459,7 +1459,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  
  func FsReady() {
  	filename := "/var/log/boot/" + filepath.Base(os.Args[0]) + ".log"
-+	if ! log.IsInitrd() {
++	if ! IsInitrd() {
 +		oemd := "/usr/share/ros/oem"
 +		if _, err := os.Stat(oemd + "/var/log"); err == nil {
 +			filename = oemd + filename
