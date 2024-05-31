@@ -913,7 +913,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-31 16:01:12.854401600 +0900
++++ os.new/pkg/log/log.go	2024-05-31 16:28:23.224401600 +0900
 @@ -2,26 +2,59 @@
  
  import (
@@ -976,7 +976,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  
  const (
  	// PanicLevel level, highest level of severity. Logs and then calls panic with the
-@@ -63,53 +96,182 @@
+@@ -63,53 +96,186 @@
  	return Level(logrus.GetLevel())
  }
  
@@ -987,6 +987,12 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +}
 +
 +func ClearUntilLogWritable(){
++	if ! IsInitrd() {
++		oemd := "/usr/share/ros/oem"
++		if _, err := os.Stat(oemd + "/var/log"); err == nil {
++			preserveLogFN = oemd + preserveLogFN
++		}
++	}
 +	file, err := os.OpenFile(preserveLogFN, os.O_WRONLY|os.O_APPEND, 0644)
 +	defer file.Close()
 +	if err == nil {
@@ -995,8 +1001,6 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		}else{
 +			file.WriteString(preservedLogsJ)
 +		}
-+	}else{
-+		
 +	}
 +	preserveLogFN = ""
 +}
@@ -1159,7 +1163,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,6 +282,278 @@
+@@ -120,6 +286,278 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -1438,7 +1442,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  // InitLogger sets up Logging to log to /dev/kmsg and to Syslog
  func InitLogger() {
  	if logTheseApps() {
-@@ -131,6 +565,8 @@
+@@ -131,6 +569,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1447,7 +1451,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +599,7 @@
+@@ -163,6 +603,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1455,7 +1459,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -214,6 +651,12 @@
+@@ -214,6 +655,12 @@
  
  func FsReady() {
  	filename := "/var/log/boot/" + filepath.Base(os.Args[0]) + ".log"
@@ -1468,7 +1472,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	if err := os.MkdirAll(filepath.Dir(filename), os.ModeDir|0755); debugThisLogger && err != nil {
  		logrus.Errorf("FsReady mkdir(%s): %s", filename, err)
  	}
-@@ -249,8 +692,10 @@
+@@ -249,8 +696,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
