@@ -27,6 +27,7 @@ after_save_cmd_line(){
 
 
 before_sysinit(){
+	BURMILLAOS_VER=`ros -v|awk '{}'`
 	yFile=/usr/share/ros/os-config.yml
 	UF=/var/lib/rancher/conf/cloud-config.d/user_config.yml
     _set_volume(){
@@ -84,16 +85,18 @@ before_sysinit(){
 		mkdir -p /usr/share/ros/initrd
 		mount --bind / /usr/share/ros/initrd
 	fi
+	if [ -e $OR/var/lib/rancher/conf ];then # use oem drive
+		mkdir -p /var/lib/rancher
+		mkdir -p /etc/profile.d
+		ln -sf $OR/var/log /var
+		cp -af $OR/var/lib/rancher/conf /var/lib/rancher
+		cp -af $OR/etc/localtime /etc
+		cp -af $OR/etc/ssh /etc
+		cp -sf $OR/etc/profile.d/timezone.sh /etc/profile.d
+	fi
 	if [ -n "$installer_boot" ];then # boot from installer
 		ln -s / /usr/share/ros/.oem_link # mimic root by using ramdisk because do not use oem
 		if [ -e $OR/var/lib/rancher/conf ];then # use oem drive
-			mkdir -p /var/lib/rancher
-			mkdir -p /etc/profile.d
-			ln -sf $OR/var/log /var
-			cp -af $OR/var/lib/rancher/conf /var/lib/rancher
-			cp -af $OR/etc/localtime /etc
-			cp -af $OR/etc/ssh /etc
-			ln -sf $OR/etc/profile.d/timezone.sh /etc/profile.d
 			yq e -i 'del(.runcmd)' $UF # no need when booting by installer
 		elif [ -n "$TZ" ]; then # boot by installer with oem drive missing
 			touch $UF
@@ -121,6 +124,8 @@ before_sysinit(){
 			sed -ie '/^Include \/etc\/ssh\/sshd_config.d/s/^/# /' $d_ssh/etc/ssh/sshd_config-1
 		fi
 		set_volume_p "$d_ssh" -1 console:/etc/ssh/sshd_config
+	else
+		set_volume_p "$d_ssh" console:/etc/ssh/sshd_config
 	fi
 	info Using /usr/share/ros/os-config.yml on `which_dev_on /usr/share/ros/os-config.yml`.
 	USER_DOCKER_IMAGE=`yq ".rancher.services.docker.image" /usr/share/ros/os-config.yml`
