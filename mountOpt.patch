@@ -624,7 +624,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/dfs/scratch.go os.new/pkg/dfs/scratch.go
  		return cmd, err
 diff -Naur '--exclude=.git' os.prev/pkg/init/configfiles/configfiles.go os.new/pkg/init/configfiles/configfiles.go
 --- os.prev/pkg/init/configfiles/configfiles.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/init/configfiles/configfiles.go	2024-05-31 14:45:44.384401600 +0900
++++ os.new/pkg/init/configfiles/configfiles.go	2024-05-31 15:41:48.694401600 +0900
 @@ -55,6 +55,7 @@
  			ConfigFiles[name] = content
  		}
@@ -633,34 +633,24 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/configfiles/configfiles.go os.new/p
  	return cfg, nil
  }
  
-@@ -78,6 +79,7 @@
- 			log.Error(err)
+@@ -71,6 +72,14 @@
+ 				fileMode = os.FileMode(0400)
+ 			}
  		}
- 		log.Infof("Swizzle: Wrote file to %s", name)
-+		
- 	}
- 	if err := os.MkdirAll(config.VarRancherDir, os.ModeDir|0755); err != nil {
- 		log.Error(err)
-@@ -85,8 +87,24 @@
- 	if err := os.Chmod(config.VarRancherDir, os.ModeDir|0755); err != nil {
- 		log.Error(err)
- 	}
-+	if ! log.IsInitrd() {
-+		src := "/usr/share/ros/oem/var/log"
-+		target := "/var/log"
-+		if _, err := os.Stat(src); err == nil {
-+			os.MkdirAll("/var", os.ModeDir|0755)
-+			if err := os.RemoveAll(target); err != nil {
-+				log.Infof("%s does not exist: %v", target, err)
-+			}
-+
-+			if err := os.Symlink(src, target); err != nil{
-+				log.Errorf("Cannot create symlink, %s -> %s: %v", src, target, err)
-+			}else{
-+				log.Infof("Created symlink, %s -> %s", src, target)
++		if strings.HasPrefix(name, "/var/log/") {
++			if ! log.IsInitrd() {
++				oemd := "/usr/share/ros/oem"
++				if _, err := os.Stat(oemd + "/var/log"); err == nil {
++					name = oemd + name
++				}
 +			}
 +		}
-+	}
+ 		if err := os.MkdirAll(filepath.Dir(name), dirMode); err != nil {
+ 			log.Error(err)
+ 		}
+@@ -86,7 +95,7 @@
+ 		log.Error(err)
+ 	}
  	log.FsReady()
 -	log.Debugf("WARNING: switchroot and mount OEM2 and BOOT phases not written to log file")
 +	log.ClearUntilLogWritable()
@@ -923,7 +913,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-31 13:50:12.684401600 +0900
++++ os.new/pkg/log/log.go	2024-05-31 15:39:39.584401600 +0900
 @@ -2,26 +2,59 @@
  
  import (
@@ -1465,7 +1455,20 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -249,8 +686,10 @@
+@@ -214,6 +651,12 @@
+ 
+ func FsReady() {
+ 	filename := "/var/log/boot/" + filepath.Base(os.Args[0]) + ".log"
++	if ! log.IsInitrd() {
++		oemd := "/usr/share/ros/oem"
++		if _, err := os.Stat(oemd + "/var/log"); err == nil {
++			filename = oemd + filename
++		}
++	}
+ 	if err := os.MkdirAll(filepath.Dir(filename), os.ModeDir|0755); debugThisLogger && err != nil {
+ 		logrus.Errorf("FsReady mkdir(%s): %s", filename, err)
+ 	}
+@@ -249,8 +692,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
