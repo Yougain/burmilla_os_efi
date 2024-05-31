@@ -27,7 +27,7 @@ after_save_cmd_line(){
 
 
 before_sysinit(){
-	BURMILLAOS_VER=`ros -v|awk '{}'`
+	BURMILLAOS_VER=`ros -v|awk '{print $2}'`
 	yFile=/usr/share/ros/os-config.yml
 	UF=/var/lib/rancher/conf/cloud-config.d/user_config.yml
     _set_volume(){
