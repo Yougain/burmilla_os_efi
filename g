@@ -20,9 +20,9 @@ function ssh_clone(){
 			deb $DEBUG
 			deb $ln
 			ssh_param $ln -x -q
-			ssh_do git-force-clone $url $tdir
+			ssh_do git force-clone $url $tdir
 			if [ "$?" = 255 ];then
-				err "Cannot connect: ssh $ln git-force-clone $url $tdir"
+				err "Cannot connect: ssh $ln git force-clone $url $tdir"
 				ret=1
 			fi
 		done < .git/.ssh_clone

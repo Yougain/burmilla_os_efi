@@ -913,7 +913,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/init/switchroot/switchroot.go os.new/pkg
  	}
 diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 --- os.prev/pkg/log/log.go	2024-03-14 20:29:45.967485300 +0900
-+++ os.new/pkg/log/log.go	2024-05-31 16:28:23.224401600 +0900
++++ os.new/pkg/log/log.go	2024-06-02 17:27:26.879549600 +0900
 @@ -2,26 +2,59 @@
  
  import (
@@ -966,7 +966,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +var cline = ""
 +var beforeInitLogText = ""
 +var beforeInitLogJSON = ""
-+var isJSON = false
++var ros_log_format = ""
  type Fields logrus.Fields
  type Level logrus.Level
  type Logger logrus.Logger
@@ -976,7 +976,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  
  const (
  	// PanicLevel level, highest level of severity. Logs and then calls panic with the
-@@ -63,53 +96,186 @@
+@@ -63,53 +96,190 @@
  	return Level(logrus.GetLevel())
  }
  
@@ -996,10 +996,12 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +	file, err := os.OpenFile(preserveLogFN, os.O_WRONLY|os.O_APPEND, 0644)
 +	defer file.Close()
 +	if err == nil {
-+		if(!isJSON){
++		if(ros_log_format == "plain"){
 +			file.WriteString(preservedLogs)
 +		}else{
-+			file.WriteString(preservedLogsJ)
++			if(ros_log_format == "json"){
++				file.WriteString(preservedLogsJ)
++			}
 +		}
 +	}
 +	preserveLogFN = ""
@@ -1044,10 +1046,12 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +				file, err := os.OpenFile("/var/log/boot/init_logger.log", os.O_WRONLY|os.O_APPEND, 0644)
 +				defer file.Close()
 +				if err == nil {
-+					if !isJSON {
++					if ros_log_format == "plain" {
 +						file.WriteString(beforeInitLogText)
 +					}else{
-+						file.WriteString(beforeInitLogJSON)
++						if ros_log_format == "json" {
++							file.WriteString(beforeInitLogJSON)
++						}
 +					}
 +				}
 +				beforeInitLogText = ""
@@ -1163,7 +1167,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	logrus.Panic(args...)
  }
  
-@@ -120,6 +286,278 @@
+@@ -120,6 +290,279 @@
  	return logrus.WithFields(logrus.Fields(fields))
  }
  
@@ -1387,16 +1391,17 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
 +		underInit = true
 +		InnerDebugf("start initFormat: base = %d", base)
 +		base = -1
-+		if getParam("ROS_LOG_FORMAT") == "plain" {
-+			isJSON = false
++		ros_log_format = getParam("ROS_LOG_FORMAT")
++		if ros_log_format == "plain" {
 +			formatter := logFormat{}
 +			formatter.TimestampFormat = DefaultTimeFormat
 +			logrus.SetFormatter(&formatter)
 +		}else{
-+			isJSON = true
-+			jFormatter := jFormat{}
-+			jFormatter.TimestampFormat = DefaultTimeFormat
-+			logrus.SetFormatter(&jFormatter)
++			if ros_log_format == "json" {
++				jFormatter := jFormat{}
++				jFormatter.TimestampFormat = DefaultTimeFormat
++				logrus.SetFormatter(&jFormatter)
++			}
 +		}
 +		initFormatExecuted = true
 +		nullSymlinked := false
@@ -1442,7 +1447,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  // InitLogger sets up Logging to log to /dev/kmsg and to Syslog
  func InitLogger() {
  	if logTheseApps() {
-@@ -131,6 +569,8 @@
+@@ -131,6 +574,8 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1451,7 +1456,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -163,6 +603,7 @@
+@@ -163,6 +608,7 @@
  		if err != nil {
  			logrus.Error(err)
  		}
@@ -1459,7 +1464,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  		logrus.Debugf("START: %v in %s", os.Args, pwd)
  	}
  }
-@@ -214,6 +655,12 @@
+@@ -214,6 +660,12 @@
  
  func FsReady() {
  	filename := "/var/log/boot/" + filepath.Base(os.Args[0]) + ".log"
@@ -1472,7 +1477,7 @@ diff -Naur '--exclude=.git' os.prev/pkg/log/log.go os.new/pkg/log/log.go
  	if err := os.MkdirAll(filepath.Dir(filename), os.ModeDir|0755); debugThisLogger && err != nil {
  		logrus.Errorf("FsReady mkdir(%s): %s", filename, err)
  	}
-@@ -249,8 +696,10 @@
+@@ -249,8 +701,10 @@
  
  	if debugThisLogger {
  		if deferedHook {
