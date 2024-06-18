@@ -108,7 +108,7 @@ function ssh_param(){
 			return 0
 		fi
 	fi
-	return 1
+	die "cannot connect by 'ssh $@'"
 }
 
 
