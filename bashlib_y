@@ -1,4 +1,21 @@
-#!/bin/bash
+#!/bin/env bash
+
+
+if [ -d "/data/data/com.termux/files" ]; then
+	IS_TERMUX=1
+	R="/data/data/com.termux/files/usr"
+	if [ "`stat -c "%i" $R`" != "`stat -c "%i" $R/usr`" ];then
+		sudo mount --bind $R $R/usr
+	fi
+else
+	R=""
+fi
+T="$R/tmp"
+VT="$R/var/tmp"
+
+if ! [[ "$PATH" =~ (^|:)$R/usr/share/bashlib_y($|:) ]];then
+	export PATH="$R/usr/share/bashlib_y:$PATH"
+fi
 
 if [ -z "$___CMD_PATH___" ];then
 	___CMD_PATH___="`realpath $0`"
@@ -42,14 +59,16 @@ __FILE_PATH__() {
 
 
 if [ -e "$(__CMD_DIR__)/bashlib_y" -a "`readlink -f $(__CMD_DIR__)/bashlib_y`" != "$(__FILE__)" ];then
-	source $(__CMD_DIR__)/bashlib_y
+	if [ ! -d "$(__CMD_DIR__)/bashlib_y" ];then
+		source $(__CMD_DIR__)/bashlib_y
+	fi
 else
 
 
 function env_var(){
 	local ln
 	local tmp
-	declare -p |egrep '^declare -[A-Za-z-]* [A-Za-z_][A-Za-z0-9_]*'| while read ln; do
+	declare -p |grep -E '^declare -[A-Za-z-]* [A-Za-z_][A-Za-z0-9_]*'| while read ln; do
 		ln=${ln#declare -* }
 		ln=${ln%%=*}
 		tmp="`declare -p $ln 2>/dev/null`"
@@ -113,7 +132,7 @@ __SOURCE_NAME__(){
 
 
 
-PATH=/usr/share/$(__FILE_NAME__)/:$PATH
+PATH=$R/usr/share/$(__FILE_NAME__)/:$PATH
 
 
 case $(__SOURCE_NAME__) in
@@ -155,7 +174,12 @@ shellsplit(){
 
 
 boot_id(){
-	local uptime_seconds=$(cat /proc/uptime | awk '{print $1}')
+	local uptime_seconds
+	if [ -z "$IS_TERMUX" ];then
+		uptime_seconds=$(cat /proc/uptime | awk '{print $1}')
+	else
+		uptime_seconds=$(stat -c %Y $R/var/run/sshd.pid)
+	fi
 	local current_seconds=$(date +%s%N)
 	current_seconds=${current_seconds%???????}
 	uptime_seconds=${uptime_seconds%???}${uptime_seconds: -2}
@@ -164,11 +188,11 @@ boot_id(){
 	local idf
 	local idft
 	local dif
-	mkdir -p /tmp/$f
-	sudo -n chmod 777 /tmp/$f 2> /dev/null
-	mkdir -p /tmp/$f/boot_id
-	sudo -n chmod 777 /tmp/$f/boot_id 2> /dev/null
-	for idf in /tmp/$f/boot_id/*; do
+	mkdir -p $T/$f
+	sudo -n chmod 777 $T/$f 2> /dev/null
+	mkdir -p $T/$f/boot_id
+	sudo -n chmod 777 $T/$f/boot_id 2> /dev/null
+	for idf in $T/$f/boot_id/*; do
 		if [ -e "$idf" ];then
 			idft=${idf##*@}
 			dif=$((idft - boot_time))
@@ -179,14 +203,14 @@ boot_id(){
 		fi
 	done
 	# first use after boot
-	idf=/tmp/$f/boot_id/`hostname -f`-$RANDOM$RANDOM@$boot_time
+	idf=$T/$f/boot_id/`hostname -f`-$RANDOM$RANDOM@$boot_time
 	touch $idf
 	sudo -n chmod 777 $idf 2> /dev/null
 	export BOOT_ID=${idf##*/}
 	local f="`__FILE_NAME__`"
 	local t
 	# cleanup old tmp dir
-	for d in /tmp/$f/*; do
+	for d in $T/$f/*; do
 		for d2 in $d/*; do
 			for tmpd in $d2/*; do
 				if [ -d "$tmpd" ];then
@@ -214,9 +238,9 @@ tmp_dir(){
 	SOURCES_LOADED=()
 	local start_time=$(cat /proc/$$/stat | awk '{print $22}')
 	start_time=$((${BOOT_ID##*@} + start_time))
-	mkdir -p /tmp/$f/*
+	mkdir -p $T/$f/*
 	local pt
-	for d in /tmp/$f/*; do
+	for d in $T/$f/*; do
 		for d2 in $d/*; do
 			for tmpd in $d2/*-$$@*; do
 				if [ -d "$tmpd" ];then
@@ -225,7 +249,7 @@ tmp_dir(){
 					if ((-100 < dif && dif < 100));then
 						SCRIPT_TMP_DIR=$tmpd
 						SCRIPT_ID=${tmpd##*-}
-						SCRIPT_VAR_DIR=/var/tmp/$f
+						SCRIPT_VAR_DIR=$VT/$f
 						# already initialized
 						return 1
 					fi
@@ -233,27 +257,30 @@ tmp_dir(){
 			done
 		done
 	done
-	mkdir -p /tmp/$f
-	sudo -n chmod 777 /tmp/$f 2> /dev/null
-	mkdir -p /tmp/$f/${0##*/}
-	sudo -n chmod 777 /tmp/$f/${0##*/} 2> /dev/null
-	SCRIPT_TMP_DIR=/tmp/$f/${0##*/}/`date +"%y-%m-%d_%H-%M-%S.%N%z"`-$$@$start_time
+	mkdir -p $T/$f
+	sudo -n chmod 777 $T/$f 2> /dev/null
+	mkdir -p $T/$f/${0##*/}
+	sudo -n chmod 777 $T/$f/${0##*/} 2> /dev/null
+	SCRIPT_TMP_DIR=$T/$f/${0##*/}/`date +"%y-%m-%d_%H-%M-%S.%N%z"`-$$@$start_time
 	SCRIPT_ID=$$@$start_time
 	if ! mkdir -p $SCRIPT_TMP_DIR; then
 		echo -e "$error"Cannot create script temporary directory. Terminated.$normal >&2
 		exit 1
 	fi
-	SCRIPT_VAR_DIR=/var/tmp/$f
+	SCRIPT_VAR_DIR=$VT/$f
 	if ! mkdir -p $SCRIPT_TMP_DIR; then
 		sudo -n chmod 777 $SCRIPT_VAR_DIR 2> /dev/null
 		echo -e "$error"cannot create script dir$normal >&2
 		exit 1
 	fi
-	if [ -n "$SUDO_USER" -a -e "/etc/passwd" ];then
-		if egrep "^$SUDO_USER:" "/etc/passwd" > /dev/null; then
+	if [ -z "$IS_TERMUX" -a -n "$SUDO_USER" -a -e "/etc/passwd" ];then
+		if grep -E "^$SUDO_USER:" "/etc/passwd" > /dev/null; then
 			chown -R "$SUDO_USER" $SCRIPT_TMP_DIR
 			chown -R "$SUDO_USER" $SCRIPT_VAR_DIR
 		fi
+	elif [ -n "$IS_TERMUX" -a -n "$SUDO_USER" ];then
+		chown -R "$SUDO_USER" $SCRIPT_TMP_DIR
+		chown -R "$SUDO_USER" $SCRIPT_TMP_DIR
 	fi
 	local lnk=$SCRIPT_TMP_DIR/../latest
 	if [ -n "$DEBUG" ];then
@@ -262,7 +289,9 @@ tmp_dir(){
 	rm -f $lnk
 	if [ -n "$DEBUG" ];then
 		ln -sf $SCRIPT_TMP_DIR $lnk
-		if [ -n "$SUDO_USER" -a -e "/etc/passwd" ];then
+		if [ -z "$IS_TERMUX" -a -n "$SUDO_USER" -a -e "/etc/passwd" ];then
+			chown "$SUDO_USER" $lnk
+		elif [ -n "$IS_TERMUX" -a -n "$SUDO_USER" ];then
 			chown "$SUDO_USER" $lnk
 		fi
 	fi
@@ -391,11 +420,11 @@ debug(){
 }
 
 
-if [ ! -e "/var/tmp/bashlib_y/allColors" -o "`cat /var/tmp/bashlib_y/allColors 2> /dev/null`" != "`echo $allColors`" ];then
-	mkdir -p -m 0777 /var/tmp
-	mkdir -p -m 0777 /var/tmp/bashlib_y
-	echo $allColors > /var/tmp/bashlib_y/allColors
-	echo -n > /var/tmp/bashlib_y/allColors.src
+if [ ! -e "$VT/bashlib_y/allColors" -o "`cat $VT/bashlib_y/allColors 2> /dev/null`" != "`echo $allColors`" ];then
+	mkdir -p -m 0777 $VT
+	mkdir -p -m 0777 $VT/bashlib_y
+	echo $allColors > $VT/bashlib_y/allColors
+	echo -n > $VT/bashlib_y/allColors.src
 	for col in `echo $allColors`; do
 		echo '
 			'$col'="\033[3$'_$col'""m"
@@ -411,7 +440,7 @@ if [ ! -e "/var/tmp/bashlib_y/allColors" -o "`cat /var/tmp/bashlib_y/allColors 2
 			function bg'`capitalize $col`'(){
 				bg'`capitalize $col`'_n $@"\n"
 			}
-		' >> /var/tmp/bashlib_y/allColors.src
+		' >> $VT/bashlib_y/allColors.src
 		for bgCol in $allColors; do
 			echo '
 				function '$col'Bg'`capitalize $bgCol`'_n(){
@@ -420,11 +449,11 @@ if [ ! -e "/var/tmp/bashlib_y/allColors" -o "`cat /var/tmp/bashlib_y/allColors 2
 				function '$col'Bg'`capitalize $bgCol`'(){
 					'$col'Bg'`capitalize $bgCol`'_n $@
 				}
-			' >> /var/tmp/bashlib_y/allColors.src
+			' >> $VT/bashlib_y/allColors.src
 		done
 	done
 else
-	. /var/tmp/bashlib_y/allColors.src
+	. $VT/bashlib_y/allColors.src
 fi
 
 function exit_if_err(){
@@ -497,7 +526,7 @@ for_sudo_user(){
 		for pth in "$@";do
 			rp="$(realpath "$pth")"
 			fnn=
-			if [ "${rp:0:$((fnn + 6))}" = "/tmp/$fn/" ]; then
+			if [ "${rp:0:$((fnn + 6))}" = "$T/$fn/" ]; then
 				while true;do
 					ac="$(stat -c %a "$rp")"
 					us="$(stat -c %u "$rp")"
@@ -510,7 +539,7 @@ for_sudo_user(){
 						fi
 					fi
 					rp=$(dirname "$rp")
-					if [ rp="/tmp" ];then
+					if [ rp="$T" ];then
 						break
 					fi
 				done
@@ -641,12 +670,20 @@ _rm_all(){
 	local blockDevs
 	local f
 	local l
-	for f in /dev/block/*;do
-		l="`readlink -f $f`"
-		if [ -b "$l" -a "${l:0:5}" = "/dev/" ];then
-			blockDevs+=("${l#/dev/}")
-		fi
-	done
+	if [ -d "/data/data/com.termux/files" ];then
+		while read ln; do
+			if [ "${ln:0:14}" = "/dev/block/dm-" -o "$ln" = "/data/media" ];then
+				blockDevs+=("${ln#/dev/}")
+			fi
+		done < <(df | awk '{print $1}')
+	else
+		for f in /dev/block/*;do
+			l="`readlink -f $f`"
+			if [ -b "$l" -a "${l:0:5}" = "/dev/" ];then
+				blockDevs+=("${l#/dev/}")
+			fi
+		done
+	fi
 	if [ -z "$blockDevs" ];then
 		_get_block_devs /dev
 	fi
@@ -681,13 +718,17 @@ _rm_all(){
 				doRm=1
 			else
 				if [ "${fsType:0:5}" = "/dev/" ];then
-					fsType="`readlink -f \"$fsType\"`"
+					if [ ! -d "/data/data/com.termux/files" ];then
+						fsType="`readlink -f \"$fsType\"`"
+					fi
 					for b in ${blockDevs[@]}; do
 						if [ "$b" = "${fsType#/dev/}" ];then
 							doRm=1
 							break
 						fi
 					done
+				elif [ -d "/data/data/com.termux/files" -a $fsType = "/data/media" ];then
+					doRm=1
 				fi
 			fi
 			if [ -z "$doRm" ];then
@@ -696,10 +737,10 @@ _rm_all(){
 				fi
 			fi
 			if [ -n "$doRm" ];then
-				if [ -e /bin/rm ];then
-					/bin/rm --one-file-system -rf "$d"
-				elif [ -e /usr/bin/rm ];then
-					/usr/bin/rm --one-file-system -rf "$d"
+				if [ -e $R/bin/rm ];then
+					$R/bin/rm --one-file-system -rf "$d"
+				elif [ -e $R/usr/bin/rm ];then
+					$R/usr/bin/rm --one-file-system -rf "$d"
 				fi
 			else
 				err "cannot delete '$d'"
@@ -712,7 +753,10 @@ _rm_all(){
 
 
 rm_all(){
-	if [ ! -d /dev/block ];then
+	if [ -d "/data/data/com.termux/files" ]; then
+		IS_TERMUX=1
+	fi
+	if [ -z "$IS_TERMUX" -a ! -d /dev/block ];then
 		err "rm_all: directory, '/dev/block' is missing"
 		return 1
 	fi
@@ -888,9 +932,9 @@ require(){
 	local requireFunc
 	local requireSource
 	if [ -n $LOAD_PATH ];then
-		local LOAD_PATH="$LOAD_PATH:$(__CMD_DIR__):/usr/share/bashlib_y"
+		local LOAD_PATH="$LOAD_PATH:$(__CMD_DIR__):$R/usr/share/bashlib_y"
 	else
-		local LOAD_PATH="$(__CMD_DIR__):/usr/share/bashlib_y"
+		local LOAD_PATH="$(__CMD_DIR__):$R/usr/share/bashlib_y"
 	fi
 	dbv $0
 	dbv $(__CMD_PATH__)

@@ -208,7 +208,7 @@ if [ -n "$top_iso" ];then
 	fi
 	LATEST_B_VERSION=$bver_m
 else
-	LATEST_B_VERSION=`cat version|awk '{print $1}'`
+	LATEST_B_VERSION=`cat version|head -1|awk '{print $1}'`
 fi
 
 echo $LATEST_B_VERSION

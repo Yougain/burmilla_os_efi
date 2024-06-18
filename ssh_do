@@ -17,7 +17,7 @@ function ssh_param(){
 			h="${1%%:*}"
 			p="${1##*:}"
 			if [ "$h" = "$1" ];then # ':' is missing
-				if [ -n "`echo -n $1|egrep -o '^[0-9][0-9]*$'`" ];then
+				if [ -n "`echo -n $1|grep -Eo '^[0-9][0-9]*$'`" ];then
 					if [ -n "$port" ];then
 						die "duplicated port"
 					else
@@ -79,16 +79,16 @@ function ssh_param(){
 	fi
 	deb $SSH_CMD "${SSH_OPTS[@]}" $port -v -o "ConnectTimeout=5"  -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" $host
 	$SSH_CMD "${SSH_OPTS[@]}" $port -v -o "ConnectTimeout=5"  -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" $host echo -n > $SCRIPT_TMP_DIR/test_ssh 2>&1
-	if [ -z "`egrep 'debug1: Executing proxy command:' $SCRIPT_TMP_DIR/test_ssh`" ]; then
-		local SSH_CON_LINE=`egrep -o 'debug1: Connecting to .* port [0-9]+' $SCRIPT_TMP_DIR/test_ssh`
-		SSH_PORT=`echo $SSH_CON_LINE| egrep -o '[0-9]+$'`
+	if [ -z "`grep -E 'debug1: Executing proxy command:' $SCRIPT_TMP_DIR/test_ssh`" ]; then
+		local SSH_CON_LINE=`grep -Eo 'debug1: Connecting to .* port [0-9]+' $SCRIPT_TMP_DIR/test_ssh`
+		SSH_PORT=`echo $SSH_CON_LINE| grep -Eo '[0-9]+$'`
 		SSH_PORT_OPT=" -p $SSH_PORT"
-		SSH_HOST_IP=`echo $SSH_CON_LINE| egrep -o 'to [0-9/A-Fa-f\.:]{7,}'| egrep -o '[0-9/A-Fa-f\.:]{7,}'`
+		SSH_HOST_IP=`echo $SSH_CON_LINE| grep -Eo 'to [0-9/A-Fa-f\.:]{7,}'| grep -Eo '[0-9/A-Fa-f\.:]{7,}'`
 		dbv $SSH_HOST_IP
 		dbv $SSH_PORT
 		dbv $SSH_CON_LINE
 	else
-		local pc=`egrep "debug1: channel_connect_stdio_fwd " $SCRIPT_TMP_DIR/test_ssh`
+		local pc=`grep -E "debug1: channel_connect_stdio_fwd " $SCRIPT_TMP_DIR/test_ssh`
 		if [ -n "$pc" ];then
 			pc=${pc%\\r}
 			local adr=${pc#debug1: channel_connect_stdio_fwd }
@@ -179,7 +179,7 @@ function ssh_do(){
 		#	CMD+=(bash)
 		#fi
 		SSH_PARAM_LIST["$SSH_HOST $SSH_PORT_OPT"]="$SSH_PORT_OPT ""${SSH_PORT_OPT[@]}"" $SSH_HOST"
-		local set_env_lines="(declare -p|egrep -o '^declare -A [^=]*';set) | awk '!/^(SSH_PARAM_LIST|SUDO_USER|BASH_ARGV|BASH_ARGC|BASH_LINENO|BASH_SOURCE|GROUPS|FUNCNAME|BASHOPTS|BASH_VERSINFO|EUID|PPID|SHELLOPTS|UID)=/ {print \$0}'"
+		local set_env_lines="(declare -p|grep -Eo '^declare -A [^=]*';set) | awk '!/^(SSH_PARAM_LIST|SUDO_USER|BASH_ARGV|BASH_ARGC|BASH_LINENO|BASH_SOURCE|GROUPS|FUNCNAME|BASHOPTS|BASH_VERSINFO|EUID|PPID|SHELLOPTS|UID|PATH)=/ {print \$0}'"
 		local SET_ENV_LINES="`eval $set_env_lines`"
 		local trans_started
 		dbv $SCRIPT_TMP_DIR
@@ -188,49 +188,55 @@ function ssh_do(){
 			dbv $SCRIPT_TMP_DIR
 			local ln
 			write_env_file << '			__INNER'
-				#!/bin/bash
-
-				mkdir -p $SCRIPT_TMP_DIR/$SSH_ID
-				chmod 777 $SCRIPT_TMP_DIR/../.. $SCRIPT_TMP_DIR/..
+				#!/bin/env bash
+				if [ -d "/data/data/com.termux/files" ]; then
+					RS="/data/data/com.termux/files/usr"
+					if [ "`stat -c "%i" $RS`" != "`stat -c "%i" $RS/usr`" ];then
+						sudo mount --bind $RS $RS/usr
+					fi
+				else
+					RS=""
+				fi
+				mkdir -p $RS$SCRIPT_TMP_DIR/$SSH_ID
+				chmod 777 $RS$SCRIPT_TMP_DIR/../.. $RS$SCRIPT_TMP_DIR/..
 				if [ -n "$SUDO_USER" -a -e /etc/passwd ];then
-					if egrep "^$SUDO_USER:" /etc/passwd > /dev/null;then
-						chown -R "$SUDO_USER" $SCRIPT_TMP_DIR
+					if grep -E "^$SUDO_USER:" /etc/passwd > /dev/null;then
+						chown -R "$SUDO_USER" $RS$SCRIPT_TMP_DIR
 					fi
 				fi
-				rm -f $SCRIPT_TMP_DIR/../latest
+				rm -f $RS$SCRIPT_TMP_DIR/../latest
 				if [ -n "$DEBUG" ];then
-					ln -s $SCRIPT_TMP_DIR $SCRIPT_TMP_DIR/../latest
+					ln -s $RS$SCRIPT_TMP_DIR $RS$SCRIPT_TMP_DIR/../latest
 					if [ -n "$SUDO_USER" ];then
-						chown "$SUDO_USER" $SCRIPT_TMP_DIR/../latest
+						chown "$SUDO_USER" $RS$SCRIPT_TMP_DIR/../latest
 					fi
 				fi
 				
-				$set_env_lines > $SCRIPT_TMP_DIR/$SSH_ID/env
-				
+				$set_env_lines > $RS$SCRIPT_TMP_DIR/$SSH_ID/env
 				# set client environment
-				#if [ ! -e $SCRIPT_TMP_DIR/$SSH_ID/env.cont ];then # missing previous host environment 
+				#if [ ! -e $RS$SCRIPT_TMP_DIR/$SSH_ID/env.cont ];then # missing previous host environment 
 					# set client command line argument
 					$TRANSFER_ARGUMENTS
 					$SET_ENV_LINES
 				#else # found previous host environment 
-				#	source $SCRIPT_TMP_DIR/$SSH_ID/env.cont
-				#	rm $SCRIPT_TMP_DIR/$SSH_ID/env.cont
+				#	source $RS$SCRIPT_TMP_DIR/$SSH_ID/env.cont
+				#	rm $RS$SCRIPT_TMP_DIR/$SSH_ID/env.cont
 				#fi
 				
 				# restore host environment
-				source $SCRIPT_TMP_DIR/$SSH_ID/env;
+				source $RS$SCRIPT_TMP_DIR/$SSH_ID/env;
 				if [ -z "$DEBUG" ]; then
-					rm $SCRIPT_TMP_DIR/$SSH_ID/env
+					rm $RS$SCRIPT_TMP_DIR/$SSH_ID/env
 				fi
 				# execute script from standard input
 				set_diff_begin
 				# preserve environment after script execution
 				function cleanup$SCRIPT_ID(){
 					set_diff_end
-					#cat $SCRIPT_TMP_DIR/$SSH_ID/env.diff
-					#$set_env_lines > $SCRIPT_TMP_DIR/$SSH_ID/env.cont
+					#cat $RS$SCRIPT_TMP_DIR/$SSH_ID/env.diff
+					#$set_env_lines > $RS$SCRIPT_TMP_DIR/$SSH_ID/env.cont
 					if [ -z "$DEBUG" ];then
-						rm_all $SCRIPT_TMP_DIR
+						rm_all $RS$SCRIPT_TMP_DIR
 					fi
 					unset -f cleanup$SCRIPT_ID
 				}
@@ -239,8 +245,8 @@ function ssh_do(){
 				}
 				trap cleanup$SCRIPT_ID EXIT
 				trap int_exit INT HUP
-				mkdir -p $SCRIPT_TMP_DIR/$SSH_ID/file_transferred
-				PATH="$SCRIPT_TMP_DIR/$SSH_ID/file_transferred:$PATH"
+				mkdir -p $RS$SCRIPT_TMP_DIR/$SSH_ID/file_transferred
+				PATH="$RS$SCRIPT_TMP_DIR/$SSH_ID/file_transferred:\$PATH"
 				for fxx__ in ${!SCRIPT_FILES[@]}; do
 					fcn__=${SCRIPT_FILES[$fxx__]}
 					lns__=
@@ -249,13 +255,13 @@ function ssh_do(){
 							lns__=\"\$lns__\$ln__\"
 						done
 					"
-					echo -E "$lns__" > $SCRIPT_TMP_DIR/$SSH_ID/file_transferred/${fxx__##*/}
+					echo -E "$lns__" > $RS$SCRIPT_TMP_DIR/$SSH_ID/file_transferred/${fxx__##*/}
 				done
 				unset lns__
 				unset fcn__
 				unset fxx__
 				unset ln__
-				cat <<'__DO_CONTENT' > $SCRIPT_TMP_DIR/$SSH_ID/do_content
+				cat <<'__DO_CONTENT' > $RS$SCRIPT_TMP_DIR/$SSH_ID/do_content
 			__INNER
 			if [ -n "$DEBUG" ];then
 				echo DEBUG=\"$DEBUG\"
@@ -272,7 +278,7 @@ function ssh_do(){
 				__ret(){
 					return $__RET
 				}
-				source $SCRIPT_TMP_DIR/$SSH_ID/do_content
+				source $RS$SCRIPT_TMP_DIR/$SSH_ID/do_content
 				__SSH_DO_RET=$?
 				unset REQUIRE_INVALID
 				__ret
@@ -283,7 +289,23 @@ function ssh_do(){
 		local resPrefLen1=${#resPref}
 		((++resPrefLen1))
 		local res
-		cat $SCRIPT_TMP_DIR/$SSH_ID/main | "${CMD[@]}" bash -c '"mkdir -p '$SCRIPT_TMP_DIR/$SSH_ID';tee '$SCRIPT_TMP_DIR/$SSH_ID'/main >/dev/null; chmod +x '$SCRIPT_TMP_DIR/$SSH_ID'/main ;if ! bash -c '$SCRIPT_TMP_DIR/$SSH_ID'/main; then echo result'$SSH_ID'=$?; fi"'  | while read -r ln; do
+		cat $SCRIPT_TMP_DIR/$SSH_ID/main | "${CMD[@]}" bash -c '"
+				if [ -d /data/data/com.termux/files ]; then
+					mkdir -p /data/data/com.termux/files/usr/'$SCRIPT_TMP_DIR/$SSH_ID';
+					tee /data/data/com.termux/files/usr/'$SCRIPT_TMP_DIR/$SSH_ID'/main >/dev/null; 
+					chmod +x /data/data/com.termux/files/usr/'$SCRIPT_TMP_DIR/$SSH_ID'/main ;
+					if ! bash -c /data/data/com.termux/files/usr/'$SCRIPT_TMP_DIR/$SSH_ID'/main; then
+						echo result'$SSH_ID'=$?; 
+					fi
+				else
+					mkdir -p '$SCRIPT_TMP_DIR/$SSH_ID';
+					tee '$SCRIPT_TMP_DIR/$SSH_ID'/main >/dev/null; 
+					chmod +x '$SCRIPT_TMP_DIR/$SSH_ID'/main ;
+					if ! bash -c '$SCRIPT_TMP_DIR/$SSH_ID'/main; then
+						echo result'$SSH_ID'=$?; 
+					fi
+				fi;
+		"'  | while read -r ln; do
 			if [ "${ln:0:$resPrefLen1}" = "result$SSH_ID=" ];then
 				res="${ln:$resPrefLen1}"
 			fi
@@ -369,10 +391,18 @@ function install_ssh_key(){
 
 function ssh_reboot(){
 	ssh_sudo <<'END'
-		efi_dev=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[\\\\\"0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')2
+		if [ -d "/data/data/com.termux/files" ]; then
+			RS="/data/data/com.termux/files/usr"
+			if [ "`stat -c "%i" $R`" != "`stat -c "%i" $R/usr`" ];then
+				sudo mount --bind $R $R/usr
+			fi
+		else
+			RS=""
+		fi
+		efi_dev=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|grep -Eo "efi=UUID=[\\\\\"0-9a-fA-F-]+"|grep -Eo "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')2
 		if [ -z "$efi_dev" ]; then die "boot efi device not found."; fi
-		mkdir -p $SCRIPT_TMP_DIR/efi_dev
-		mount /dev/$efi_dev $SCRIPT_TMP_DIR/efi_dev
+		mkdir -p $RS$SCRIPT_TMP_DIR/efi_dev
+		mount /dev/$efi_dev $RS$SCRIPT_TMP_DIR/efi_dev
 		echo -n '# GRUB Environment Block
 #######################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################' > $SCRIPT_TMP_DIR/efi_dev/.reboot
 		reboot
@@ -380,20 +410,28 @@ END
 	wait_sshd_start
 	echo try ssh connect
 	ssh_sudo <<'END'
-		efi_dev=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|egrep -o "efi=UUID=[\\\\\"0-9a-fA-F-]+"|egrep -o "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')2
+		if [ -d "/data/data/com.termux/files" ]; then
+			RS="/data/data/com.termux/files/usr"
+			if [ "`stat -c "%i" $R`" != "`stat -c "%i" $R/usr`" ];then
+				sudo mount --bind $R $R/usr
+			fi
+		else
+			RS=""
+		fi
+		efi_dev=$(readlink -f /dev/disk/by-uuid/`cat /proc/cmdline|grep -Eo "efi=UUID=[\\\\\"0-9a-fA-F-]+"|grep -Eo "[0-9a-fA-F-]+$"`|awk 'match($1,/[0-9]+$/){print substr($1,0,length($1)-RLENGTH);}'|awk 'match($1,/^\/dev\//){print substr($1,6,length($1)-5);}')2
 		if [ -z "$efi_dev" ]; then die "boot efi device not found."; fi
-		mkdir -p $SCRIPT_TMP_DIR/efi_dev
-		mount /dev/$efi_dev $SCRIPT_TMP_DIR/efi_dev
-		rm $SCRIPT_TMP_DIR/efi_dev/.reboot
-		umount $SCRIPT_TMP_DIR/efi_dev
+		mkdir -p $RS$SCRIPT_TMP_DIR/efi_dev
+		mount /dev/$efi_dev $RS$SCRIPT_TMP_DIR/efi_dev
+		rm $RS$SCRIPT_TMP_DIR/efi_dev/.reboot
+		umount $RS$SCRIPT_TMP_DIR/efi_dev
 #		rm -rf $SCRIPT_TMP_DIR/efi_dev
 END
 }
 
 
 function set_diff_begin(){
-	local get_diff=$SCRIPT_TMP_DIR/$SSH_ID/get_diff
-	echo "#/bin/bash" >> $get_diff
+	local get_diff=$RS$SCRIPT_TMP_DIR/$SSH_ID/get_diff
+	echo "#!/bin/env bash" >> $get_diff
 	chmod +x $get_diff
 	_set_diff_save __SET_DIFF_BEGIN_PRESERVE_ $get_diff
 	#if [ -n "$DEBUG" ];then
@@ -405,11 +443,11 @@ function set_diff_begin(){
 
 
 function set_diff_end(){
-	local get_diff=$SCRIPT_TMP_DIR/$SSH_ID/get_diff
+	local get_diff=$RS$SCRIPT_TMP_DIR/$SSH_ID/get_diff
 	_set_diff_save __SET_DIFF_END_PRESERVE_ $get_diff
 	local out
 	echo -E '
-		echo -n
+		echo
 		echo __TRANS_ENV_'$SCRIPT_ID$SSH_ID'
 		echo
 		(echo -E "$__SET_DIFF_BEGIN_PRESERVE_VNAMES";
@@ -470,18 +508,20 @@ function _set_diff_save(){
 		local vname
 		local dec
 		local dag
-		ln="`declare -p $ln`"
-		dag=${ln#declare -* }
-		dec=${ln:0:$((${#ln} - ${#dag}))}
-		if [[ ${dag} =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]];then
-			content="''"
-			vname=${dag}
-		else
-			content="${dag#*=}"
-			vname=${dag%%=*}
-		fi
-		if [ -n "$vname" ];then
-			echo -E "$dec$1EACH_$vname=$content" >> $2
+		ln="`declare -p $ln 2>/dev/null`"
+		if [ -n "$ln" ];then
+			dag=${ln#declare -* }
+			dec=${ln:0:$((${#ln} - ${#dag}))}
+			if [[ ${dag} =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]];then
+				content="''"
+				vname=${dag}
+			else
+				content="${dag#*=}"
+				vname=${dag%%=*}
+			fi
+			if [ -n "$vname" ];then
+				echo -E "$dec$1EACH_$vname=$content" >> $2
+			fi
 		fi
 	done
 }

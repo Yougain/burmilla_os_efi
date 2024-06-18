@@ -14,15 +14,23 @@ function ssh_clone(){
 		url=https://github.com/${url#*:}
 		url=${url%%.git}
 		local tdir=`pwd`
-		tdir=${tdir##*/}
+		tdir="~/git_project/${tdir##*/}"
 		local ret=0
 		while read ln; do
 			deb $DEBUG
 			deb $ln
 			ssh_param $ln -x -q
-			ssh_do git force-clone $url $tdir
+			ssh_do <<-END
+				if [ -d $tdir/.git ];then
+					pushd $tdir
+					git pull
+					popd
+				else
+					git-force-clone $url $tdir
+				fi
+				END
 			if [ "$?" = 255 ];then
-				err "Cannot connect: ssh $ln git force-clone $url $tdir"
+				err "Cannot connect: ssh $ln git-force-clone $url $tdir"
 				ret=1
 			fi
 		done < .git/.ssh_clone
@@ -60,16 +68,17 @@ function commit(){
 	dbv $*
 	if [ -z "$no_ver_mod" ];then
 		if [ $# -gt 0 ];then
-			echo -E "`v` $*" > version
+			echo -E "`v` `date` $*
+`cat version`" >> version
 			echo -E "`date` `v` $*
 `cat change_log`" > change_log.new
 			mv -f change_log.new change_log
-			local log_exist=$(echo "`git ls-files`" | egrep "^log$")
+			local log_exist=$(echo "`git ls-files`" | egrep "^change_log$")
 			if [ -z "$log_exist" ];then
 				git add change_log
 			fi
 		else
-			echo -E "`v`" > version
+			echo -E "`v`" >> version
 		fi
 		local version_exist=$(echo "`git ls-files`" | egrep "^version$")
 		if [ -z "$version_exist" ];then
@@ -126,8 +135,8 @@ function main(){
 		git add version
 	fi
 
-	ver=`cat version|awk '{print $1}'`
-	if [[ "`cat version|awk '{print $1}'`" =~ ^[0-9]+(\.[0-9]+)*$ ]];then
+	ver=`cat version|head -1|awk '{print $1}'`
+	if [[ "`cat version|head -1|awk '{print $1}'`" =~ ^[0-9]+(\.[0-9]+)*$ ]];then
 		vers=(`echo $ver |tr '.' ' '`)
 	else
 		die "The first word of file, 'version' cannot interpreted as version number ('$ver').

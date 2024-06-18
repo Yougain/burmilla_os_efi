@@ -150,7 +150,7 @@ function write_env_file(){
 	local c=$(
 		echo -n "'"
 #		trim_indent | sed 's/'"'"'/'"'"'"'"'"'"'"'"'/g' | sed -r 's/(^|[^\\])\$('$envreg')([^A-Za-z0-9_]|$)/\1'"'"'"$\2"'"'"'\3/g'
-		trim_indent | sed 's/'"'"'/'"'"'"'"'"'"'"'"'/g' | sed -r 's/(^|[^\\])(\$('$envreg')(([^A-Za-z0-9_\\]|)\$('$envreg'))*)([^A-Za-z0-9_]|$)/\1'"'"'"\2"'"'"'\7/g'
+		trim_indent | sed 's/'"'"'/'"'"'"'"'"'"'"'"'/g' | sed -r 's/(^|[^\\])(\$('$envreg')(([^A-Za-z0-9_\\]|)\$('$envreg'))*)([^A-Za-z0-9_]|$)/\1'"'"'"\2"'"'"'\7/g' | sed -r 's/\\\$/$/g'
 		echo -n "'"
 	)
 	if [ -n "$1" ];then

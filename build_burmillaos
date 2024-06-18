@@ -80,7 +80,7 @@ fi
 #rm -rf os
 #mv os-2.0.0 os
 
-PVER=`cat ~/burmilla_os_efi/version`
+PVER=`cat ~/burmilla_os_efi/version|head -1|awk '{print $1}'`
 PVER=`echo $PVER|awk '{print $1}'`
 sed "s/__PVER__/$PVER/" ~/burmilla_os_efi/mountOpt.patch > ~/burmilla_os_efi/mountOpt.patch.$PVER
 if ! patch -p1 < ~/burmilla_os_efi/mountOpt.patch.$PVER;then
