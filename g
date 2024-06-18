@@ -6,7 +6,6 @@ if ! PATH="./:$PATH" source bashlib_y;then
 	exit 1
 fi
 
-
 function ssh_clone(){
  	if [ -e .git/.ssh_clone ]; then
 		require ssh_do
@@ -27,12 +26,18 @@ function ssh_clone(){
 				elif [ -d $tdir/.git ];then
 					td=$tdir
 				fi
-				if [ -n "$td" ];then
-					pushd $td
+				if [ -n "\$td" ];then
+					pushd \$td > /dev/null
+					git commit -a -m "commit from $USER@`hostname -f`"
 					git pull
-					popd
+					popd > /dev/null
 				else
 					git-force-clone $url $tdir
+					pushd $tdir > /dev/null
+					git config --local user.name $G_USER
+					git config --local user.email $G_EMAIL
+					git branch -u origin
+					popd > /dev/null
 				fi
 			}
 			if [ "$?" = 255 ];then
@@ -73,9 +78,12 @@ function commit(){
 	dbv $@
 	dbv $*
 	if [ -z "$no_ver_mod" ];then
+		echo -E "`v` `date` $*
+`cat version`
+" > version.new
+		mv -f version version.bak
+		mv version.new version
 		if [ $# -gt 0 ];then
-			echo -E "`v` `date` $*
-`cat version`" >> version
 			echo -E "`date` `v` $*
 `cat change_log`" > change_log.new
 			mv -f change_log.new change_log
@@ -83,8 +91,6 @@ function commit(){
 			if [ -z "$log_exist" ];then
 				git add change_log
 			fi
-		else
-			echo -E "`v`" >> version
 		fi
 		local version_exist=$(echo "`git ls-files`" | egrep "^version$")
 		if [ -z "$version_exist" ];then
@@ -110,6 +116,24 @@ function main(){
 		exec g1 "$@"
 	elif opt -0; then
 		exec g0 "$@"
+	elif ! opt --locked; then
+		flock -E 255 -x ./ $0 --locked $@
+		local ret=$?
+		if [ $ret = 255 ];then
+			die "Other g command is still running on this directory."
+		fi
+		exit $ret
+	fi
+
+	G_USER=`git config user.name`
+	if [ -z "$G_USER" ];then
+		die "Missing user for git. Please set user by executing 'git user.name USER_NAME/git user.email EMAIL'"
+	fi
+
+
+	G_EMAIL=`git config user.email`
+	if [ -z "$G_EMAIL" ];then
+		die "Missing user for git. Please set user by executing 'git user.name USER_NAME/git user.email EMAIL'"
 	fi
 
 	dbv ${all_args[@]}
@@ -192,6 +216,7 @@ function main(){
 
 	commit ${all_args[@]}
 }
+
 
 main "$@"
 
