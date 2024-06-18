@@ -107,9 +107,7 @@ function ssh_param(){
 		if [ -n "$SSH_PORT" ];then
 			return 0
 		fi
-		echo return 1
 	fi
-	echo return 11
 	return 1
 }
 
@@ -164,7 +162,7 @@ function ssh_do(){
 		shift
 	fi
 	if [ -z "$SSH_PORT" -o -z "$SSH_HOST" ];then
-		die "missing ssh paramter variables. Please execute 'ssh_param SERVER_NAME' first."
+		die "'ssh_param SERVER_NAME' failed or not exected before."
 	fi
 	SSH_TMP=1
 	if [ -z "$SSH_TMP_SUDO" ];then
