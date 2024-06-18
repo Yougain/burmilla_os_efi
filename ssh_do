@@ -108,7 +108,7 @@ function ssh_param(){
 			return 0
 		fi
 	fi
-	die "cannot connect by 'ssh $@ -p $port $host'"
+	die "cannot connect by 'ssh $host'"
 }
 
 
