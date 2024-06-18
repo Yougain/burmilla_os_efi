@@ -20,7 +20,7 @@ function ssh_clone(){
 			deb $DEBUG
 			deb $ln
 			ssh_param $ln -x -q
-			ssh_do <<-END
+			ssh_do <<-}
 				if [ -d $tdir/.git ];then
 					pushd $tdir
 					git pull
@@ -28,7 +28,7 @@ function ssh_clone(){
 				else
 					git-force-clone $url $tdir
 				fi
-				END
+			}
 			if [ "$?" = 255 ];then
 				err "Cannot connect: ssh $ln git-force-clone $url $tdir"
 				ret=1
