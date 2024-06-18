@@ -13,16 +13,22 @@ function ssh_clone(){
 		local url=`git config --get remote.origin.url`
 		url=https://github.com/${url#*:}
 		url=${url%%.git}
-		local tdir=`pwd`
-		tdir="~/git_project/${tdir##*/}"
+		local tdirb=`pwd`
+		tdir="~/git_project/${tdirb##*/}"
+		tdirb="~/${tdirb##*/}"
 		local ret=0
 		while read ln; do
 			deb $DEBUG
 			deb $ln
 			ssh_param $ln -x -q
 			ssh_do <<-}
-				if [ -d $tdir/.git ];then
-					pushd $tdir
+				if [ -d $tdirb/.git ];then
+					td=$tdirb
+				elif [ -d $tdir/.git ];then
+					td=$tdir
+				fi
+				if [ -n "$td" ];then
+					pushd $td
 					git pull
 					popd
 				else
