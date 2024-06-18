@@ -79,34 +79,37 @@ function ssh_param(){
 	fi
 	deb $SSH_CMD "${SSH_OPTS[@]}" $port -v -o "ConnectTimeout=5"  -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" $host
 	$SSH_CMD "${SSH_OPTS[@]}" $port -v -o "ConnectTimeout=5"  -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" $host echo -n > $SCRIPT_TMP_DIR/test_ssh 2>&1
-	if [ -z "`grep -E 'debug1: Executing proxy command:' $SCRIPT_TMP_DIR/test_ssh`" ]; then
-		local SSH_CON_LINE=`grep -Eo 'debug1: Connecting to .* port [0-9]+' $SCRIPT_TMP_DIR/test_ssh`
-		SSH_PORT=`echo $SSH_CON_LINE| grep -Eo '[0-9]+$'`
-		SSH_PORT_OPT=" -p $SSH_PORT"
-		SSH_HOST_IP=`echo $SSH_CON_LINE| grep -Eo 'to [0-9/A-Fa-f\.:]{7,}'| grep -Eo '[0-9/A-Fa-f\.:]{7,}'`
-		dbv $SSH_HOST_IP
-		dbv $SSH_PORT
-		dbv $SSH_CON_LINE
-	else
-		local pc=`grep -E "debug1: channel_connect_stdio_fwd " $SCRIPT_TMP_DIR/test_ssh`
-		if [ -n "$pc" ];then
-			pc=${pc%\\r}
-			local adr=${pc#debug1: channel_connect_stdio_fwd }
-			adr=${adr%[[:space:]]}
-			adr=${adr%[[:space:]]}
-			adr=${adr%[[:space:]]}
-			SSH_PORT=${adr##*:}
-			SSH_HOST_IP=${adr%:*}
+	if [ $? != 255 ];then
+		if [ -z "`grep -E 'debug1: Executing proxy command:' $SCRIPT_TMP_DIR/test_ssh`" ]; then
+			local SSH_CON_LINE=`grep -Eo 'debug1: Connecting to .* port [0-9]+' $SCRIPT_TMP_DIR/test_ssh`
+			SSH_PORT=`echo $SSH_CON_LINE| grep -Eo '[0-9]+$'`
 			SSH_PORT_OPT=" -p $SSH_PORT"
-			SSH_PROXY=1
+			SSH_HOST_IP=`echo $SSH_CON_LINE| grep -Eo 'to [0-9/A-Fa-f\.:]{7,}'| grep -Eo '[0-9/A-Fa-f\.:]{7,}'`
 			dbv $SSH_HOST_IP
+			dbv $SSH_PORT
+			dbv $SSH_CON_LINE
+		else
+			local pc=`grep -E "debug1: channel_connect_stdio_fwd " $SCRIPT_TMP_DIR/test_ssh`
+			if [ -n "$pc" ];then
+				pc=${pc%\\r}
+				local adr=${pc#debug1: channel_connect_stdio_fwd }
+				adr=${adr%[[:space:]]}
+				adr=${adr%[[:space:]]}
+				adr=${adr%[[:space:]]}
+				SSH_PORT=${adr##*:}
+				SSH_HOST_IP=${adr%:*}
+				SSH_PORT_OPT=" -p $SSH_PORT"
+				SSH_PROXY=1
+				dbv $SSH_HOST_IP
+			fi
 		fi
+		deb $SSH_PORT
+		if [ -n "$SSH_PORT" ];then
+			return 0
+		fi
+		echo return 1
 	fi
-	deb $SSH_PORT
-	if [ -n "$SSH_PORT" ];then
-		return 0
-	fi
-	echo return 1	
+	echo return 11
 	return 1
 }
 
