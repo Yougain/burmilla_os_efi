@@ -1,12 +1,5 @@
 #!/bin/bash
 
-#if [ -n "$1" ];then
-#    ssh -t $1 'if [ -f /bin/dnf -o -f /usr/bin/dnf ];then IST="dnf"; else if [ -f /bin/yum -o -f /usr/bin/yum ];then IST="yum"; else if [ -f /usr/apt-get -o -f /usr/bin/apt-get ];then IST="apt-get"; else echo "Error: package installer not found."; exit 1; fi; fi; fi; if [ ! -f /bin/git ];then sudo $IST -y update; sudo $IST -y install git git-extras; fi; if [ ! -f /bin/which -a ! -f /usr/bin/which ];then sudo \$IST -y install which; fi; if [ -d "./burmilla_os_efi" ]; then git-force-clone  https://github.com/Yougain/burmilla_os_efi.git ~/burmilla_os_efi; else git clone https://github.com/Yougain/burmilla_os_efi.git; fi; ./burmilla_os_efi/'${0##*/}'; exit $?'
-#    mkdir -p ~/burmilla_os_iso/
-#    scp $1:burmilla_os_iso/'*.iso' ~/burmilla_os_iso/
-#    exit $?
-#fi
-
 
 sudo apt-get install -y make patch apt-utils
 
@@ -81,7 +74,7 @@ fi
 #rm -rf os
 #mv os-2.0.0 os
 
-PVER=`cat ~/burmilla_os_efi/version|head -1|awk '{print $1}'`
+PVER=`cat ~/git_project/burmilla_os_efi/version|head -1|awk '{print $1}'`
 PVER=`echo $PVER|awk '{print $1}'`
 sed "s/__PVER__/$PVER/" ~/git_project/burmilla_os_efi/mountOpt.patch > ~/git_project/burmilla_os_efi/mountOpt.patch.$PVER
 if ! patch -p1 < ~/git_project/burmilla_os_efi/mountOpt.patch.$PVER;then
