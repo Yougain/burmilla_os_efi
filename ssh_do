@@ -90,7 +90,10 @@ function ssh_param(){
 				SSH_PORT_OPT=" -p $SSH_PORT"
 				SSH_HOST_IP=$host
 			else
-				dbv
+				SSH_PORT=
+				SSH_PORT_OPT=
+				SSH_HOST_IP=$host
+				return 0
 			fi
 			dbv
 		elif [ -z "`grep -E 'debug1: Executing proxy command:' $SCRIPT_TMP_DIR/test_ssh`" ]; then
