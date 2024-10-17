@@ -1,7 +1,9 @@
-#!/bin/bash
+#!/bin/env bash
 
 
-if ! PATH="./:$PATH" source bashlib_y;then
+PATH="./:$PATH"
+
+if ! source bashlib_y;then
 	echo -e "\033[41m\033[33mERROR    :\033[m \033[31m""bashlib_y not found.\033[m"
 	exit 1
 fi
@@ -37,6 +39,7 @@ function ssh_clone(){
 					git config --local user.name $G_USER
 					git config --local user.email $G_EMAIL
 					git branch -u origin
+					git remote set-url origin git@github.com:$G_USER/${url##*/}
 					popd > /dev/null
 				fi
 			}
@@ -97,7 +100,12 @@ function commit(){
 			git add version
 		fi
 		git commit -a -m "`v` $*"
-		git push
+		if ! git pull --no-edit; then
+			exit 1
+		fi
+		if ! git push; then
+			exit 1
+		fi
 	else
 		echo "Only ssh clone."
 	fi
@@ -127,13 +135,13 @@ function main(){
 
 	G_USER=`git config user.name`
 	if [ -z "$G_USER" ];then
-		die "Missing user for git. Please set user by executing 'git user.name USER_NAME/git user.email EMAIL'"
+		die "Missing user for git. Please set user by executing 'git user.name USER_NAME\ngit user.email EMAIL'"
 	fi
 
 
 	G_EMAIL=`git config user.email`
 	if [ -z "$G_EMAIL" ];then
-		die "Missing user for git. Please set user by executing 'git user.name USER_NAME/git user.email EMAIL'"
+		die "Missing user email for git. Please set user by executing 'git user.name USER_NAME\ngit user.email EMAIL'"
 	fi
 
 	dbv ${all_args[@]}
@@ -152,6 +160,9 @@ function main(){
 	fi
 
 	if [ -z "`git diff`" ];then
+		if ! git pull --no-edit; then
+			exit 1
+		fi
 		warn "Not modified.$Emsg"
 		if [ -n "$force_pre_post" ];then
 			no_ver_mod=1

@@ -1054,7 +1054,7 @@ ssh_sudo <<'FINAL'
 	dbv ${!SCRIPT_FILES[@]}
 
 	apt_check gdisk lvm2 dosfstools btrfs-progs parted util-linux cpio gzip fdisk strace binutils 2> /dev/null
-	for l in RANCHER_BOOT RANCHER_OEM RANCHER_STATE RANCHER_SWAP;do
+	for l in B_BOOT B_OEM B_STATE RANCHER_SWAP;do
 		b2res="`blkid2 LABEL=$l 2> /dev/null`"
 		dbv $l $b2res $TARGET_DEV
 		if ! [[ $b2res =~ ^$TARGET_DEV[0-9]+ ]]; then
@@ -1210,7 +1210,7 @@ FINAL
 		fi
 	fi
 	ssh_sudo <<'FINAL'
-		mkfs.btrfs -L RANCHER_OEM -f $TARGET_DEV7
+		mkfs.btrfs -L B_OEM -f $TARGET_DEV7
 		partprobe
 		if [ -n "$REF_OEM_DRV" -a "$REF_OEM_DRV" != "$TARGET_DEV7" ];then
 			info "copying $REF_OEM_DRV to $TARGET_DEV7 ..."
@@ -1266,7 +1266,7 @@ ssh_sudo <<'FINAL'
 	mount $TARGET_DEV4 /installing/boot_dev
 	info ls /installing/boot_dev/var/lib/rancher/conf/cloud-config.d
 	info "`ls /installing/boot_dev/var/lib/rancher/conf/cloud-config.d`"
-	mkfs.btrfs -L RANCHER_STATE -f $TARGET_DEV5
+	mkfs.btrfs -L B_STATE -f $TARGET_DEV5
 	partprobe
 	STATE_UUID_SUB=`/sbin/blkid $TARGET_DEV5 | awk '{print $4}'`
 	if [ -z "$STATE_UUID_SUB" ];then
@@ -1281,7 +1281,7 @@ ssh_sudo <<'FINAL'
 	cp -a /installing/boot_dev/* /installing/state_top/state_root
 	umount /installing/boot_dev
 	# reformat to create boot drive
-	mkfs.btrfs -L RANCHER_BOOT -f $TARGET_DEV4
+	mkfs.btrfs -L B_BOOT -f $TARGET_DEV4
 	partprobe
 	BOOT_UUID_SUB=`/sbin/blkid $TARGET_DEV4 | awk '{print $4}'`
 	BOOT_UUID=$(eval "echo `/sbin/blkid $TARGET_DEV4 | awk '{print $3}'`")
@@ -1303,7 +1303,7 @@ ssh_sudo <<'FINAL'
 		dbv
 		initOEM=1
 	fi
-	if [ ! -e /dev/disk/by-label/RANCHER_OEM ];then
+	if [ ! -e /dev/disk/by-label/B_OEM ];then
 		dbv
 		initOEM=1
 	fi
@@ -1312,14 +1312,18 @@ ssh_sudo <<'FINAL'
 	fi
 	if [ -n "$initOEM" ];then
 		umount /installing/oem_top
-		mkfs.btrfs -L RANCHER_OEM -f $TARGET_DEV7
+		umount $TARGET_DEV7
+		umount $TARGET_DEV7
+		umount $TARGET_DEV7
+		umount $TARGET_DEV7
+		mkfs.btrfs -L B_OEM -f $TARGET_DEV7
 		partprobe
 		OEM_UUID_SUB=`/sbin/blkid $TARGET_DEV7| awk '{print $4}'`
 		if [ -z "$OEM_UUID_SUB" ];then
 			die cannot detect uuid of state device, $TARGET_DEV7.
 		fi
 		OEM_UUID_SUB="`echo $OEM_UUID_SUB`"
-		mount $TARGET_DEV7 /installing/oem_top
+		mount -o subvol=/ $TARGET_DEV7 /installing/oem_top
 		btrfs subvolume create /installing/oem_top/oem_root
 		echo btrfs subvolume set-default `btrfs subvolume list /installing/oem_top|grep oem_root|awk '{print $2}'` /installing/oem_top
 		btrfs subvolume set-default `btrfs subvolume list /installing/oem_top|grep oem_root|awk '{print $2}'` /installing/oem_top
@@ -1484,7 +1488,7 @@ if [ -z "$INITRD_FILE" ];then
 fi
 
 
-UF=/installing/state/var/lib/rancher/conf/cloud-config.d/user_config.yml
+UF=/installing/state_top/var/lib/rancher/conf/cloud-config.d/user_config.yml
 UFL=/installing/oem_part/var/lib/rancher/conf/cloud-config.d/user_config.yml
 
 ssh_sudo <<'FINAL'
@@ -1493,14 +1497,14 @@ ssh_sudo <<'FINAL'
 	umount /installing/state_top
 	umount /installing/installer
 	umount /installing/efipart
-	mkdir -p /installing/oempart
-	mount $TARGET_DEV7 /installing/oempart
-	if [ -e /installing/oempart/var/log/burmilla_installation ];then
-		chain_bak -10 /installing/oempart/var/log/burmilla_installation
+	mkdir -p /installing/oem_part
+	mount $TARGET_DEV7 /installing/oem_part
+	if [ -e /installing/oem_part/var/log/burmilla_installation ];then
+		chain_bak -10 /installing/oem_part/var/log/burmilla_installation
 	fi
-	mkdir -p /installing/oempart/var/log/burmilla_installation/1
-	cp -a /var/log/* /installing/oempart/var/log/burmilla_installation/1
-	umount /installing/oempart
+	mkdir -p /installing/oem_part/var/log/burmilla_installation/1
+	cp -a /var/log/* /installing/oem_part/var/log/burmilla_installation/1
+	umount /installing/oem_part
 
 	apt_check btrfs-progs binutils
 	
@@ -1512,7 +1516,7 @@ ssh_sudo <<'FINAL'
 		die "btrfs not found"
 	fi
 	
-	mount $TARGET_DEV5 /installing/state
+	mount $TARGET_DEV5 /installing/state_top
 
 	if ! mount $TARGET_DEV4 /installing/boot_dev; then
 		die cannot mount
@@ -1580,7 +1584,7 @@ ssh_sudo <<'FINAL'
 	chain_bak -10 --compare $UF $UFL
 
 	#local time
-	#etc_localtime=`find /installing/state -name "localtime"| awk '{print $1}'`
+	#etc_localtime=`find /installing/state_top -name "localtime"| awk '{print $1}'`
 
 	apt_check binutils
 
@@ -1668,15 +1672,17 @@ ssh_sudo <<'FINAL'
 		done
 	SHUTDOWN
 	
-	mkdir -p /installing/state/usr/share/ros
-	mkdir -p /installing/state/var/lib
-	mkdir -p /installing/state/etc/profile.d
+	mkdir -p /installing/state_top/usr/share/ros
+	mkdir -p /installing/state_top/var/lib
+	mkdir -p /installing/state_top/etc/profile.d
 
-	mkdir -p /installing/state/usr/bin
+	mkdir -p /installing/state_top/usr/bin
 	for i in write_script blkid2 do_mount chain_bak partNum2Dev args parse_func write_script trim_indent; do
-		do_install $i /installing/state
-		cp -a /installing/state/usr/share/bashlib_y/* /installing/oem_part/opt/rancher/bin
+		do_install $i /installing/state_top
+		cp -a /installing/state_top/usr/share/bashlib_y/* /installing/oem_part/opt/rancher/bin
 	done
+	
+	mv /installing/state_top/usr{,.bashlib_y}
 
 	chain_bak -10 --compare /installing/oem_part/opt/rancher/bin/start.sh{.0,}
 	chain_bak -10 --compare /installing/oem_part/opt/rancher/bin/shutdown.sh{.0,}

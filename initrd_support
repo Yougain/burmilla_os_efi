@@ -94,6 +94,7 @@ before_sysinit(){
 		cp -sf $OR/etc/profile.d/timezone.sh /etc/profile.d
 	fi
 	if [ -n "$installer_boot" ];then # boot from installer
+		rm -f /usr/share/ros/.oem_link
 		ln -s / /usr/share/ros/.oem_link # mimic root by using ramdisk because do not use oem
 		if [ -e $OR/var/lib/rancher/conf ];then # use oem drive
 			yq e -i 'del(.runcmd)' $UF # no need when booting by installer
@@ -105,6 +106,7 @@ before_sysinit(){
 		fi
 		d_ssh=
 	else # normal boot
+		rm -f /usr/share/ros/.oem_link
 		ln -sf oem /usr/share/ros/.oem_link
 		do_mount 2 /boot/efi
 		do_mount 3

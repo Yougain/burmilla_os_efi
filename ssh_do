@@ -75,12 +75,27 @@ function ssh_param(){
 		fi
 	fi
 	if [ -n "$port" ];then
+		prt=$port
 		port=" -p $port"
 	fi
-	deb $SSH_CMD "${SSH_OPTS[@]}" $port -v -o "ConnectTimeout=5"  -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" $host
+	dbv $SSH_CMD "${SSH_OPTS[@]}" $port -v -o "ConnectTimeout=5"  -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" $host
 	$SSH_CMD "${SSH_OPTS[@]}" $port -v -o "ConnectTimeout=5"  -o "PasswordAuthentication no" -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" $host echo -n > $SCRIPT_TMP_DIR/test_ssh 2>&1
 	if [ $? != 255 ];then
-		if [ -z "`grep -E 'debug1: Executing proxy command:' $SCRIPT_TMP_DIR/test_ssh`" ]; then
+		dbv
+		if [ -n "`grep -E 'mux_client_request_session: master session id:' $SCRIPT_TMP_DIR/test_ssh`" ];then
+			dbv `ls ~/.ssh/mux-rancher@$host:$prt`
+			if [ -n "`ls ~/.ssh/mux-rancher@$host:$prt`" ];then
+				dbv
+				SSH_PORT=$prt
+				SSH_PORT_OPT=" -p $SSH_PORT"
+				SSH_HOST_IP=$host
+			else
+				dbv
+			fi
+			dbv
+		elif [ -z "`grep -E 'debug1: Executing proxy command:' $SCRIPT_TMP_DIR/test_ssh`" ]; then
+			cat $SCRIPT_TMP_DIR/test_ssh
+			dbv
 			local SSH_CON_LINE=`grep -Eo 'debug1: Connecting to .* port [0-9]+' $SCRIPT_TMP_DIR/test_ssh`
 			SSH_PORT=`echo $SSH_CON_LINE| grep -Eo '[0-9]+$'`
 			SSH_PORT_OPT=" -p $SSH_PORT"
@@ -89,6 +104,7 @@ function ssh_param(){
 			dbv $SSH_PORT
 			dbv $SSH_CON_LINE
 		else
+			dbv
 			local pc=`grep -E "debug1: channel_connect_stdio_fwd " $SCRIPT_TMP_DIR/test_ssh`
 			if [ -n "$pc" ];then
 				pc=${pc%\\r}
@@ -103,7 +119,18 @@ function ssh_param(){
 				dbv $SSH_HOST_IP
 			fi
 		fi
-		deb $SSH_PORT
+		dbv $SSH_PORT
+		if [ -n "$SSH_PORT" ];then
+			return 0
+		fi
+	elif [ -n "`grep -E 'Permanently added.* to the list of known hosts.' $SCRIPT_TMP_DIR/test_ssh`"  ]; then
+		local SSH_CON_LINE=`grep -Eo 'debug1: Connecting to .* port [0-9]+' $SCRIPT_TMP_DIR/test_ssh`
+		SSH_PORT=`echo $SSH_CON_LINE| grep -Eo '[0-9]+$'`
+		SSH_PORT_OPT=" -p $SSH_PORT"
+		SSH_HOST_IP=`echo $SSH_CON_LINE| grep -Eo 'to [0-9/A-Fa-f\.:]{7,}'| grep -Eo '[0-9/A-Fa-f\.:]{7,}'`
+		dbv $SSH_HOST_IP
+		dbv $SSH_PORT
+		dbv $SSH_CON_LINE
 		if [ -n "$SSH_PORT" ];then
 			return 0
 		fi
@@ -189,7 +216,7 @@ function ssh_do(){
 			dbv $SCRIPT_TMP_DIR
 			local ln
 			write_env_file << '			__INNER'
-				#!/bin/env bash
+				#!/bin/bash
 				if [ -d "/data/data/com.termux/files" ]; then
 					RS="/data/data/com.termux/files/usr"
 					if [ "`stat -c "%i" $RS`" != "`stat -c "%i" $RS/usr`" ];then
@@ -252,8 +279,8 @@ function ssh_do(){
 					fcn__=${SCRIPT_FILES[$fxx__]}
 					lns__=
 					eval "
-						for ln__ in \"\${$fcn__[@]}\";do
-							lns__=\"\$lns__\$ln__\"
+						for ln__ in \"\\${"$fcn__"[@]}\";do
+							lns__=\"\\$lns__\\$ln__\"
 						done
 					"
 					echo -E "$lns__" > $RS$SCRIPT_TMP_DIR/$SSH_ID/file_transferred/${fxx__##*/}
@@ -432,7 +459,7 @@ END
 
 function set_diff_begin(){
 	local get_diff=$RS$SCRIPT_TMP_DIR/$SSH_ID/get_diff
-	echo "#!/bin/env bash" >> $get_diff
+	echo "#!/bin/bash" >> $get_diff
 	chmod +x $get_diff
 	_set_diff_save __SET_DIFF_BEGIN_PRESERVE_ $get_diff
 	#if [ -n "$DEBUG" ];then
