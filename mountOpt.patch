@@ -443,6 +443,27 @@ diff -Naur '--exclude=.git' os.prev/config/types.go os.new/config/types.go
  	BootDev    string   `yaml:"boot_dev,omitempty"`
  }
  
+diff -Naur '--exclude=.git' os.prev/Dockerfile.dapper os.new/Dockerfile.dapper
+--- os.prev/Dockerfile.dapper	2024-03-14 20:29:45.937485300 +0900
++++ os.new/Dockerfile.dapper	2024-10-17 20:19:52.260888483 +0900
+@@ -107,7 +107,7 @@
+     DISTRIB_ID=${DISTRIB_ID} \
+     DOWNLOADS=/usr/src/downloads \
+     GOPATH=/go \
+-    GO_VERSION=1.19.5 \
++    GO_VERSION=1.21.5 \
+     GO111MODULE=off \
+     GOARCH=$ARCH \
+     HOSTNAME_DEFAULT=${HOSTNAME_DEFAULT} \
+@@ -154,7 +154,7 @@
+     go get github.com/burmilla/trash
+ 
+ # Install golint
+-RUN go get golang.org/x/lint/golint
++RUN GO111MODULE=on go get golang.org/x/lint/golint@latest
+ 
+ # Install Host Docker
+ RUN curl -fL ${!BUILD_DOCKER_URL} > /usr/bin/docker && \
 diff -Naur '--exclude=.git' os.prev/images/02-console/Dockerfile os.new/images/02-console/Dockerfile
 --- os.prev/images/02-console/Dockerfile	2024-03-14 20:29:45.967485300 +0900
 +++ os.new/images/02-console/Dockerfile	2024-05-23 10:17:33.147889400 +0900
