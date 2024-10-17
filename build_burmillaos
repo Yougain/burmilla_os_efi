@@ -82,9 +82,10 @@ fi
 
 PVER=`cat ~/burmilla_os_efi/version|head -1|awk '{print $1}'`
 PVER=`echo $PVER|awk '{print $1}'`
-sed "s/__PVER__/$PVER/" ~/burmilla_os_efi/mountOpt.patch > ~/burmilla_os_efi/mountOpt.patch.$PVER
-if ! patch -p1 < ~/burmilla_os_efi/mountOpt.patch.$PVER;then
-	die "patch failed."
+sed "s/__PVER__/$PVER/" ~/git_project/burmilla_os_efi/mountOpt.patch > ~/git_project/burmilla_os_efi/mountOpt.patch.$PVER
+if ! patch -p1 < ~/git_project/burmilla_os_efi/mountOpt.patch.$PVER;then
+	echo "patch failed."
+	exit 1
 fi
 echo >> ~/os/images/02-console/sshd_config.append.tpl
 echo "PasswordAuthentication no" >> ~/os/images/02-console/sshd_config.append.tpl
