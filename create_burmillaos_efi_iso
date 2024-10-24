@@ -218,8 +218,9 @@ if [ -z "$BURMILLAOS_VER" ]; then
 	BURMILLAOS_VER=$LATEST_STABLE-btrfs-$LATEST_B_VERSION
 fi
 if [ "$LATEST_STABLE-btrfs-$LATEST_B_VERSION" = "$BURMILLAOS_VER" ]; then
+	echo $BURMILLAOS_VER
 	if ! detect NON_EFI_BTRFS_VERSIONS $BURMILLAOS_VER; then
-		su $SUDO_USER -c "./build_burmillaos"
+:#		su $SUDO_USER -c "./build_burmillaos"
 	fi
 fi
 NON_EFI_BTRFS_VERSIONS=(`ls /home/$SUDO_USER/burmilla_os_iso | grep -v efi | grep iso | grep burmillaos | sed -s 's/burmillaos-//;s/.iso//'`)
@@ -474,7 +475,10 @@ sudo mount $BOOT_IMG $BOOT_IMG_DATA
 sudo mkdir -p $BOOT_IMG_DATA/efi/boot
 sudo mkdir -p $BOOT_IMG_DATA/boot/grub # very important: erase errors of '/boot', '/,disk/info' and '/.disk/mini-info'
 
-sudo cp -av $UD/EFI/boot/*  $BOOT_IMG_DATA/efi/boot
+if ! sudo cp -av $UD/EFI/boot/*  $BOOT_IMG_DATA/efi/boot; then
+	die "Failed copy from  Ubuntsu. Maybe Ubuntsu is not properly downloaded."
+fi
+
 sudo cp -av $PD/boot/grub/grub.cfg $BOOT_IMG_DATA/efi/boot
 
 sudo umount $BOOT_IMG_DATA
