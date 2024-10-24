@@ -83,17 +83,16 @@ function ssh_param(){
 	if [ $? != 255 ];then
 		dbv
 		if [ -n "`grep -E 'mux_client_request_session: master session id:' $SCRIPT_TMP_DIR/test_ssh`" ];then
-			dbv `ls ~/.ssh/mux-rancher@$host:$prt`
-			if [ -n "`ls ~/.ssh/mux-rancher@$host:$prt`" ];then
+			if ssh -O check $port $host
 				dbv
-				SSH_PORT=$prt
-				SSH_PORT_OPT=" -p $SSH_PORT"
 				SSH_HOST_IP=$host
-			else
-				SSH_PORT=" "
-				SSH_PORT_OPT=" "
-				SSH_HOST_IP=$host
-				return 0
+				if [ -n "$prt" ]; then
+					SSH_PORT=$prt
+					SSH_PORT_OPT=$port
+				else
+					SSH_PORT=" "
+					SSH_PORT_OPT=" "
+				fi
 			fi
 			dbv
 		elif [ -z "`grep -E 'debug1: Executing proxy command:' $SCRIPT_TMP_DIR/test_ssh`" ]; then
@@ -143,6 +142,9 @@ function ssh_param(){
 
 
 function wait_sshd_start(){
+	if [ "$SSH_PORT" = " " ];then
+		die "cannot detect ssh port number for wait_sshd_start."
+	fi
 	if [ -z "$SSH_PORT" -o -z "$SSH_HOST" -o -z "$SSH_HOST_IP" ];then
 		die "missing ssh paramter variables. Please execute 'ssh_param SERVER_NAME' first."
 	fi
