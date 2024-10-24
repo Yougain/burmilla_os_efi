@@ -321,7 +321,16 @@ if [ ! -e "$UBUNTU_ISO" -o ! -s "$UBUNTU_ISO"  ];then
 	sudo rm -f "$UBUNTU_ISO"
 	info Downloading ubuntu-$LATEST_UV$beta-live-server-amd64.iso ...
 	WG --no-check-certificate $UB_RELEASE_URL/$UDIR"ubuntu-$LATEST_UV$beta-live-server-amd64.iso" -O $UBUNTU_ISO
+	sum=`WG --no-check-certificate $UB_RELEASE_URL/$UDIR"SHA256SUMS" -O -|grep ubuntu-$LATEST_UV$beta-live-server-amd64.iso|awk '{print$1}'`
+	if [ "$sum" != "`sha256sum $UBUNTU_ISO`" ];then
+		die "failed to download Ubuntsu Server ISO"
+	fi
 	info done
+else
+	sum=`WG --no-check-certificate $UB_RELEASE_URL/$UDIR"SHA256SUMS" -O -|grep ubuntu-$LATEST_UV$beta-live-server-amd64.iso|awk '{print$1}'`
+	if [ "$sum" != "`sha256sum $UBUNTU_ISO`" ];then
+		die "File, ubuntu-$LATEST_UV$beta-live-server-amd64.iso has different sha256 sum."
+	fi
 fi
 
 
